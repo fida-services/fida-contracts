@@ -99,11 +99,11 @@ library
     , cryptonite
     , deepseq
     , either
-    , playground-common
+    --, playground-common
     , plutus-core
-    , plutus-ledger
+    --, plutus-ledger
     , plutus-ledger-api
-    , plutus-script-utils
+    --, plutus-script-utils
     , plutus-tx
     , plutus-tx-plugin
     , secp256k1-haskell
@@ -122,7 +122,7 @@ executable fida-contracts-serialise
     , fida-contracts
     , filepath
     , plutonomy
-    , plutus-ledger
+    , plutus-ledger-api
     , serialise
 
   hs-source-dirs: app/serialise

@@ -1,6 +1,8 @@
-.PHONY: nix-cabal-repl format-cabal format-cabal-check format-check format hoogle lint tags requires-nix-shell
+.PHONY: nix-cabal-repl format-cabal format-cabal-check format-hs-check format-hs hoogle lint tags requires-nix-shell format-nix-fmt format-nix-check
 
 CABAL_SOURCES := $(shell find . -type f -name "*.cabal")
+
+NIX_SOURCES := $(shell find . type f -name "*.nix")
 
 hoogle:
 	@ nix develop -c hoogle server --local --port 8008
@@ -11,16 +13,16 @@ format-cabal: requires-nix-shell
 format-cabal-check: requires-nix-shell
 	cabal-fmt --check $(CABAL_SOURCES)
 
-format: requires-nix-shell
+format-hs: requires-nix-shell
 	fourmolu $(FOURMOLU_EXTENSIONS) --mode inplace --check-idempotence \
-		$(shell fd -ehs -elhs)
+		$(shell find . -type f -name "*.hs" -o -name "*.lhs")
 
-format-check: requires-nix-shell
+format-hs-check: requires-nix-shell
 	fourmolu $(FOURMOLU_EXTENSIONS) --mode check --check-idempotence \
-		$(shell fd -ehs -elhs)
+		$(shell find . -type f -name "*.hs" -o -name "*.lhs")
 
 lint: requires-nix-shell
-	hlint --no-summary $(shell fd -ehs -elhs)
+	hlint --no-summary $(shell find . -type f -name "*.hs" -o -name "*.lhs")
 
 nix-cabal-repl:
 	@ nix develop -c cabal new-repl
@@ -34,3 +36,11 @@ requires-nix-shell:
 	echo "    run 'nix develop' first"; \
 	false; \
 	}
+
+format-nix: requires-nix-shell
+	nixpkgs-fmt $(NIX_SOURCES)
+
+format-nix-check: requires-nix-shell
+	nixpkgs-fmt --check $(NIX_SOURCES)
+
+format-check: format-nix-check format-cabal-check format-hs-check
