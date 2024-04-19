@@ -3,8 +3,7 @@
 module Fida.Contract.SystemIdMintingPolicy where
 
 import Fida.Contract.Types
-import Ledger (Language (PlutusV2), Versioned (Versioned))
-import Plutus.Script.Utils.V2.Typed.Scripts (mkUntypedMintingPolicy)
+import Fida.Contract.Utils (mkUntypedMintingPolicy)
 import Plutus.V2.Ledger.Api
 import Plutus.V2.Ledger.Contexts (txSignedBy)
 import PlutusTx qualified
@@ -40,8 +39,6 @@ mkSystemIdMintingPolicyUntyped gov magic =
       (unsafeFromBuiltinData gov)
       (unsafeFromBuiltinData magic)
 
-serialisableSystemIdMintingPolicy :: Versioned Script
+serialisableSystemIdMintingPolicy :: Script
 serialisableSystemIdMintingPolicy =
-  Versioned
-    (fromCompiledCode $$(PlutusTx.compile [||mkSystemIdMintingPolicyUntyped||]))
-    PlutusV2
+  fromCompiledCode $$(PlutusTx.compile [||mkSystemIdMintingPolicyUntyped||])

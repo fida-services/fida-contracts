@@ -10,7 +10,7 @@ maintainer:         TODO
 copyright:          TODO
 category:           TODO
 build-type:         Simple
-tested-with:        GHC ==8.10.4
+tested-with:        GHC ==8.10.7
 extra-source-files: README.md
 
 flag defer-plugin-errors
@@ -96,14 +96,13 @@ library
     , cardano-binary
     , cardano-crypto
     , cardano-crypto-class
+    , cardano-ledger-alonzo
     , cryptonite
     , deepseq
     , either
-    --, playground-common
+    , plutonomy
     , plutus-core
-    --, plutus-ledger
     , plutus-ledger-api
-    --, plutus-script-utils
     , plutus-tx
     , plutus-tx-plugin
     , secp256k1-haskell

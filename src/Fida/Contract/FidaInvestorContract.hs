@@ -3,7 +3,6 @@
 module Fida.Contract.FidaInvestorContract where
 
 import Fida.Contract.Types
-import Ledger (Language (PlutusV2), Versioned (Versioned))
 import Plutus.V2.Ledger.Api
 import PlutusTx qualified
 import PlutusTx.Prelude
@@ -47,8 +46,6 @@ mkInvestorContractValidatorUntyped pkh systemId datum redeemer scriptContext =
       (unsafeFromBuiltinData redeemer)
       (unsafeFromBuiltinData scriptContext)
 
-serialisableInvestorContractValidator :: Versioned Script
+serialisableInvestorContractValidator :: Script
 serialisableInvestorContractValidator =
-  Versioned
-    (fromCompiledCode $$(PlutusTx.compile [||mkInvestorContractValidatorUntyped||]))
-    PlutusV2
+  fromCompiledCode $$(PlutusTx.compile [||mkInvestorContractValidatorUntyped||])

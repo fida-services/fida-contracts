@@ -3,8 +3,7 @@
 module Fida.Contract.FidaPolicyContract where
 
 import Fida.Contract.Types
-import Ledger (Language (PlutusV2), Versioned (Versioned))
-import Plutus.Script.Utils.V2.Typed.Scripts (mkUntypedMintingPolicy)
+import Fida.Contract.Utils (mkUntypedMintingPolicy)
 import Plutus.V2.Ledger.Api
 import PlutusTx qualified
 import PlutusTx.Prelude
@@ -56,11 +55,9 @@ mkFidaContractMintingPolicyUntyped ref =
     mkFidaContractMintingPolicy
       (unsafeFromBuiltinData ref)
 
-serialisableFidaContractMintingPolicy :: Versioned Script
+serialisableFidaContractMintingPolicy :: Script
 serialisableFidaContractMintingPolicy =
-  Versioned
-    (fromCompiledCode $$(PlutusTx.compile [||mkFidaContractMintingPolicyUntyped||]))
-    PlutusV2
+  fromCompiledCode $$(PlutusTx.compile [||mkFidaContractMintingPolicyUntyped||])
 
 data FidaContractRedeemer = BuyFidaCard Integer | PayPremium Integer | Activate
 
@@ -117,8 +114,6 @@ mkFidaContractValidatorUntyped policyId datum redeemer scriptContext =
       (unsafeFromBuiltinData redeemer)
       (unsafeFromBuiltinData scriptContext)
 
-serialisableFidaContractValidator :: Versioned Script
+serialisableFidaContractValidator :: Script
 serialisableFidaContractValidator =
-  Versioned
-    (fromCompiledCode $$(PlutusTx.compile [||mkFidaContractValidatorUntyped||]))
-    PlutusV2
+  fromCompiledCode $$(PlutusTx.compile [||mkFidaContractValidatorUntyped||])
