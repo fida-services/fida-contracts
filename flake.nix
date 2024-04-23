@@ -65,6 +65,8 @@
               haskellPackages.cabal-fmt
               haskellPackages.fourmolu
               nixpkgs-fmt
+
+              haskellPackages.hasktags
             ];
             tools.haskell-language-server = { };
           };

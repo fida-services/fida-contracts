@@ -2,7 +2,7 @@
 
 CABAL_SOURCES := $(shell find . -type f -name "*.cabal")
 
-NIX_SOURCES := $(shell find . type f -name "*.nix")
+NIX_SOURCES := $(shell find . -type f -name "*.nix")
 
 hoogle:
 	@ nix develop -c hoogle server --local --port 8008
@@ -47,3 +47,8 @@ format-check: format-nix-check format-cabal-check format-hs-check
 
 ghcid-fida-contracts-serialise:
 	ghcid --command 'cabal repl fida-contracts-serialise'
+
+generate-tags:
+	rm -rf .deps
+	cabal get bytestring optparse-applicative base aeson serialise -d .deps
+	hasktags .deps app src ./dist-newstyle/src
