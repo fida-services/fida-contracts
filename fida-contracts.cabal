@@ -83,28 +83,9 @@ library
     Fida.Contract.Utils
 
   build-depends:
-    , aeson                  ^>=1.5.0.0
-    , attoparsec
-    , base16-bytestring
-    , bech32
-    , bytestring             ^>=0.10.12.0
-    , cardano-addresses
-    , cardano-api
-    , cardano-binary
-    , cardano-crypto
-    , cardano-crypto-class
-    , cardano-ledger-alonzo
-    , cryptonite
-    , deepseq
-    , either
-    , plutonomy
-    , plutus-core
     , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
-    , secp256k1-haskell
-    , serialise
-    , text
 
   hs-source-dirs:  src
 
