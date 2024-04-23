@@ -3,14 +3,17 @@ module Main (main) where
 import Cardano.Api (PlutusScriptV2, serialiseToTextEnvelope, writeFileTextEnvelope)
 import Cardano.Api.Shelley (PlutusScript (..))
 import Codec.Serialise (serialise)
+import qualified Data.Aeson as Aeson
+import Data.Bifunctor (first)
 import Data.ByteString.Lazy (toStrict)
+import qualified Data.ByteString.Lazy.Char8 as C
 import Data.ByteString.Short (toShort)
 import Data.Foldable (for_)
-import Fida.Contract.FidaInvestorContract qualified as FidaInvestorContract
-import Fida.Contract.FidaPolicyContract qualified as FidaPolicyContract
-import Fida.Contract.SystemIdMintingPolicy qualified as SystemIdMintingPolicy
-import Options.Applicative
-  ( Alternative ((<|>)),
+import qualified Fida.Contract.FidaInvestorContract as FidaInvestorContract
+import qualified Fida.Contract.FidaPolicyContract as FidaPolicyContract
+import qualified Fida.Contract.SystemIdMintingPolicy as SystemIdMintingPolicy
+import Options.Applicative (
+    Alternative ((<|>)),
     Parser,
     execParser,
     fullDesc,
@@ -24,91 +27,126 @@ import Options.Applicative
     short,
     strOption,
     (<**>),
-  )
-import Plutonomy.UPLC qualified
+ )
+import qualified Plutonomy.UPLC
 import Plutus.V2.Ledger.Api (Script)
 import System.FilePath ((</>))
-import System.IO (Handle)
+import qualified System.IO as IO
 import Prelude
 
 data ClArgs
-  = GeneratePlutusScipts
-      { gpsOutDir :: !FilePath
-      }
-  | GeneratePursModule
-      { gpmOutFile :: !FilePath,
-        gpmModuleName :: !(Maybe String)
-      }
-  deriving (Show)
+    = GeneratePlutusScipts
+        { gpsOutDir :: !FilePath
+        }
+    | GeneratePursModule
+        { gpmModuleName :: !String
+        , gpmOutFile :: !(Maybe FilePath)
+        }
+    deriving (Show)
 
 plutusScripts :: [([Char], Script)]
 plutusScripts =
-  [ ("FidaContractMintingPolicy", FidaPolicyContract.serialisableFidaContractMintingPolicy),
-    ("FidaContractValidator", FidaPolicyContract.serialisableFidaContractValidator),
-    ("InvestorContractValidator", FidaInvestorContract.serialisableInvestorContractValidator),
-    ("SystemIdMintingPolicy", SystemIdMintingPolicy.serialisableSystemIdMintingPolicy)
-  ]
+    [ ("FidaContractMintingPolicy", FidaPolicyContract.serialisableFidaContractMintingPolicy)
+    , ("FidaContractValidator", FidaPolicyContract.serialisableFidaContractValidator)
+    , ("InvestorContractValidator", FidaInvestorContract.serialisableInvestorContractValidator)
+    , ("SystemIdMintingPolicy", SystemIdMintingPolicy.serialisableSystemIdMintingPolicy)
+    ]
 
 main :: IO ()
 main = getArgs >>= app
 
 app :: ClArgs -> IO ()
 app (GeneratePlutusScipts outDir) =
-  for_ plutusScripts $ (\(name, script) -> serialiseScript outDir (name <> ".script") script)
-app _ = return ()
+    for_ plutusScripts $ (\(name, script) -> serialiseScript outDir (name <> ".script") script)
+app (GeneratePursModule moduleName (Just outFile)) =
+    IO.withFile outFile IO.ReadWriteMode $ \handle -> do
+        IO.hSetFileSize handle 0
+        serialiseScriptsToPurs moduleName plutusScripts handle
+app (GeneratePursModule moduleName Nothing) =
+    serialiseScriptsToPurs moduleName plutusScripts IO.stdout
 
 getArgs :: IO ClArgs
 getArgs = execParser opts
   where
     opts =
-      info
-        (genPlutusScript <|> genPursModule <**> helper)
-        (fullDesc <> progDesc "Outputs plutus scripts")
+        info
+            (genPlutusScript <|> genPursModule <**> helper)
+            (fullDesc <> progDesc "Outputs plutus scripts")
     genPlutusScript :: Parser ClArgs
     genPlutusScript =
-      GeneratePlutusScipts
-        <$> strOption
-          ( long "output-script-dir"
-              <> short 'o'
-              <> metavar "DIR"
-          )
+        GeneratePlutusScipts
+            <$> strOption
+                ( long "output-script-dir"
+                    <> short 'o'
+                    <> metavar "DIR"
+                )
     genPursModule :: Parser ClArgs
     genPursModule =
-      GeneratePursModule
-        <$> strOption
-          ( long "purs-module-name"
-              <> short 'n'
-              <> metavar "MODULE"
-              <> help "Module name example: Fida.RawScripts"
-          )
-        <*> optional
-          ( strOption
-              ( long "output-purs-file"
-                  <> short 'p'
-                  <> metavar "PATH"
-              )
-          )
+        GeneratePursModule
+            <$> strOption
+                ( long "purs-module-name"
+                    <> short 'n'
+                    <> metavar "MODULE"
+                    <> help "Module name example: Fida.RawScripts"
+                )
+            <*> optional
+                ( strOption
+                    ( long "output-purs-file"
+                        <> short 'p'
+                        <> metavar "PATH"
+                    )
+                )
 
 serialiseScriptsToPurs ::
-  String ->
-  [(String, Script)] ->
-  Handle ->
-  IO ()
-serialiseScriptsToPurs = undefined
+    String ->
+    [(String, Script)] ->
+    IO.Handle ->
+    IO ()
+serialiseScriptsToPurs moduleName scripts handle = do
+    let emit :: String -> IO ()
+        emit = IO.hPutStrLn handle
+        emit' :: C.ByteString -> IO ()
+        emit' = C.hPutStrLn handle
+        nl = emit ""
+        scripts' = first ("raw" <>) <$> scripts
+
+    emit "-- This file is autogenerated."
+    emit $ "module " <> moduleName
+    emit " ("
+    case fst <$> scripts' of
+        [] -> pure ()
+        s : xs -> do
+            emit $ "   " <> s
+            for_ xs (emit . (" , " <>))
+    emit " ) where"
+
+    for_ scripts' $ \(name, script) -> do
+        nl
+        emit $ name <> " :: String"
+        emit $ name <> " ="
+        emit' $
+            C.concat
+                [ "   "
+                , C.replicate 3 '"'
+                , Aeson.encode $ serialiseToTextEnvelope Nothing $ scriptToPlutusScript script
+                , C.replicate 3 '"'
+                ]
+
+    nl
 
 serialiseScript :: FilePath -> FilePath -> Script -> IO ()
 serialiseScript outputDir name script =
-  let out :: PlutusScript PlutusScriptV2
-      out = scriptToPlutusScript script
-      file = outputDir </> name
-   in do
-        putStrLn $ "Serializing " <> file
-        writeFileTextEnvelope file Nothing out >>= either print pure
+    let out :: PlutusScript PlutusScriptV2
+        out = scriptToPlutusScript script
+        file = outputDir </> name
+     in do
+            putStrLn $ "Serializing " <> file
+            writeFileTextEnvelope file Nothing out >>= either print pure
 
 scriptToPlutusScript :: Script -> PlutusScript PlutusScriptV2
 scriptToPlutusScript =
-  PlutusScriptSerialised @PlutusScriptV2
-    . toShort
-    . toStrict
-    . serialise
-    . Plutonomy.UPLC.optimizeUPLC
+    PlutusScriptSerialised @PlutusScriptV2
+        . toShort
+        . toStrict
+        . serialise
+        . Plutonomy.UPLC.optimizeUPLC

@@ -4,6 +4,8 @@ CABAL_SOURCES := $(shell find . -type f -name "*.cabal")
 
 NIX_SOURCES := $(shell find . -type f -name "*.nix")
 
+HS_SOURCES := $(shell find src app -type f -name "*.hs" -o -type f -name "*.lhs")
+
 hoogle:
 	@ nix develop -c hoogle server --local --port 8008
 
@@ -15,11 +17,11 @@ format-cabal-check: requires-nix-shell
 
 format-hs: requires-nix-shell
 	fourmolu $(FOURMOLU_EXTENSIONS) --mode inplace --check-idempotence \
-		$(shell find . -type f -name "*.hs" -o -name "*.lhs")
+		$(HS_SOURCES)
 
 format-hs-check: requires-nix-shell
 	fourmolu $(FOURMOLU_EXTENSIONS) --mode check --check-idempotence \
-		$(shell find . -type f -name "*.hs" -o -name "*.lhs")
+		$(HS_SOURCES)
 
 lint: requires-nix-shell
 	hlint --no-summary $(shell find . -type f -name "*.hs" -o -name "*.lhs")
