@@ -24,12 +24,12 @@ format-hs-check: requires-nix-shell
 		$(HS_SOURCES)
 
 lint: requires-nix-shell
-	hlint --no-summary $(shell find . -type f -name "*.hs" -o -name "*.lhs")
+	hlint --no-summary $(HS_SOURCES)
 
 nix-cabal-repl:
 	@ nix develop -c cabal new-repl
 
-tags:
+tags: require-nix-shell
 	hasktags -e -L . dist-newstyle/src
 
 requires-nix-shell:
@@ -49,10 +49,10 @@ format-check: format-nix-check format-cabal-check format-hs-check
 
 format: format-nix format-cabal format-hs
 
-ghcid-fida-contracts-serialise:
+ghcid-fida-contracts-serialise: requires-nix-shell
 	ghcid --command 'cabal repl fida-contracts-serialise'
 
-generate-tags:
+generate-tags: requires-nix-shell
 	rm -rf .deps
 	cabal get bytestring optparse-applicative base aeson serialise -d .deps
 	hasktags .deps app src ./dist-newstyle/src

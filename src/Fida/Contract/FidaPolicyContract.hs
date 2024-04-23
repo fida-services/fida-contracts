@@ -82,7 +82,7 @@ data FidaContractDatum = FidaContractDatum
     , premiumAmount :: Integer
     , policyHolder :: Address
     , policyAuthority :: PolicyAuthority
-    , startDate :: (Maybe POSIXTime)
+    , startDate :: Maybe POSIXTime
     , paymentIntervals :: Integer
     , contractState :: FidaContractState
     }

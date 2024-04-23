@@ -56,7 +56,7 @@ main = getArgs >>= app
 
 app :: ClArgs -> IO ()
 app (GeneratePlutusScipts outDir) =
-    for_ plutusScripts $ (\(name, script) -> serialiseScript outDir (name <> ".script") script)
+    for_ plutusScripts $ \(name, script) -> serialiseScript outDir (name <> ".script") script
 app (GeneratePursModule moduleName (Just outFile)) =
     IO.withFile outFile IO.ReadWriteMode $ \handle -> do
         IO.hSetFileSize handle 0
