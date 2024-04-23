@@ -28,19 +28,19 @@
     };
   };
 
-  outputs = { self, nixpkgs, haskell-nix, iohk-nix, CHaP, plutip, ...}:
-  let
-    nixpkgsFor = system:
-      import nixpkgs {
-        inherit system;
-        overlays = [
-          (import "${iohk-nix}/overlays/crypto")
-          haskell-nix.overlay
-        ];
-        inherit (haskell-nix) config;
-      };
+  outputs = { self, nixpkgs, haskell-nix, iohk-nix, CHaP, plutip, ... }:
+    let
+      nixpkgsFor = system:
+        import nixpkgs {
+          inherit system;
+          overlays = [
+            (import "${iohk-nix}/overlays/crypto")
+            haskell-nix.overlay
+          ];
+          inherit (haskell-nix) config;
+        };
 
-    hsProjectFor = system:
+      hsProjectFor = system:
         let
           pkgs = nixpkgsFor system;
         in
@@ -72,7 +72,7 @@
           };
         };
 
-    formatCheckFor = system:
+      formatCheckFor = system:
         let
           pkgs = nixpkgsFor system;
         in
@@ -91,42 +91,42 @@
           mkdir $out
         '';
 
-    system = "x86_64-linux";
+      system = "x86_64-linux";
 
-    hlswFor = system:
-      let
-        pkgs = nixpkgsFor system;
-      in
-      pkgs.writeShellApplication {
-        name = "haskell-language-server-wrapper";
+      hlswFor = system:
+        let
+          pkgs = nixpkgsFor system;
+        in
+        pkgs.writeShellApplication {
+          name = "haskell-language-server-wrapper";
 
-        runtimeInputs = self.devShells.${system}.hs.nativeBuildInputs;
+          runtimeInputs = self.devShells.${system}.hs.nativeBuildInputs;
 
-        text = ''
-          haskell-language-server "$@"
-        '';
-    };
+          text = ''
+            haskell-language-server "$@"
+          '';
+        };
 
-  in
-  {
+    in
+    {
 
-    flake.${system} = (hsProjectFor system).flake { };
+      flake.${system} = (hsProjectFor system).flake { };
 
-    packages.${system} = self.flake.${system}.packages;
+      packages.${system} = self.flake.${system}.packages;
 
-    check.${system} =
+      check.${system} =
         (nixpkgsFor system).runCommand "combined-check"
           {
             nativeBuildInputs = builtins.attrValues self.checks.${system}
-                             ++ builtins.attrValues self.flake.${system}.packages
-                             ++ self.devShells.${system}.hs.nativeBuildInputs;
+              ++ builtins.attrValues self.flake.${system}.packages
+              ++ self.devShells.${system}.hs.nativeBuildInputs;
           } "touch $out";
 
-    checks.${system} = self.flake.${system}.checks // {
+      checks.${system} = self.flake.${system}.checks // {
         formatCheck = formatCheckFor system;
-    };
+      };
 
-    devShells.${system} = rec {
+      devShells.${system} = rec {
         hs = self.flake.${system}.devShell;
         hlsw = hlswFor system;
         pkgs = nixpkgsFor system;
@@ -137,7 +137,7 @@
             ${hs.shellHook}
           '';
         };
-    };
+      };
 
-  };
+    };
 }

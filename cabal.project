@@ -103,6 +103,4 @@ source-repository-package
   --sha256: 16jp16arikhjdczk88a7pw1rkpwqqhkgvbykby834fc9mq24slf1
 
 -- Configure plutonomy to use the closest plutus version to ours
--- In the future, we might need to change to +chap
 flags: +plutus-f680ac697
-

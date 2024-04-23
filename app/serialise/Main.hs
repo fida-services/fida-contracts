@@ -30,7 +30,6 @@ import Options.Applicative (
  )
 import qualified Plutonomy.UPLC
 import Plutus.V2.Ledger.Api (Script)
-import System.FilePath ((</>))
 import qualified System.IO as IO
 import Prelude
 
@@ -138,7 +137,7 @@ serialiseScript :: FilePath -> FilePath -> Script -> IO ()
 serialiseScript outputDir name script =
     let out :: PlutusScript PlutusScriptV2
         out = scriptToPlutusScript script
-        file = outputDir </> name
+        file = outputDir <> "/" <> name
      in do
             putStrLn $ "Serializing " <> file
             writeFileTextEnvelope file Nothing out >>= either print pure

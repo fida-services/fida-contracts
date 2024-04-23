@@ -27,15 +27,13 @@ common common-lang
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints -fobject-code
     -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
---    -fplugin-opt PlutusTx.Plugin:defer-errors -Werror
     -fplugin-opt PlutusTx.Plugin:defer-errors
 
+  --    -fplugin-opt PlutusTx.Plugin:defer-errors -Werror
   if flag(defer-plugin-errors)
     ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
 
-  build-depends:
-    , base                     ^>=4.14
-
+  build-depends:      base ^>=4.14
   default-extensions:
     NoImplicitPrelude
     BangPatterns
@@ -77,18 +75,19 @@ common common-lang
 library
   import:          common-lang
   exposed-modules:
-    , Fida.Contract.Types
-    , Fida.Contract.FidaPolicyContract
-    , Fida.Contract.FidaInvestorContract
-    , Fida.Contract.SystemIdMintingPolicy
-    , Fida.Contract.ScriptRepository
-    , Fida.Contract.Utils
+    Fida.Contract.FidaInvestorContract
+    Fida.Contract.FidaPolicyContract
+    Fida.Contract.ScriptRepository
+    Fida.Contract.SystemIdMintingPolicy
+    Fida.Contract.Types
+    Fida.Contract.Utils
+
   build-depends:
-    , aeson                 ^>=1.5.0.0
+    , aeson                  ^>=1.5.0.0
     , attoparsec
     , base16-bytestring
     , bech32
-    , bytestring            ^>=0.10.12.0
+    , bytestring             ^>=0.10.12.0
     , cardano-addresses
     , cardano-api
     , cardano-binary
@@ -113,12 +112,11 @@ executable fida-contracts-serialise
   import:         common-lang
   main-is:        Main.hs
   build-depends:
-    , optparse-applicative
     , aeson
     , bytestring
     , cardano-api
     , fida-contracts
-    , filepath
+    , optparse-applicative
     , plutonomy
     , plutus-ledger-api
     , serialise

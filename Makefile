@@ -1,8 +1,8 @@
-.PHONY: nix-cabal-repl format-cabal format-cabal-check format-hs-check format-hs hoogle lint tags requires-nix-shell format-nix-fmt format-nix-check ghcid-fida-contracts-serialise
+.PHONY: nix-cabal-repl format-cabal format-cabal-check format-hs-check format-hs hoogle lint tags requires-nix-shell format-nix-check ghcid-fida-contracts-serialise format
 
-CABAL_SOURCES := $(shell find . -type f -name "*.cabal")
+CABAL_SOURCES := $(shell find . -type f -name "*.cabal" | grep -v ./dist-newstyle/ | grep -v ./.deps/)
 
-NIX_SOURCES := $(shell find . -type f -name "*.nix")
+NIX_SOURCES := $(shell find . -type f -name "*.nix" | grep -v ./dist-newstyle/)
 
 HS_SOURCES := $(shell find src app -type f -name "*.hs" -o -type f -name "*.lhs")
 
@@ -46,6 +46,8 @@ format-nix-check: requires-nix-shell
 	nixpkgs-fmt --check $(NIX_SOURCES)
 
 format-check: format-nix-check format-cabal-check format-hs-check
+
+format: format-nix format-cabal format-hs
 
 ghcid-fida-contracts-serialise:
 	ghcid --command 'cabal repl fida-contracts-serialise'
