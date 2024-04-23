@@ -58,6 +58,7 @@
               bashInteractive
               git
               cabal-install
+              ghcid
 
               # Lint / Format
               hlint
@@ -68,6 +69,7 @@
             tools.haskell-language-server = { };
           };
         };
+
     formatCheckFor = system:
         let
           pkgs = nixpkgsFor system;
@@ -86,7 +88,23 @@
 
           mkdir $out
         '';
+
     system = "x86_64-linux";
+
+    hlswFor = system:
+      let
+        pkgs = nixpkgsFor system;
+      in
+      pkgs.writeShellApplication {
+        name = "haskell-language-server-wrapper";
+
+        runtimeInputs = self.devShells.${system}.hs.nativeBuildInputs;
+
+        text = ''
+          haskell-language-server "$@"
+        '';
+    };
+
   in
   {
 
@@ -108,9 +126,14 @@
 
     devShells.${system} = rec {
         hs = self.flake.${system}.devShell;
+        hlsw = hlswFor system;
+        pkgs = nixpkgsFor system;
         default = (nixpkgsFor system).mkShell {
           inputsFrom = [ hs ];
-          shellHook = hs.shellHook;
+          shellHook = ''
+            export PATH=${hlsw}/bin:$PATH
+            ${hs.shellHook}
+          '';
         };
     };
 

@@ -35,8 +35,6 @@ common common-lang
 
   build-depends:
     , base                     ^>=4.14
-    , record-dot-preprocessor
-    , record-hasfield
 
   default-extensions:
     NoImplicitPrelude
@@ -115,6 +113,7 @@ executable fida-contracts-serialise
   import:         common-lang
   main-is:        Main.hs
   build-depends:
+    , optparse-applicative
     , aeson
     , bytestring
     , cardano-api
