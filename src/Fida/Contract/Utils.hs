@@ -1,11 +1,10 @@
 module Fida.Contract.Utils where
 
-import Data.Kind (Type)
 import Plutus.V2.Ledger.Api
 import PlutusTx (
     FromData (fromBuiltinData),
     ToData (toBuiltinData),
-    UnsafeFromData (unsafeFromBuiltinData),
+    UnsafeFromData (unsafeFromBuiltinData)
  )
 import PlutusTx.Prelude
 
@@ -19,11 +18,10 @@ assertSingleton msg _ = traceError msg
 
 {-# INLINE mkUntypedMintingPolicy #-}
 mkUntypedMintingPolicy ::
-    forall (r :: Type).
+    forall r.
     (UnsafeFromData r) =>
     (r -> ScriptContext -> Bool) ->
     (BuiltinData -> BuiltinData -> ())
--- We can use unsafeFromBuiltinData here as we would fail immediately anyway if
--- parsing failed
-mkUntypedMintingPolicy f r p =
-    check $ f (unsafeFromBuiltinData r) (unsafeFromBuiltinData p)
+mkUntypedMintingPolicy f r s =
+    check $ f (unsafeFromBuiltinData r) (unsafeFromBuiltinData s)
+
