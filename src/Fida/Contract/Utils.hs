@@ -4,7 +4,7 @@ import Plutus.V2.Ledger.Api
 import PlutusTx (
     FromData (fromBuiltinData),
     ToData (toBuiltinData),
-    UnsafeFromData (unsafeFromBuiltinData)
+    UnsafeFromData (unsafeFromBuiltinData),
  )
 import PlutusTx.Prelude
 
@@ -24,4 +24,3 @@ mkUntypedMintingPolicy ::
     (BuiltinData -> BuiltinData -> ())
 mkUntypedMintingPolicy f r s =
     check $ f (unsafeFromBuiltinData r) (unsafeFromBuiltinData s)
-
