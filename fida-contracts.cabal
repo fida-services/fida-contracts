@@ -83,6 +83,7 @@ library
     Fida.Contract.Utils
 
   build-depends:
+    , cardano-api
     , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
@@ -103,3 +104,19 @@ executable fida-contracts-serialise
     , serialise
 
   hs-source-dirs: app/serialise
+
+test-suite fida-contracts-test
+  import:         common-lang
+  ghc-options:    -O2 -threaded -rtsopts -with-rtsopts=-N
+  type:           exitcode-stdio-1.0
+  main-is:        Main.hs
+  other-modules:  Fida.Contract.FidaPolicyContractTest
+  build-depends:
+    , bytestring
+    , fida-contracts
+    , tasty
+    , tasty-golden
+    , tasty-hunit
+    , text
+
+  hs-source-dirs: test

@@ -110,7 +110,9 @@
     in
     {
 
-      flake.${system} = (hsProjectFor system).flake { };
+      project.${system} = hsProjectFor system;
+
+      flake.${system} = self.project.${system}.flake { };
 
       packages.${system} = self.flake.${system}.packages;
 
@@ -136,6 +138,10 @@
             export PATH=${hlsw}/bin:$PATH
             ${hs.shellHook}
           '';
+        };
+        hoogle = self.project.${system}.shellFor {
+          additional = ps: with ps; [ cardano-api ];
+          withHoogle = true;
         };
       };
 
