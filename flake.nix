@@ -140,7 +140,7 @@
           '';
         };
         hoogle = self.project.${system}.shellFor {
-          additional = ps: with ps; [cardano-api];
+          additional = ps: with ps; [ cardano-api ];
           withHoogle = true;
         };
       };
