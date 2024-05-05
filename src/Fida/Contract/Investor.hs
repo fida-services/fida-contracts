@@ -6,7 +6,6 @@ module Fida.Contract.Investor (
 
 import Fida.Contract.SystemId (SystemId)
 import Plutus.V2.Ledger.Api (
-    BuiltinData,
     PubKeyHash,
     Script,
     ScriptContext,

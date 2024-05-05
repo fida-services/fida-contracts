@@ -79,6 +79,9 @@ library
     Fida.Contract.Insurance.Authority
     Fida.Contract.Insurance.Identifier
     Fida.Contract.Insurance.Tokens
+    Fida.Contract.Insurance.Datum
+    Fida.Contract.Insurance.Redeemer
+    Fida.Contract.Insurance.Lifecycle.Initiated
     Fida.Contract.Investor
     Fida.Contract.SystemId
     Fida.Contract.Utils

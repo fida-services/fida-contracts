@@ -1,14 +1,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Insurance (
-    serialisableInsurancePolicyValidator,
-) where
+module Fida.Contract.Insurance
+  ( serialisableInsurancePolicyValidator
+  ) where
 
-import Fida.Contract.Insurance.Authority (InsuranceAuthority)
 import Fida.Contract.Insurance.Identifier (InsuranceId)
+import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..))
+import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer)
+
 import Plutus.V2.Ledger.Api (
-    Address,
-    POSIXTime,
     Script,
     ScriptContext,
     UnsafeFromData (unsafeFromBuiltinData),
@@ -16,58 +16,7 @@ import Plutus.V2.Ledger.Api (
  )
 import qualified PlutusTx
 import PlutusTx.Prelude
-import qualified Prelude
-
-data InsurancePolicyRedeemer
-    = BuyFidaCard Integer
-    | PayPremium Integer
-    | Activate
-
-PlutusTx.makeIsDataIndexed
-    ''InsurancePolicyRedeemer
-    [ ('BuyFidaCard, 0)
-    , ('PayPremium, 1)
-    , ('Activate, 2)
-    ]
-
-data InsurancePolicyState
-    = Initialized
-    | Funding
-    | OnRisk
-    | Cancelled
-    deriving (Prelude.Show)
-
-PlutusTx.makeIsDataIndexed
-    ''InsurancePolicyState
-    [ ('Initialized, 0)
-    , ('Funding, 1)
-    , ('OnRisk, 2)
-    , ('Cancelled, 3)
-    ]
-
-data InsurancePolicyDatum
-    = InsuranceInfo
-        { collateralAmount :: Integer
-        , fidaCardValue :: Integer
-        , premiumAmount :: Integer
-        , policyHolder :: Address
-        , policyAuthority :: InsuranceAuthority
-        , startDate :: Maybe POSIXTime
-        , paymentIntervals :: Integer
-        , contractState :: InsurancePolicyState
-        }
-    | FidaCardInfo
-        { fidaCardValue :: Integer
-        }
-    | PremiumAmount
-    deriving (Prelude.Show)
-
-PlutusTx.makeIsDataIndexed
-    ''InsurancePolicyDatum
-    [ ('InsuranceInfo, 0)
-    , ('FidaCardInfo, 1)
-    , ('PremiumAmount, 2)
-    ]
+import Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator)
 
 {-# INLINEABLE mkInsurancePolicyValidator #-}
 mkInsurancePolicyValidator ::
@@ -76,7 +25,11 @@ mkInsurancePolicyValidator ::
     InsurancePolicyRedeemer ->
     ScriptContext ->
     Bool
-mkInsurancePolicyValidator _ _ _ _ = True
+
+mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Initiated} ) r sc = lifecycleInitiatedStateValidator iid d r sc
+
+mkInsurancePolicyValidator _ _ _ _ =
+  trace "ERROR-INSURANCE-POLICY_VALIDATOR-0" False
 
 {-# INLINEABLE mkInsurancePolicyValidatorUntyped #-}
 mkInsurancePolicyValidatorUntyped ::

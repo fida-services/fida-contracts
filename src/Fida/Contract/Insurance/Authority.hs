@@ -9,10 +9,10 @@ import qualified PlutusTx
 import qualified Prelude
 
 data InsuranceAuthority
-    = SingleSign !PubKeyHash
-    | AtLeastOneSign ![PubKeyHash]
-    | AllMustSign ![PubKeyHash]
-    | MajorityMustSign ![PubKeyHash]
+    = SingleSign PubKeyHash
+    | AtLeastOneSign [PubKeyHash]
+    | AllMustSign [PubKeyHash]
+    | MajorityMustSign [PubKeyHash]
     deriving (Prelude.Show)
 
 PlutusTx.makeIsDataIndexed
