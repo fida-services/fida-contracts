@@ -1,12 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Insurance.Datum
-  ( InsurancePolicyState (..)
-  , InsurancePolicyDatum (..)
-  ) where
+module Fida.Contract.Insurance.Datum (
+    InsurancePolicyState (..),
+    InsurancePolicyDatum (..),
+) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
-import Plutus.V2.Ledger.Api ( Address, POSIXTime )
+import Plutus.V2.Ledger.Api (Address, POSIXTime)
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude as HPrelude
@@ -16,8 +16,7 @@ data InsurancePolicyState
     | Funding
     | OnRisk
     | Cancelled
-  deriving (HPrelude.Show, HPrelude.Eq)
-
+    deriving (HPrelude.Show, HPrelude.Eq)
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyState
@@ -26,7 +25,6 @@ PlutusTx.makeIsDataIndexed
     , ('OnRisk, 2)
     , ('Cancelled, 3)
     ]
-
 
 data InsurancePolicyDatum
     = InsuranceInfo
@@ -44,7 +42,6 @@ data InsurancePolicyDatum
         }
     | PremiumAmount
     deriving (HPrelude.Show)
-
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyDatum

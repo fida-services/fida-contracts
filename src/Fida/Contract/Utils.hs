@@ -3,7 +3,7 @@ module Fida.Contract.Utils (
     mkUntypedMintingPolicy,
 ) where
 
-import Plutus.V2.Ledger.Api ( ScriptContext, UnsafeFromData(..) )
+import Plutus.V2.Ledger.Api (ScriptContext, UnsafeFromData (..))
 import PlutusTx.Prelude
 
 {- | Verify that a list contains only a single element,
