@@ -25,11 +25,6 @@ PlutusTx.makeIsDataIndexed
     , ('MajorityMustSign, 3)
     ]
 
--- | Unique Fida Policy identifier
-newtype PolicyId = PolicyId CurrencySymbol
-    deriving newtype (Prelude.Show, ToData, FromData, UnsafeFromData)
-
-PlutusTx.makeLift ''PolicyId
 
 newtype SystemId = SystemId CurrencySymbol
     deriving newtype (Prelude.Show, ToData, FromData, UnsafeFromData)
