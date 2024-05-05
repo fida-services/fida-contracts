@@ -76,21 +76,20 @@ library
   import:          common-lang
   exposed-modules:
     Fida.Contract.Insurance
+    Fida.Contract.Insurance.Authority
     Fida.Contract.Insurance.Identifier
     Fida.Contract.Insurance.Tokens
-    Fida.Contract.Insurance.Authority
+    Fida.Contract.Investor
     Fida.Contract.SystemId
     Fida.Contract.Utils
-    Fida.Contract.Investor
 
   build-depends:
+    , bytestring         ^>=0.10.12.0
     , cardano-api
     , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
-    , bytestring                   ^>=0.10.12.0
     , text
-
 
   hs-source-dirs:  src
 

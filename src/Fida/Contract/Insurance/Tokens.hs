@@ -1,15 +1,13 @@
--- |
+module Fida.Contract.Insurance.Tokens (
+    insuranceDatumTokenName,
+    fidaCardTokenName,
+) where
 
-module Fida.Contract.Insurance.Tokens
-  ( insuranceDatumTokenName
-  , fidaCardTokenName
-  ) where
-
-import Plutus.V2.Ledger.Api ( TokenName(..) )
-import PlutusTx.Prelude
-import Text.Show ( Show(show) )
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
+import Plutus.V2.Ledger.Api (TokenName (..))
+import PlutusTx.Prelude
+import Text.Show (Show (show))
 
 {-# INLINEABLE insuranceDatumTokenName #-}
 insuranceDatumTokenName :: TokenName

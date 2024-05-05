@@ -1,8 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Insurance.Authority
-  ( InsuranceAuthority
-  ) where
+module Fida.Contract.Insurance.Authority (
+    InsuranceAuthority,
+) where
 
 import Plutus.V2.Ledger.Api (PubKeyHash)
 import qualified PlutusTx
@@ -14,7 +14,6 @@ data InsuranceAuthority
     | AllMustSign ![PubKeyHash]
     | MajorityMustSign ![PubKeyHash]
     deriving (Prelude.Show)
-
 
 PlutusTx.makeIsDataIndexed
     ''InsuranceAuthority

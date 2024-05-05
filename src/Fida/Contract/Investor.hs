@@ -1,17 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Investor
-  ( serialisableInvestorValidator
-  ) where
+module Fida.Contract.Investor (
+    serialisableInvestorValidator,
+) where
 
 import Fida.Contract.SystemId (SystemId)
-import Plutus.V2.Ledger.Api
-    ( fromCompiledCode,
-      PubKeyHash,
-      Script,
-      ScriptContext,
-      BuiltinData,
-      UnsafeFromData(unsafeFromBuiltinData) )
+import Plutus.V2.Ledger.Api (
+    BuiltinData,
+    PubKeyHash,
+    Script,
+    ScriptContext,
+    UnsafeFromData (unsafeFromBuiltinData),
+    fromCompiledCode,
+ )
 import qualified PlutusTx
 import PlutusTx.Prelude
 

@@ -1,10 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.SystemId
-  ( SystemId (..)
-  , serialisableSystemIdMintingPolicy
-  ) where
-
+module Fida.Contract.SystemId (
+    SystemId (..),
+    serialisableSystemIdMintingPolicy,
+) where
 
 import Fida.Contract.Utils (mkUntypedMintingPolicy)
 import Plutus.V2.Ledger.Api
@@ -16,14 +15,11 @@ import qualified Prelude
 newtype SystemGovernance = SystemGovernance PubKeyHash
     deriving newtype (Prelude.Show, ToData, FromData, UnsafeFromData)
 
-
 newtype SystemMagic = SystemMagic Integer
     deriving newtype (Prelude.Show, ToData, FromData, UnsafeFromData)
 
-
 newtype SystemId = SystemId CurrencySymbol
     deriving newtype (Prelude.Show, ToData, FromData, UnsafeFromData)
-
 
 {-# INLINEABLE mkSystemIdMintingPolicy #-}
 mkSystemIdMintingPolicy :: SystemGovernance -> SystemMagic -> () -> ScriptContext -> Bool

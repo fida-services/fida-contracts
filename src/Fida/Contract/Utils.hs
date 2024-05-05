@@ -1,7 +1,7 @@
-module Fida.Contract.Utils
-  ( assertSingleton
-  , mkUntypedMintingPolicy
-  ) where
+module Fida.Contract.Utils (
+    assertSingleton,
+    mkUntypedMintingPolicy,
+) where
 
 import Plutus.V2.Ledger.Api
 import PlutusTx (

@@ -1,26 +1,27 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Insurance
-  ( serialisableInsurancePolicyValidator
-  ) where
+module Fida.Contract.Insurance (
+    serialisableInsurancePolicyValidator,
+) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
-import Plutus.V2.Ledger.Api
-    ( fromCompiledCode,
-      Address,
-      Script,
-      POSIXTime,
-      ScriptContext,
-      UnsafeFromData(unsafeFromBuiltinData) )
+import Fida.Contract.Insurance.Identifier (InsuranceId)
+import Plutus.V2.Ledger.Api (
+    Address,
+    POSIXTime,
+    Script,
+    ScriptContext,
+    UnsafeFromData (unsafeFromBuiltinData),
+    fromCompiledCode,
+ )
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude
-import Fida.Contract.Insurance.Identifier (InsuranceId)
 
 data InsurancePolicyRedeemer
-  = BuyFidaCard Integer
-  | PayPremium Integer
-  | Activate
+    = BuyFidaCard Integer
+    | PayPremium Integer
+    | Activate
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyRedeemer
@@ -30,10 +31,10 @@ PlutusTx.makeIsDataIndexed
     ]
 
 data InsurancePolicyState
-  = Initialized
-  | Funding
-  | OnRisk
-  | Cancelled
+    = Initialized
+    | Funding
+    | OnRisk
+    | Cancelled
     deriving (Prelude.Show)
 
 PlutusTx.makeIsDataIndexed
@@ -45,27 +46,28 @@ PlutusTx.makeIsDataIndexed
     ]
 
 data InsurancePolicyDatum
-  = InsuranceInfo
-      { collateralAmount :: Integer
-      , fidaCardValue :: Integer
-      , premiumAmount :: Integer
-      , policyHolder :: Address
-      , policyAuthority :: InsuranceAuthority
-      , startDate :: Maybe POSIXTime
-      , paymentIntervals :: Integer
-      , contractState :: InsurancePolicyState
-      }
-  | FidaCardInfo
-      { fidaCardValue :: Integer
-      }
-  | PremiumAmount
+    = InsuranceInfo
+        { collateralAmount :: Integer
+        , fidaCardValue :: Integer
+        , premiumAmount :: Integer
+        , policyHolder :: Address
+        , policyAuthority :: InsuranceAuthority
+        , startDate :: Maybe POSIXTime
+        , paymentIntervals :: Integer
+        , contractState :: InsurancePolicyState
+        }
+    | FidaCardInfo
+        { fidaCardValue :: Integer
+        }
+    | PremiumAmount
     deriving (Prelude.Show)
 
-PlutusTx.makeIsDataIndexed ''InsurancePolicyDatum
-  [ ('InsuranceInfo, 0)
-  , ('FidaCardInfo, 1)
-  , ('PremiumAmount, 2)
-  ]
+PlutusTx.makeIsDataIndexed
+    ''InsurancePolicyDatum
+    [ ('InsuranceInfo, 0)
+    , ('FidaCardInfo, 1)
+    , ('PremiumAmount, 2)
+    ]
 
 {-# INLINEABLE mkInsurancePolicyValidator #-}
 mkInsurancePolicyValidator ::

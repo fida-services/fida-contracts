@@ -9,10 +9,10 @@ import Data.ByteString.Lazy (toStrict)
 import qualified Data.ByteString.Lazy.Char8 as C
 import Data.ByteString.Short (toShort)
 import Data.Foldable (for_)
-import qualified Fida.Contract.Investor             as Investor
-import qualified Fida.Contract.Insurance            as Insurance
+import qualified Fida.Contract.Insurance as Insurance
 import qualified Fida.Contract.Insurance.Identifier as Insurance
-import qualified Fida.Contract.SystemId             as SystemId
+import qualified Fida.Contract.Investor as Investor
+import qualified Fida.Contract.SystemId as SystemId
 import Options.Applicative (
     Alternative ((<|>)),
     Parser,
