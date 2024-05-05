@@ -9,9 +9,10 @@ import Data.ByteString.Lazy (toStrict)
 import qualified Data.ByteString.Lazy.Char8 as C
 import Data.ByteString.Short (toShort)
 import Data.Foldable (for_)
-import qualified Fida.Contract.FidaInvestorContract as FidaInvestorContract
-import qualified Fida.Contract.FidaPolicyContract as FidaPolicyContract
-import qualified Fida.Contract.SystemIdMintingPolicy as SystemIdMintingPolicy
+import qualified Fida.Contract.Investor             as Investor
+import qualified Fida.Contract.Insurance            as Insurance
+import qualified Fida.Contract.Insurance.Identifier as Insurance
+import qualified Fida.Contract.SystemId             as SystemId
 import Options.Applicative (
     Alternative ((<|>)),
     Parser,
@@ -45,10 +46,10 @@ data ClArgs
 
 plutusScripts :: [([Char], Script)]
 plutusScripts =
-    [ ("FidaContractMintingPolicy", FidaPolicyContract.serialisableFidaContractMintingPolicy)
-    , ("FidaContractValidator", FidaPolicyContract.serialisableFidaContractValidator)
-    , ("InvestorContractValidator", FidaInvestorContract.serialisableInvestorContractValidator)
-    , ("SystemIdMintingPolicy", SystemIdMintingPolicy.serialisableSystemIdMintingPolicy)
+    [ ("InsuranceIdMintingPolicy", Insurance.serialisableInsuranceIdMintingPolicy)
+    , ("InsurancePolicyValidator", Insurance.serialisableInsurancePolicyValidator)
+    , ("InvestorValidator", Investor.serialisableInvestorValidator)
+    , ("SystemIdMintingPolicy", SystemId.serialisableSystemIdMintingPolicy)
     ]
 
 main :: IO ()

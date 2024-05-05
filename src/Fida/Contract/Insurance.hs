@@ -1,8 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Insurance where
+module Fida.Contract.Insurance
+  ( serialisableInsurancePolicyValidator
+  ) where
 
-import Fida.Contract.Types ( PolicyAuthority )
+import Fida.Contract.Insurance.Authority (InsuranceAuthority)
 import Plutus.V2.Ledger.Api
     ( fromCompiledCode,
       Address,
@@ -48,7 +50,7 @@ data InsurancePolicyDatum
       , fidaCardValue :: Integer
       , premiumAmount :: Integer
       , policyHolder :: Address
-      , policyAuthority :: PolicyAuthority
+      , policyAuthority :: InsuranceAuthority
       , startDate :: Maybe POSIXTime
       , paymentIntervals :: Integer
       , contractState :: InsurancePolicyState

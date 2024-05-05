@@ -78,10 +78,10 @@ library
     Fida.Contract.Insurance
     Fida.Contract.Insurance.Identifier
     Fida.Contract.Insurance.Tokens
-    Fida.Contract.FidaInvestorContract
-    Fida.Contract.SystemIdMintingPolicy
-    Fida.Contract.Types
+    Fida.Contract.Insurance.Authority
+    Fida.Contract.SystemId
     Fida.Contract.Utils
+    Fida.Contract.Investor
 
   build-depends:
     , cardano-api

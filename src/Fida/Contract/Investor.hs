@@ -1,9 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.FidaInvestorContract where
+module Fida.Contract.Investor
+  ( serialisableInvestorValidator
+  ) where
 
-import Fida.Contract.Types
+import Fida.Contract.SystemId (SystemId)
 import Plutus.V2.Ledger.Api
+    ( fromCompiledCode,
+      PubKeyHash,
+      Script,
+      ScriptContext,
+      BuiltinData,
+      UnsafeFromData(unsafeFromBuiltinData) )
 import qualified PlutusTx
 import PlutusTx.Prelude
 
@@ -19,33 +27,33 @@ PlutusTx.makeIsDataIndexed
     , ('Withdraw, 1)
     ]
 
-{-# INLINEABLE mkInvestorContractValidator #-}
-mkInvestorContractValidator ::
+{-# INLINEABLE mkInvestorValidator #-}
+mkInvestorValidator ::
     PubKeyHash ->
     SystemId ->
     InvestorDatum ->
     InvestorRedeemer ->
     ScriptContext ->
     Bool
-mkInvestorContractValidator _ _ _ _ _ = True
+mkInvestorValidator _ _ _ _ _ = True
 
-{-# INLINEABLE mkInvestorContractValidatorUntyped #-}
-mkInvestorContractValidatorUntyped ::
+{-# INLINEABLE mkInvestorValidatorUntyped #-}
+mkInvestorValidatorUntyped ::
     BuiltinData ->
     BuiltinData ->
     BuiltinData ->
     BuiltinData ->
     BuiltinData ->
     ()
-mkInvestorContractValidatorUntyped pkh systemId datum redeemer scriptContext =
+mkInvestorValidatorUntyped pkh systemId datum redeemer scriptContext =
     check $
-        mkInvestorContractValidator
+        mkInvestorValidator
             (unsafeFromBuiltinData pkh)
             (unsafeFromBuiltinData systemId)
             (unsafeFromBuiltinData datum)
             (unsafeFromBuiltinData redeemer)
             (unsafeFromBuiltinData scriptContext)
 
-serialisableInvestorContractValidator :: Script
-serialisableInvestorContractValidator =
-    fromCompiledCode $$(PlutusTx.compile [||mkInvestorContractValidatorUntyped||])
+serialisableInvestorValidator :: Script
+serialisableInvestorValidator =
+    fromCompiledCode $$(PlutusTx.compile [||mkInvestorValidatorUntyped||])
