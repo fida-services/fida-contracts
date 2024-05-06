@@ -3,6 +3,7 @@
 module Fida.Contract.Insurance.Datum (
     InsurancePolicyState (..),
     InsurancePolicyDatum (..),
+    PiggyBankDatum (..),
 ) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
@@ -28,13 +29,13 @@ PlutusTx.makeIsDataIndexed
 
 data InsurancePolicyDatum
     = InsuranceInfo
-        { collateralAmount :: Integer
-        , fidaCardValue :: Integer
-        , premiumAmount :: Integer
-        , policyHolder :: Address
-        , policyAuthority :: InsuranceAuthority
-        , startDate :: Maybe POSIXTime
-        , paymentIntervals :: Integer
+        { iInfoCollateralAmount :: Integer
+        , iInfoFidaCardValue :: Integer
+        , iInfoPremiumAmount :: Integer
+        , iInfoPolicyHolder :: Address
+        , iInfoPolicyAuthority :: InsuranceAuthority
+        , iInfoStartDate :: Maybe POSIXTime
+        , iInfoPaymentIntervals :: Integer
         , iInfoState :: InsurancePolicyState
         }
     | FidaCardInfo
@@ -48,4 +49,17 @@ PlutusTx.makeIsDataIndexed
     [ ('InsuranceInfo, 0)
     , ('FidaCardInfo, 1)
     , ('PremiumAmount, 2)
+    ]
+
+data PiggyBankDatum
+    = Collateral
+    | Premium
+    | FidaCard
+    deriving (HPrelude.Show)
+
+PlutusTx.makeIsDataIndexed
+    ''PiggyBankDatum
+    [ ('Collateral, 0)
+    , ('Premium, 1)
+    , ('FidaCard, 2)
     ]

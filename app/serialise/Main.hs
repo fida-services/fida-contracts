@@ -11,6 +11,7 @@ import Data.ByteString.Short (toShort)
 import Data.Foldable (for_)
 import qualified Fida.Contract.Insurance as Insurance
 import qualified Fida.Contract.Insurance.Identifier as Insurance
+import qualified Fida.Contract.Insurance.PiggyBank as PiggyBank
 import qualified Fida.Contract.Investor as Investor
 import qualified Fida.Contract.SystemId as SystemId
 import Options.Applicative (
@@ -50,6 +51,7 @@ plutusScripts =
     , ("InsurancePolicyValidator", Insurance.serialisableInsurancePolicyValidator)
     , ("InvestorValidator", Investor.serialisableInvestorValidator)
     , ("SystemIdMintingPolicy", SystemId.serialisableSystemIdMintingPolicy)
+    , ("PiggyBankValidator", PiggyBank.serialisablePiggyBankValidator)
     ]
 
 main :: IO ()
