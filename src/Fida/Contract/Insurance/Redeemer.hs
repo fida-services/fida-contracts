@@ -3,16 +3,29 @@
 module Fida.Contract.Insurance.Redeemer where
 
 import qualified PlutusTx
-import PlutusTx.Prelude
 
 data InsurancePolicyRedeemer
-    = BuyFidaCard Integer
-    | PayPremium Integer
+    = FinaliseFunding
+    | PayPremium
     | Activate
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyRedeemer
-    [ ('BuyFidaCard, 0)
+    [ ('FinaliseFunding, 0)
     , ('PayPremium, 1)
     , ('Activate, 2)
+    ]
+
+data PiggyBankRedeemer
+    = BuyFidaCard
+    | ClaimPremium
+    | UnlockCollateral
+    | ClaimCollateral
+
+PlutusTx.makeIsDataIndexed
+    ''PiggyBankRedeemer
+    [ ('BuyFidaCard, 0)
+    , ('ClaimPremium, 1)
+    , ('UnlockCollateral, 2)
+    , ('ClaimCollateral, 3)
     ]
