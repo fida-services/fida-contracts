@@ -1,11 +1,9 @@
-module Fida.Contract.Utils where
+module Fida.Contract.Utils (
+    assertSingleton,
+    mkUntypedMintingPolicy,
+) where
 
-import Plutus.V2.Ledger.Api
-import PlutusTx (
-    FromData (fromBuiltinData),
-    ToData (toBuiltinData),
-    UnsafeFromData (unsafeFromBuiltinData),
- )
+import Plutus.V2.Ledger.Api (ScriptContext, UnsafeFromData (..))
 import PlutusTx.Prelude
 
 {- | Verify that a list contains only a single element,

@@ -75,18 +75,24 @@ common common-lang
 library
   import:          common-lang
   exposed-modules:
-    Fida.Contract.FidaInvestorContract
-    Fida.Contract.FidaPolicyContract
-    Fida.Contract.ScriptRepository
-    Fida.Contract.SystemIdMintingPolicy
-    Fida.Contract.Types
+    Fida.Contract.Insurance
+    Fida.Contract.Insurance.Authority
+    Fida.Contract.Insurance.Datum
+    Fida.Contract.Insurance.Identifier
+    Fida.Contract.Insurance.Lifecycle.Initiated
+    Fida.Contract.Insurance.Redeemer
+    Fida.Contract.Insurance.Tokens
+    Fida.Contract.Investor
+    Fida.Contract.SystemId
     Fida.Contract.Utils
 
   build-depends:
+    , bytestring         ^>=0.10.12.0
     , cardano-api
     , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
+    , text
 
   hs-source-dirs:  src
 
