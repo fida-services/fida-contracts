@@ -2,18 +2,22 @@
 
 module Fida.Contract.Insurance.Authority (
     InsuranceAuthority,
+    isSignedByAuth,
 ) where
 
+import Fida.Contract.Utils (count)
 import Plutus.V2.Ledger.Api (PubKeyHash)
+import Plutus.V2.Ledger.Contexts (ScriptContext (..), txSignedBy)
 import qualified PlutusTx
-import qualified Prelude
+import PlutusTx.Prelude
+import qualified Prelude as HPrelude
 
 data InsuranceAuthority
     = SingleSign PubKeyHash
     | AtLeastOneSign [PubKeyHash]
     | AllMustSign [PubKeyHash]
     | MajorityMustSign [PubKeyHash]
-    deriving (Prelude.Show)
+    deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed
     ''InsuranceAuthority
@@ -22,3 +26,16 @@ PlutusTx.makeIsDataIndexed
     , ('AllMustSign, 2)
     , ('MajorityMustSign, 3)
     ]
+
+{-# INLINEABLE isSignedByAuth #-}
+isSignedByAuth :: ScriptContext -> InsuranceAuthority -> Bool
+isSignedByAuth sc auth =
+    case auth of
+        SingleSign pkh -> txSignedBy txInfo pkh
+        AtLeastOneSign pkhs -> signedBy pkhs == 1
+        AllMustSign pkhs -> signedBy pkhs == length pkhs
+        MajorityMustSign pkhs -> 2 * signedBy pkhs > length pkhs
+  where
+    txInfo = scriptContextTxInfo sc
+    signedBy :: [PubKeyHash] -> Integer
+    signedBy = count id . map (txSignedBy txInfo)

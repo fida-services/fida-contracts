@@ -6,7 +6,7 @@ module Fida.Contract.Insurance (
 
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..))
 import Fida.Contract.Insurance.Identifier (InsuranceId)
-import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer)
+import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..))
 
 import Fida.Contract.Insurance.Lifecycle.Cancelled (lifecycleCancelledStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Funding (lifecycleFundingStateValidator)
@@ -27,7 +27,7 @@ mkInsurancePolicyValidator ::
     InsurancePolicyRedeemer ->
     ScriptContext ->
     Bool
-mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Initiated}) r sc =
+mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Initiated}) (InitSt r) sc =
     lifecycleInitiatedStateValidator iid d r sc
 mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Funding}) r sc =
     lifecycleFundingStateValidator iid d r sc
