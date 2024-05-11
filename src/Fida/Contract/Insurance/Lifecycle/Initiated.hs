@@ -36,8 +36,8 @@ lifecycleInitiatedStateValidator ::
     ScriptContext ->
     Bool
 lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoState = Initiated}) InitStCancell sc =
-  traceIfFalse "ERROR-INITST-VALIDATOR-1" isSigned
-    && traceIfNotSingleton "ERROR-INITST-VALIDATOR-2" verifyOut
+    traceIfFalse "ERROR-INITST-VALIDATOR-1" isSigned
+        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-2" verifyOut
   where
     isSigned = isSignedByAuth sc $ iInfoPolicyAuthority datum
     verifyOut :: [Bool]
@@ -47,12 +47,11 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoStat
         , valueOf value cs policyInfoTokenName == 1
         , Just (getDatum datum') == fmap PlutusTx.toBuiltinData (updatePolicyState datum Cancelled)
         ]
-lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo {..} InitStPayPremium sc =
-  traceIfFalse "ERROR-INITST-VALIDATOR-3" (all id verifyPayments)
-    && traceIfFalse "ERROR-INITST-VALIDATOR-4" (length verifyPayments == length ppInfoPiggyBanks)
+lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStPayPremium sc =
+    traceIfFalse "ERROR-INITST-VALIDATOR-3" (all id verifyPayments)
+        && traceIfFalse "ERROR-INITST-VALIDATOR-4" (length verifyPayments == length ppInfoPiggyBanks)
   where
     verifyPayments :: [Bool]
     verifyPayments = [False]
-
 lifecycleInitiatedStateValidator _ _ _ _ =
     trace "ERROR-INITST-VALIDATOR-0" False

@@ -1,5 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Fida.Contract.Insurance.Datum (
     InsurancePolicyState (..),
@@ -49,9 +49,9 @@ data InsurancePolicyDatum
         }
     deriving (HPrelude.Show)
 
-{-# INLINEABLE updatePolicyState  #-}
+{-# INLINEABLE updatePolicyState #-}
 updatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe InsurancePolicyDatum
-updatePolicyState InsuranceInfo {..} state = Just $ InsuranceInfo {iInfoState = state, ..}
+updatePolicyState InsuranceInfo{..} state = Just $ InsuranceInfo{iInfoState = state, ..}
 updatePolicyState _ _ = Nothing
 
 PlutusTx.makeIsDataIndexed
