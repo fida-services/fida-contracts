@@ -1,6 +1,7 @@
 module Fida.Contract.Insurance.Tokens (
-    insuranceDatumTokenName,
+    policyInfoTokenName,
     fidaCardTokenName,
+    policyPaymentTokenName,
 ) where
 
 import qualified Data.Text as Text
@@ -9,9 +10,13 @@ import Plutus.V2.Ledger.Api (TokenName (..))
 import PlutusTx.Prelude
 import Text.Show (Show (show))
 
-{-# INLINEABLE insuranceDatumTokenName #-}
-insuranceDatumTokenName :: TokenName
-insuranceDatumTokenName = TokenName "POLICY"
+{-# INLINEABLE policyInfoTokenName #-}
+policyInfoTokenName :: TokenName
+policyInfoTokenName = TokenName "POLICY-INFO"
+
+{-# INLINEABLE policyPaymentTokenName #-}
+policyPaymentTokenName :: TokenName
+policyPaymentTokenName = TokenName "POLICY-PAYMENT"
 
 {-# INLINEABLE fidaCardTokenName #-}
 fidaCardTokenName :: Integer -> TokenName
