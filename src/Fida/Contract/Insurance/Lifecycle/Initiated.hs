@@ -4,7 +4,7 @@
 
 module Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator) where
 
-import Fida.Contract.Insurance.Authority (isSignedByAuth)
+import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), updatePolicyState)
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (InitStRedeemer (..))
@@ -68,7 +68,7 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoStat
     traceIfFalse "ERROR-INITST-VALIDATOR-1" isSigned
         && traceIfNotSingleton "ERROR-INITST-VALIDATOR-2" verifyOut
   where
-    isSigned = isSignedByAuth sc $ iInfoPolicyAuthority datum
+    isSigned = isSignedByTheAuthority sc $ iInfoPolicyAuthority datum
     verifyOut :: [Bool]
     verifyOut =
         [ True
