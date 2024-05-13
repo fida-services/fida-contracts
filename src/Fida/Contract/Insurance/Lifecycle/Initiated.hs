@@ -37,7 +37,7 @@ import PlutusTx.Prelude
 
  The payment action should evenly distribute payments to all piggy banks
  associated with the policy and transition the insurance policy state to
- Funding. The input related to the payment information must be consumed.
+ Funding. The input related to the payment information could be consumed.
 
  On chain errors:
 
@@ -45,15 +45,17 @@ import PlutusTx.Prelude
 
   ERROR-INITST-VALIDATOR-1: Transaction not signed by policy authority
 
-  ERROR-INITST-VALIDATOR-2: Policy state not changed to Cancelled
+  ERROR-INITST-VALIDATOR-2: Insurance policy state not changed to Cancelled
 
   ERROR-INITST-VALIDATOR-3: Payments not properly distributed
 
-  ERROR-INITST-VALIDATOR-4: Policy state not changed to Funding
+  ERROR-INITST-VALIDATOR-4: UTxO with policy datum was not spent
 
-  ERROR-INITST-VALIDATOR-5: There should be no new outputs on insuarance policy script address
+  ERROR-INITST-VALIDATOR-5: Payment info not marked by NFT
 
-  ERROR-INITST-VALIDATOR-6: Payment info not marked by NFT
+  ERROR-INITST-VALIDATOR-6: Insurance policy state not changed to Funding
+
+  ERROR-INITST-VALIDATOR-7: UTxO with premium payment was not spent
 -}
 {-# INLINEABLE lifecycleInitiatedStateValidator #-}
 lifecycleInitiatedStateValidator ::
@@ -76,16 +78,10 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoStat
         ]
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStPayPremium sc =
     traceIfFalse "ERROR-INITST-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
-        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-4" changedToFunding
-        && traceIfFalse "ERROR-INITST-VALIDATOR-5" noContinuingOutputs
-        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-6" consumedInputIsValid
+        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-4" isPolicyInfoSpent
+        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-5" consumedInputIsValid
   where
     txInfo = scriptContextTxInfo sc
-
-    refInputs = txInInfoResolved <$> txInfoReferenceInputs txInfo
-
-    noContinuingOutputs :: Bool
-    noContinuingOutputs = null $ getContinuingOutputs sc
 
     consumedInputIsValid :: [Bool]
     consumedInputIsValid =
@@ -94,13 +90,11 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStP
         , valueOf value cs policyPaymentTokenName == 1
         ]
 
-    changedToFunding :: [Bool]
-    changedToFunding =
+    isPolicyInfoSpent :: [Bool]
+    isPolicyInfoSpent =
         [ True
-        | TxOut _ value (OutputDatum (Datum datum)) _ <- refInputs
+        | TxOut _ value _ _ <- getContinuingOutputs sc
         , valueOf value cs policyInfoTokenName == 1
-        , Just (InsuranceInfo{iInfoState}) <- [PlutusTx.fromBuiltinData datum]
-        , iInfoState == Funding
         ]
 
     payments :: [Address]
@@ -111,5 +105,28 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStP
         , elem address ppInfoPiggyBanks
         , lovelaceValueOf value >= ppInfoPremiumAmountPerPiggyBank
         ]
+lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} InitStPayPremium sc =
+    traceIfNotSingleton  "ERROR-INITST-VALIDATOR-6" verifyOut
+      && traceIfNotSingleton  "ERROR-INITST-VALIDATOR-7" isPremiumPaymentSpent
+  where
+    txInfo = scriptContextTxInfo sc
+
+    verifyOut :: [Bool]
+    verifyOut =
+        [ True
+        | TxOut _ value (OutputDatum (Datum datum)) _ <- getContinuingOutputs sc
+        , valueOf value cs policyInfoTokenName == 1
+        , Just (InsuranceInfo{iInfoState}) <- [PlutusTx.fromBuiltinData datum]
+        , iInfoState == Funding
+        ]
+    isPremiumPaymentSpent :: [Bool]
+    isPremiumPaymentSpent =
+      [ True
+      | TxInInfo _ (TxOut _ value _ _) <- txInfoInputs txInfo
+      , valueOf value cs policyPaymentTokenName == 1
+      ]
+
+ 
+
 lifecycleInitiatedStateValidator _ _ _ _ =
     trace "ERROR-INITST-VALIDATOR-0" False
