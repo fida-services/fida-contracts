@@ -4,16 +4,26 @@ module Fida.Contract.Insurance.Redeemer where
 
 import qualified PlutusTx
 
+data InitStRedeemer
+    = InitStCancell
+    | InitStPayPremium
+
 data InsurancePolicyRedeemer
     = FinaliseFunding
-    | PayPremium
+    | InitSt InitStRedeemer
     | Activate
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyRedeemer
     [ ('FinaliseFunding, 0)
-    , ('PayPremium, 1)
+    , ('InitSt, 1)
     , ('Activate, 2)
+    ]
+
+PlutusTx.makeIsDataIndexed
+    ''InitStRedeemer
+    [ ('InitStCancell, 0)
+    , ('InitStPayPremium, 1)
     ]
 
 data PiggyBankRedeemer

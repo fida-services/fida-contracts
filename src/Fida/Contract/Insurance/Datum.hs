@@ -1,9 +1,12 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -fno-specialise #-}
 
 module Fida.Contract.Insurance.Datum (
     InsurancePolicyState (..),
     InsurancePolicyDatum (..),
     PiggyBankDatum (..),
+    updatePolicyState,
 ) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
@@ -18,6 +21,14 @@ data InsurancePolicyState
     | OnRisk
     | Cancelled
     deriving (HPrelude.Show, HPrelude.Eq)
+
+instance Eq InsurancePolicyState where
+    {-# INLINEABLE (==) #-}
+    Initiated == Initiated = True
+    Funding == Funding = True
+    OnRisk == OnRisk = True
+    Cancelled == Cancelled = True
+    _ == _ = False
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyState
@@ -41,25 +52,34 @@ data InsurancePolicyDatum
     | FidaCardInfo
         { fidaCardValue :: Integer
         }
-    | PremiumAmount
+    | PremiumPaymentInfo
+        { -- | in lovelace
+          ppInfoPremiumAmountPerPiggyBank :: Integer
+        , ppInfoPiggyBanks :: [Address]
+        }
     deriving (HPrelude.Show)
+
+{-# INLINEABLE updatePolicyState #-}
+updatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe InsurancePolicyDatum
+updatePolicyState InsuranceInfo{..} state = Just $ InsuranceInfo{iInfoState = state, ..}
+updatePolicyState _ _ = Nothing
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyDatum
     [ ('InsuranceInfo, 0)
     , ('FidaCardInfo, 1)
-    , ('PremiumAmount, 2)
+    , ('PremiumPaymentInfo, 2)
     ]
 
 data PiggyBankDatum
-    = Collateral
-    | Premium
-    | FidaCard
+    = PBankCollateral
+    | PBankPremium
+    | PBankFidaCard
     deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed
     ''PiggyBankDatum
-    [ ('Collateral, 0)
-    , ('Premium, 1)
-    , ('FidaCard, 2)
+    [ ('PBankCollateral, 0)
+    , ('PBankPremium, 1)
+    , ('PBankFidaCard, 2)
     ]
