@@ -2,11 +2,11 @@ module Fida.Contract.Utils (
     traceIfNotSingleton,
     mkUntypedMintingPolicy,
     count,
-    lovelaceOf
+    lovelaceOf,
 ) where
 
-import Plutus.V2.Ledger.Api (ScriptContext, UnsafeFromData (..))
 import Plutus.V1.Ledger.Value
+import Plutus.V2.Ledger.Api (ScriptContext, UnsafeFromData (..))
 import PlutusTx.Prelude
 
 {- | Verify that a list contains only a single element,

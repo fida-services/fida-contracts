@@ -1,15 +1,15 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-specialise #-}
 
 module Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator) where
 
 import Fida.Contract.Insurance.Authority (isSignedByAuth)
-import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), updatePolicyState, PiggyBankDatum (..))
+import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), updatePolicyState)
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (InitStRedeemer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
-import Fida.Contract.Utils (traceIfNotSingleton, lovelaceOf)
+import Fida.Contract.Utils (lovelaceOf, traceIfNotSingleton)
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api
 import qualified Plutus.V2.Ledger.Api as PlutusTx
@@ -76,8 +76,8 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoStat
         ]
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStPayPremium sc =
     traceIfFalse "ERROR-INITST-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
-        && traceIfNotSingleton"ERROR-INITST-VALIDATOR-4" changedToFunding
-        && traceIfFalse"ERROR-INITST-VALIDATOR-5" noContinuingOutputs
+        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-4" changedToFunding
+        && traceIfFalse "ERROR-INITST-VALIDATOR-5" noContinuingOutputs
         && traceIfNotSingleton "ERROR-INITST-VALIDATOR-6" consumedInputIsValid
   where
     txInfo = scriptContextTxInfo sc
@@ -85,32 +85,31 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStP
     refInputs = txInInfoResolved <$> txInfoReferenceInputs txInfo
 
     noContinuingOutputs :: Bool
-    noContinuingOutputs =  null $ getContinuingOutputs sc
+    noContinuingOutputs = null $ getContinuingOutputs sc
 
     consumedInputIsValid :: [Bool]
     consumedInputIsValid =
-      [ True
-      | Just (TxInInfo _ (TxOut _ value _ _)) <- [findOwnInput sc]
-      , valueOf value cs policyPaymentTokenName == 1
-      ]
+        [ True
+        | Just (TxInInfo _ (TxOut _ value _ _)) <- [findOwnInput sc]
+        , valueOf value cs policyPaymentTokenName == 1
+        ]
 
     changedToFunding :: [Bool]
     changedToFunding =
-      [True
-      | TxOut _ value (OutputDatum (Datum datum)) _ <- refInputs
-      , valueOf value cs policyInfoTokenName == 1
-      , Just (InsuranceInfo {iInfoState}) <- [PlutusTx.fromBuiltinData datum]
-      , iInfoState == Funding
-      ]
+        [ True
+        | TxOut _ value (OutputDatum (Datum datum)) _ <- refInputs
+        , valueOf value cs policyInfoTokenName == 1
+        , Just (InsuranceInfo{iInfoState}) <- [PlutusTx.fromBuiltinData datum]
+        , iInfoState == Funding
+        ]
 
-    -- | all piggy bank addresses paid to
     payments :: [Address]
     payments =
-      [ address
-      | TxOut address value (OutputDatum (Datum datum)) _ <- txInfoOutputs txInfo
-      , Just PBankPremium <- [PlutusTx.fromBuiltinData datum]
-      , elem address ppInfoPiggyBanks
-      , lovelaceOf value >= ppInfoPremiumAmountPerPiggyBank
-      ]
+        [ address
+        | TxOut address value (OutputDatum (Datum datum)) _ <- txInfoOutputs txInfo
+        , Just PBankPremium <- [PlutusTx.fromBuiltinData datum]
+        , elem address ppInfoPiggyBanks
+        , lovelaceOf value >= ppInfoPremiumAmountPerPiggyBank
+        ]
 lifecycleInitiatedStateValidator _ _ _ _ =
     trace "ERROR-INITST-VALIDATOR-0" False

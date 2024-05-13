@@ -23,12 +23,12 @@ data InsurancePolicyState
     deriving (HPrelude.Show, HPrelude.Eq)
 
 instance Eq InsurancePolicyState where
-  {-# INLINABLE (==) #-}
-  Initiated == Initiated = True
-  Funding   == Funding   = True
-  OnRisk    == OnRisk    = True
-  Cancelled == Cancelled = True
-  _         == _         = False
+    {-# INLINEABLE (==) #-}
+    Initiated == Initiated = True
+    Funding == Funding = True
+    OnRisk == OnRisk = True
+    Cancelled == Cancelled = True
+    _ == _ = False
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyState
@@ -53,7 +53,8 @@ data InsurancePolicyDatum
         { fidaCardValue :: Integer
         }
     | PremiumPaymentInfo
-        { ppInfoPremiumAmountPerPiggyBank :: Integer -- ^ in lovelace 
+        { -- | in lovelace
+          ppInfoPremiumAmountPerPiggyBank :: Integer
         , ppInfoPiggyBanks :: [Address]
         }
     deriving (HPrelude.Show)
