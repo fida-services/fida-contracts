@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator) where
 
@@ -6,7 +7,7 @@ import Fida.Contract.Insurance.Authority (isSignedByAuth)
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), updatePolicyState, PiggyBankDatum (..))
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (InitStRedeemer (..))
-import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
+import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
 import Fida.Contract.Utils (traceIfNotSingleton, lovelaceOf)
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api
@@ -16,17 +17,42 @@ import PlutusTx.Prelude
 
 {- |
 
+ At the script address, you are expected to have at least two UTxOs with the
+ following specifications:
+ - The first UTxO with datum containing information about insurance
+   (InsuranceInfo) in the Initiated state and marked with policy info NFT
+   (InsuranceId, POLICY-INFO).
+ - The second one with datum (PremiumPaymentInfo) indicating how much the
+   insurance owner (policy holder) should pay for the insurance. The utxo
+   must be marked by payment info NFT (InsuranceId, POLICY-PAYMENT)
+
+ The following actions are possible to perform:
+  - Cancel insurance (InitStCancell)
+  - Pay for insurance (InitStPayPremium)
+
+ The cancellation action must be signed by the policy authority, respecting
+ InsuranceAuthority strategy, and the contract state must transition to
+ Cancelled.
+
+ The payment action should evenly distribute payments to all piggy banks
+ associated with the policy and transition the insurance policy state to
+ Funding. The input related to the payment information must be consumed.
+
  On chain errors:
 
-  ERROR-INITST-VALIDATOR-0: TODO
+  ERROR-INITST-VALIDATOR-0: Illegal action for Initiated state
 
-  ERROR-INITST-VALIDATOR-1: TODO
+  ERROR-INITST-VALIDATOR-1: Transaction not signed by policy authority
 
-  ERROR-INITST-VALIDATOR-2: TODO
+  ERROR-INITST-VALIDATOR-2: Policy state not changed to Cancelled
 
-  ERROR-INITST-VALIDATOR-3: TODO
+  ERROR-INITST-VALIDATOR-3: Payments not properly distributed
 
-  ERROR-INITST-VALIDATOR-4: TODO
+  ERROR-INITST-VALIDATOR-4: Policy state not changed to Funding
+
+  ERROR-INITST-VALIDATOR-5: There should be no new outputs on insuarance policy script address
+
+  ERROR-INITST-VALIDATOR-6: Payment info not marked by NFT
 -}
 {-# INLINEABLE lifecycleInitiatedStateValidator #-}
 lifecycleInitiatedStateValidator ::
@@ -49,12 +75,32 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoStat
         ]
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStPayPremium sc =
     traceIfFalse "ERROR-INITST-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
-        && traceIfFalse "ERROR-INITST-VALIDATOR-4" changedToFunding
+        && traceIfNotSingleton"ERROR-INITST-VALIDATOR-4" changedToFunding
+        && traceIfFalse"ERROR-INITST-VALIDATOR-5" noContinuingOutputs
+        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-6" consumedInputIsValid
   where
     txInfo = scriptContextTxInfo sc
 
-    changedToFunding :: Bool
-    changedToFunding = False
+    refInputs = txInInfoResolved <$> txInfoReferenceInputs txInfo
+
+    noContinuingOutputs :: Bool
+    noContinuingOutputs =  null $ getContinuingOutputs sc
+
+    consumedInputIsValid :: [Bool]
+    consumedInputIsValid =
+      [ True
+      | Just (TxInInfo _ (TxOut _ value _ _)) <- [findOwnInput sc]
+      , valueOf value cs policyPaymentTokenName == 1
+      ]
+
+    changedToFunding :: [Bool]
+    changedToFunding =
+      [True
+      | TxOut _ value (OutputDatum (Datum datum)) _ <- refInputs
+      , valueOf value cs policyInfoTokenName == 1
+      , Just (InsuranceInfo {iInfoState}) <- [PlutusTx.fromBuiltinData datum]
+      , iInfoState == Funding
+      ]
 
     -- | all piggy bank addresses paid to
     payments :: [Address]

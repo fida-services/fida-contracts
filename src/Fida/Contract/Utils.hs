@@ -36,8 +36,10 @@ count p = go 0
         | otherwise = go n xs
 
 -- TODO implement me
+{-# INLINEABLE bsearch #-}
 bsearch :: (Eq a, Ord a) => a -> [a] -> Bool
 bsearch x xs = False
 
+{-# INLINEABLE lovelaceOf #-}
 lovelaceOf :: Value -> Integer
 lovelaceOf v = valueOf v adaSymbol adaToken

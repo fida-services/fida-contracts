@@ -21,6 +21,14 @@ data InsurancePolicyState
     | Cancelled
     deriving (HPrelude.Show, HPrelude.Eq)
 
+instance Eq InsurancePolicyState where
+  {-# INLINABLE (==) #-}
+  Initiated == Initiated = True
+  Funding   == Funding   = True
+  OnRisk    == OnRisk    = True
+  Cancelled == Cancelled = True
+  _         == _         = False
+
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyState
     [ ('Initiated, 0)
