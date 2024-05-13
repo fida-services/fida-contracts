@@ -2,7 +2,7 @@ module Fida.Contract.Utils (
     traceIfNotSingleton,
     mkUntypedMintingPolicy,
     count,
-    lovelaceOf,
+    lovelaceValueOf,
 ) where
 
 import Plutus.V1.Ledger.Value
@@ -40,6 +40,6 @@ count p = go 0
 bsearch :: (Eq a, Ord a) => a -> [a] -> Bool
 bsearch x xs = False
 
-{-# INLINEABLE lovelaceOf #-}
-lovelaceOf :: Value -> Integer
-lovelaceOf v = valueOf v adaSymbol adaToken
+{-# INLINEABLE lovelaceValueOf #-}
+lovelaceValueOf :: Value -> Integer
+lovelaceValueOf v = valueOf v adaSymbol adaToken

@@ -9,7 +9,7 @@ import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicy
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (InitStRedeemer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
-import Fida.Contract.Utils (lovelaceOf, traceIfNotSingleton)
+import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton)
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api
 import qualified Plutus.V2.Ledger.Api as PlutusTx
@@ -109,7 +109,7 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStP
         | TxOut address value (OutputDatum (Datum datum)) _ <- txInfoOutputs txInfo
         , Just PBankPremium <- [PlutusTx.fromBuiltinData datum]
         , elem address ppInfoPiggyBanks
-        , lovelaceOf value >= ppInfoPremiumAmountPerPiggyBank
+        , lovelaceValueOf value >= ppInfoPremiumAmountPerPiggyBank
         ]
 lifecycleInitiatedStateValidator _ _ _ _ =
     trace "ERROR-INITST-VALIDATOR-0" False
