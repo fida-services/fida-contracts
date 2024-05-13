@@ -44,7 +44,7 @@ data InsurancePolicyDatum
         { fidaCardValue :: Integer
         }
     | PremiumPaymentInfo
-        { ppInfoPremiumAmountPerPiggyBank :: Integer
+        { ppInfoPremiumAmountPerPiggyBank :: Integer -- ^ in lovelace 
         , ppInfoPiggyBanks :: [Address]
         }
     deriving (HPrelude.Show)
@@ -62,14 +62,14 @@ PlutusTx.makeIsDataIndexed
     ]
 
 data PiggyBankDatum
-    = Collateral
-    | Premium
-    | FidaCard
+    = PBankCollateral
+    | PBankPremium
+    | PBankFidaCard
     deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed
     ''PiggyBankDatum
-    [ ('Collateral, 0)
-    , ('Premium, 1)
-    , ('FidaCard, 2)
+    [ ('PBankCollateral, 0)
+    , ('PBankPremium, 1)
+    , ('PBankFidaCard, 2)
     ]

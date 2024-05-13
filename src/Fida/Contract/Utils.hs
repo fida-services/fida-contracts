@@ -2,9 +2,11 @@ module Fida.Contract.Utils (
     traceIfNotSingleton,
     mkUntypedMintingPolicy,
     count,
+    lovelaceOf
 ) where
 
 import Plutus.V2.Ledger.Api (ScriptContext, UnsafeFromData (..))
+import Plutus.V1.Ledger.Value
 import PlutusTx.Prelude
 
 {- | Verify that a list contains only a single element,
@@ -32,3 +34,10 @@ count p = go 0
     go n (x : xs)
         | p x = go (n + 1) xs
         | otherwise = go n xs
+
+-- TODO implement me
+bsearch :: (Eq a, Ord a) => a -> [a] -> Bool
+bsearch x xs = False
+
+lovelaceOf :: Value -> Integer
+lovelaceOf v = valueOf v adaSymbol adaToken
