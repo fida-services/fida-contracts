@@ -91,8 +91,6 @@
           mkdir $out
         '';
 
-      system = "x86_64-linux";
-
       hlswFor = system:
         let
           pkgs = nixpkgsFor system;
@@ -107,28 +105,32 @@
           '';
         };
 
+      supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" ];
+
+      perSystem = nixpkgs.lib.genAttrs supportedSystems;
+
     in
     {
 
-      project.${system} = hsProjectFor system;
+      project = perSystem hsProjectFor;
 
-      flake.${system} = self.project.${system}.flake { };
+      flake = perSystem (system: self.project.${system}.flake { });
 
-      packages.${system} = self.flake.${system}.packages;
+      packages = perSystem (system: self.flake.${system}.packages);
 
-      check.${system} =
+      check = perSystem (system:
         (nixpkgsFor system).runCommand "combined-check"
           {
             nativeBuildInputs = builtins.attrValues self.checks.${system}
               ++ builtins.attrValues self.flake.${system}.packages
               ++ self.devShells.${system}.hs.nativeBuildInputs;
-          } "touch $out";
+          } "touch $out");
 
-      checks.${system} = self.flake.${system}.checks // {
+      checks = perSystem (system: self.flake.${system}.checks // {
         formatCheck = formatCheckFor system;
-      };
+      });
 
-      devShells.${system} = rec {
+      devShells = perSystem (system: rec {
         hs = self.flake.${system}.devShell;
         hlsw = hlswFor system;
         pkgs = nixpkgsFor system;
@@ -143,7 +145,7 @@
           additional = ps: with ps; [ cardano-api ];
           withHoogle = true;
         };
-      };
+      });
 
     };
 }
