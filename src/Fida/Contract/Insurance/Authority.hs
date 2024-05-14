@@ -29,8 +29,8 @@ PlutusTx.makeIsDataIndexed
     ]
 
 {-# INLINEABLE isSignedByTheAuthority #-}
-isSignedByTheAuthority  :: ScriptContext -> InsuranceAuthority -> Bool
-isSignedByTheAuthority  sc auth =
+isSignedByTheAuthority :: ScriptContext -> InsuranceAuthority -> Bool
+isSignedByTheAuthority sc auth =
     case auth of
         SingleSign pkh -> txSignedBy txInfo pkh
         AtLeastOneSign pkhs -> signedBy pkhs == 1

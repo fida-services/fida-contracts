@@ -106,8 +106,8 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStP
         , lovelaceValueOf value >= ppInfoPremiumAmountPerPiggyBank
         ]
 lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} InitStPayPremium sc =
-    traceIfNotSingleton  "ERROR-INITST-VALIDATOR-6" verifyOut
-      && traceIfNotSingleton  "ERROR-INITST-VALIDATOR-7" isPremiumPaymentSpent
+    traceIfNotSingleton "ERROR-INITST-VALIDATOR-6" verifyOut
+        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-7" isPremiumPaymentSpent
   where
     txInfo = scriptContextTxInfo sc
 
@@ -121,12 +121,9 @@ lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} InitStPayPremi
         ]
     isPremiumPaymentSpent :: [Bool]
     isPremiumPaymentSpent =
-      [ True
-      | TxInInfo _ (TxOut _ value _ _) <- txInfoInputs txInfo
-      , valueOf value cs policyPaymentTokenName == 1
-      ]
-
- 
-
+        [ True
+        | TxInInfo _ (TxOut _ value _ _) <- txInfoInputs txInfo
+        , valueOf value cs policyPaymentTokenName == 1
+        ]
 lifecycleInitiatedStateValidator _ _ _ _ =
     trace "ERROR-INITST-VALIDATOR-0" False

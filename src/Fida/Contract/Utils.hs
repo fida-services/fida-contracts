@@ -13,9 +13,9 @@ module Fida.Contract.Utils (
 
 import Plutus.V1.Ledger.Value
 import Plutus.V2.Ledger.Api
-import PlutusTx.Prelude
 import Plutus.V2.Ledger.Contexts (getContinuingOutputs)
 import qualified PlutusTx
+import PlutusTx.Prelude
 
 {- | Verify that a list contains only a single element,
    or generate an error if it does not.
@@ -74,19 +74,19 @@ unsafeUntypedOutputDatum cs sc = unsafeFromSingleton . untypedOutputDatums cs sc
 {-# INLINEABLE untypedOutputDatums #-}
 untypedOutputDatums :: CurrencySymbol -> ScriptContext -> TokenName -> [BuiltinData]
 untypedOutputDatums cs sc tn =
-  [ d
-  | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
-  , valueOf value cs tn == 1
-  ]
+    [ d
+    | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+    , valueOf value cs tn == 1
+    ]
 
 {-# INLINEABLE outputDatums #-}
 outputDatums :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [a]
 outputDatums cs sc tn =
-  [ datum
-  | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
-  , valueOf value cs tn == 1
-  , Just datum <- [PlutusTx.fromBuiltinData d]
-  ]
+    [ datum
+    | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+    , valueOf value cs tn == 1
+    , Just datum <- [PlutusTx.fromBuiltinData d]
+    ]
 
 {-# INLINEABLE maybeToList #-}
 maybeToList :: Maybe a -> [a]

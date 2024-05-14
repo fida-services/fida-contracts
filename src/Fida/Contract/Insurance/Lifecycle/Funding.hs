@@ -1,30 +1,32 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -fno-specialise #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_GHC -fno-specialise #-}
 
 module Fida.Contract.Insurance.Lifecycle.Funding (
     lifecycleFundingStateValidator,
 ) where
 
-import Fida.Contract.Insurance.Datum
-    ( InsurancePolicyState(..),
-      InsurancePolicyDatum(..),
-      updatePolicyState)
+import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
+import Fida.Contract.Insurance.Datum (
+    InsurancePolicyDatum (..),
+    InsurancePolicyState (..),
+    updatePolicyState,
+ )
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyFundingRedeemer (PolicyFundingCancel, PolicyFundingExpire, PolicyFundingFund, PolicyFundingFundingComplete, PolicyFundingRetractFunding))
-import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api
-    ( ScriptContext(..),
-      TxInInfo(..),
-      TxInfo(..),
-      TxOut(..) )
-import PlutusTx.Prelude
-import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
-import Fida.Contract.Utils (unsafeUntypedOutputDatum, outputDatum)
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
+import Fida.Contract.Utils (outputDatum, unsafeUntypedOutputDatum)
+import Plutus.V1.Ledger.Value (valueOf)
+import Plutus.V2.Ledger.Api (
+    ScriptContext (..),
+    TxInInfo (..),
+    TxInfo (..),
+    TxOut (..),
+ )
 import qualified Plutus.V2.Ledger.Api as PlutusTx
+import PlutusTx.Prelude
 
 {-# INLINEABLE lifecycleFundingStateValidator #-}
 lifecycleFundingStateValidator ::
@@ -38,7 +40,7 @@ lifecycleFundingStateValidator (InsuranceId cs) InsuranceInfo{iInfoPolicyAuthori
         Just (InsuranceInfo{iInfoState = Cancelled}) -> isSignedByTheAuthority sc iInfoPolicyAuthority
         _ -> False
 lifecycleFundingStateValidator (InsuranceId cs) _ PolicyFundingFund sc =
-    case outputDatum cs sc policyInfoTokenName  of
+    case outputDatum cs sc policyInfoTokenName of
         Just (InsuranceInfo{iInfoState = Funding}) -> True
         _ -> False
 lifecycleFundingStateValidator (InsuranceId cs) (d@InsuranceInfo{..}) PolicyFundingFundingComplete scriptContext =
