@@ -4,10 +4,10 @@
 
 module Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator) where
 
-import Fida.Contract.Insurance.Authority (isSignedByAuth)
+import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), updatePolicyState)
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
-import Fida.Contract.Insurance.Redeemer (InitStRedeemer (..))
+import Fida.Contract.Insurance.Redeemer (PolicyInitiatedRedemeer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
 import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton)
 import Plutus.V1.Ledger.Value (valueOf)
@@ -61,14 +61,14 @@ import PlutusTx.Prelude
 lifecycleInitiatedStateValidator ::
     InsuranceId ->
     InsurancePolicyDatum ->
-    InitStRedeemer ->
+    PolicyInitiatedRedemeer ->
     ScriptContext ->
     Bool
-lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoState = Initiated}) InitStCancell sc =
+lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoState = Initiated}) PolicyInitiatedCancel sc =
     traceIfFalse "ERROR-INITST-VALIDATOR-1" isSigned
         && traceIfNotSingleton "ERROR-INITST-VALIDATOR-2" verifyOut
   where
-    isSigned = isSignedByAuth sc $ iInfoPolicyAuthority datum
+    isSigned = isSignedByTheAuthority sc $ iInfoPolicyAuthority datum
     verifyOut :: [Bool]
     verifyOut =
         [ True
@@ -76,7 +76,7 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoStat
         , valueOf value cs policyInfoTokenName == 1
         , Just (getDatum datum') == fmap PlutusTx.toBuiltinData (updatePolicyState datum Cancelled)
         ]
-lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStPayPremium sc =
+lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyInitiatedPayPremium sc =
     traceIfFalse "ERROR-INITST-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
         && traceIfNotSingleton "ERROR-INITST-VALIDATOR-4" isPolicyInfoSpent
         && traceIfNotSingleton "ERROR-INITST-VALIDATOR-5" consumedInputIsValid
@@ -105,9 +105,9 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} InitStP
         , elem address ppInfoPiggyBanks
         , lovelaceValueOf value >= ppInfoPremiumAmountPerPiggyBank
         ]
-lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} InitStPayPremium sc =
-    traceIfNotSingleton  "ERROR-INITST-VALIDATOR-6" verifyOut
-      && traceIfNotSingleton  "ERROR-INITST-VALIDATOR-7" isPremiumPaymentSpent
+lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} PolicyInitiatedPayPremium sc =
+    traceIfNotSingleton "ERROR-INITST-VALIDATOR-6" verifyOut
+        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-7" isPremiumPaymentSpent
   where
     txInfo = scriptContextTxInfo sc
 
@@ -121,12 +121,9 @@ lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} InitStPayPremi
         ]
     isPremiumPaymentSpent :: [Bool]
     isPremiumPaymentSpent =
-      [ True
-      | TxInInfo _ (TxOut _ value _ _) <- txInfoInputs txInfo
-      , valueOf value cs policyPaymentTokenName == 1
-      ]
-
- 
-
+        [ True
+        | TxInInfo _ (TxOut _ value _ _) <- txInfoInputs txInfo
+        , valueOf value cs policyPaymentTokenName == 1
+        ]
 lifecycleInitiatedStateValidator _ _ _ _ =
     trace "ERROR-INITST-VALIDATOR-0" False

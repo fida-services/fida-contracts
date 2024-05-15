@@ -3,7 +3,7 @@
 
 module Fida.Contract.Insurance.Authority (
     InsuranceAuthority,
-    isSignedByAuth,
+    isSignedByTheAuthority,
 ) where
 
 import Fida.Contract.Utils (count)
@@ -28,9 +28,9 @@ PlutusTx.makeIsDataIndexed
     , ('MajorityMustSign, 3)
     ]
 
-{-# INLINEABLE isSignedByAuth #-}
-isSignedByAuth :: ScriptContext -> InsuranceAuthority -> Bool
-isSignedByAuth sc auth =
+{-# INLINEABLE isSignedByTheAuthority #-}
+isSignedByTheAuthority :: ScriptContext -> InsuranceAuthority -> Bool
+isSignedByTheAuthority sc auth =
     case auth of
         SingleSign pkh -> txSignedBy txInfo pkh
         AtLeastOneSign pkhs -> signedBy pkhs == 1

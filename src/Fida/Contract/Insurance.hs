@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Fida.Contract.Insurance (
@@ -6,14 +7,13 @@ module Fida.Contract.Insurance (
 
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..))
 import Fida.Contract.Insurance.Identifier (InsuranceId)
-import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..))
-
 import Fida.Contract.Insurance.Lifecycle.Cancelled (lifecycleCancelledStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Funding (lifecycleFundingStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator)
+import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..))
 import Plutus.V2.Ledger.Api (
     Script,
-    ScriptContext,
+    ScriptContext (..),
     UnsafeFromData (unsafeFromBuiltinData),
     fromCompiledCode,
  )
@@ -27,11 +27,11 @@ mkInsurancePolicyValidator ::
     InsurancePolicyRedeemer ->
     ScriptContext ->
     Bool
-mkInsurancePolicyValidator iid d (InitSt r) sc = lifecycleInitiatedStateValidator iid d r sc
-mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Funding}) r sc =
-    lifecycleFundingStateValidator iid d r sc
+mkInsurancePolicyValidator iid d (PolicyInitiated r) sc = lifecycleInitiatedStateValidator iid d r sc
 mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Cancelled}) r sc =
     lifecycleCancelledStateValidator iid d r sc
+mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Funding}) (PolicyFunding r) sc =
+    lifecycleFundingStateValidator iid d r sc
 mkInsurancePolicyValidator _ _ _ _ =
     trace "ERROR-INSURANCE-POLICY_VALIDATOR-0" False
 

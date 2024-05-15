@@ -10,7 +10,7 @@ module Fida.Contract.Insurance.Datum (
 ) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
-import Plutus.V2.Ledger.Api (Address, POSIXTime)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol, POSIXTime, TokenName)
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude as HPrelude
@@ -48,6 +48,9 @@ data InsurancePolicyDatum
         , iInfoStartDate :: Maybe POSIXTime
         , iInfoPaymentIntervals :: Integer
         , iInfoState :: InsurancePolicyState
+        , iInfoFidaCardNumber :: Integer
+        , iInfoFidaCardPurchaseProofCurrencySymbol :: CurrencySymbol
+        , iInfoFidaCardPurchaseProofTokenName :: TokenName
         }
     | FidaCardInfo
         { fidaCardValue :: Integer
