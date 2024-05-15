@@ -27,7 +27,7 @@ mkInsurancePolicyValidator ::
     InsurancePolicyRedeemer ->
     ScriptContext ->
     Bool
-mkInsurancePolicyValidator iid d (InitSt r) sc = lifecycleInitiatedStateValidator iid d r sc
+mkInsurancePolicyValidator iid d (PolicyInitiated r) sc = lifecycleInitiatedStateValidator iid d r sc
 mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Cancelled}) r sc =
     lifecycleCancelledStateValidator iid d r sc
 mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Funding}) (PolicyFunding r) sc =

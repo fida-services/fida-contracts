@@ -4,10 +4,6 @@ module Fida.Contract.Insurance.Redeemer where
 
 import qualified PlutusTx
 
-data InitStRedeemer -- to remove
-    = InitStCancell
-    | InitStPayPremium
-
 data PolicyInitiatedRedemeer
     = PolicyInitiatedCancel
     | PolicyInitiatedPayPremium
@@ -39,19 +35,11 @@ PlutusTx.makeIsDataIndexed
 data InsurancePolicyRedeemer
     = PolicyInitiated PolicyInitiatedRedemeer
     | PolicyFunding PolicyFundingRedeemer
-    | InitSt InitStRedeemer -- to remove
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyRedeemer
     [ ('PolicyInitiated, 0)
     , ('PolicyFunding, 1)
-    , ('InitSt, 2) -- to remove
-    ]
-
-PlutusTx.makeIsDataIndexed
-    ''InitStRedeemer -- to remove
-    [ ('InitStCancell, 0)
-    , ('InitStPayPremium, 1)
     ]
 
 data PiggyBankRedeemer
