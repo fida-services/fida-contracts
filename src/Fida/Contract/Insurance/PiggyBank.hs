@@ -78,6 +78,10 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
                 case datum of
                     Just x -> x
                     Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-8"
+mkPiggyBankValidator _ _ _ ClaimPremium _ = False
+mkPiggyBankValidator _ _ _ UnlockCollateral _ = False
+mkPiggyBankValidator _ _ _ ClaimPremiumOnCancel _ = False
+mkPiggyBankValidator _ _ _ UnlockCollateralOnCancel _ = False
 mkPiggyBankValidator _ _ _ _ _ = False
 
 
