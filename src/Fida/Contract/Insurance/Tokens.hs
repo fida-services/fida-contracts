@@ -1,6 +1,7 @@
 module Fida.Contract.Insurance.Tokens (
     policyInfoTokenName,
     fidaCardTokenName,
+    fidaCardStatusTokenName,
     policyPaymentTokenName,
 ) where
 
@@ -21,6 +22,9 @@ policyPaymentTokenName = TokenName "POLICY-PAYMENT"
 {-# INLINEABLE fidaCardTokenName #-}
 fidaCardTokenName :: Integer -> TokenName
 fidaCardTokenName identifier = TokenName $ "CARD-" <> int2BBString identifier
+
+fidaCardStatusTokenName :: TokenName
+fidaCardStatusTokenName = TokenName "CARD-STATUS"
 
 {-# INLINEABLE int2BBString #-}
 int2BBString :: Integer -> BuiltinByteString

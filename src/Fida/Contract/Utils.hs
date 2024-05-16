@@ -3,6 +3,7 @@ module Fida.Contract.Utils (
     mkUntypedMintingPolicy,
     count,
     lovelaceValueOf,
+    output,
     outputDatum,
     unsafeOutputDatum,
     fromSingleton,
@@ -63,6 +64,10 @@ unsafeFromSingleton [a] = a
 unsafeFromSingleton [] = traceError "empty list"
 unsafeFromSingleton _ = traceError "not singleton"
 
+{-# INLINEABLE output #-}
+output :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> Maybe (TxOut, a)
+output cs sc = fromSingleton . outputs cs sc
+
 {-# INLINEABLE outputDatum #-}
 outputDatum :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> Maybe a
 outputDatum cs sc = fromSingleton . outputDatums cs sc
@@ -84,6 +89,15 @@ outputDatums :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [a
 outputDatums cs sc tn =
     [ datum
     | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+    , valueOf value cs tn == 1
+    , Just datum <- [PlutusTx.fromBuiltinData d]
+    ]
+
+{-# INLINEABLE outputs #-}
+outputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut,a)]
+outputs cs sc tn =
+    [ (txOut, datum)
+    | txOut@(TxOut _ value (OutputDatum (Datum d)) _) <- getContinuingOutputs sc
     , valueOf value cs tn == 1
     , Just datum <- [PlutusTx.fromBuiltinData d]
     ]

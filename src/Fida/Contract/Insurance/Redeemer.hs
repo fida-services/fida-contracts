@@ -44,6 +44,7 @@ PlutusTx.makeIsDataIndexed
 
 data PiggyBankRedeemer
     = BuyFidaCard
+    | SellFidaCard
     | ClaimPremium
     | UnlockCollateral
     | ClaimCollateral
@@ -51,7 +52,8 @@ data PiggyBankRedeemer
 PlutusTx.makeIsDataIndexed
     ''PiggyBankRedeemer
     [ ('BuyFidaCard, 0)
-    , ('ClaimPremium, 1)
-    , ('UnlockCollateral, 2)
-    , ('ClaimCollateral, 3)
+    , ('SellFidaCard, 1)
+    , ('ClaimPremium, 2)
+    , ('UnlockCollateral, 3)
+    , ('ClaimCollateral, 4)
     ]

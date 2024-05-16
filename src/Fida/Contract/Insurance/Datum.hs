@@ -77,7 +77,7 @@ PlutusTx.makeIsDataIndexed
 data PiggyBankDatum
     = PBankCollateral
     | PBankPremium
-    | PBankFidaCard
+    | PBankFidaCard { pbfcIsSold :: Bool, pbfcFidaCardValue :: Integer }
     deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed

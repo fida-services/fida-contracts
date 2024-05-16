@@ -51,6 +51,5 @@ lifecycleFundingStateValidator (InsuranceId cs) (d@InsuranceInfo{..}) PolicyFund
         correctOutput = outputDatum' == PlutusTx.toBuiltinData (updatePolicyState d OnRisk)
         signedByAuthority = isSignedByTheAuthority scriptContext iInfoPolicyAuthority
      in totalReferenceValue >= iInfoFidaCardNumber && correctOutput && signedByAuthority
-lifecycleFundingStateValidator _ _ PolicyFundingRetractFunding _ = True
 lifecycleFundingStateValidator _ _ PolicyFundingExpire _ = True
 lifecycleFundingStateValidator _ _ _ _ = False
