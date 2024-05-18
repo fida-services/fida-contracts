@@ -8,8 +8,10 @@ module Fida.Contract.Utils (
     unsafeOutputDatum,
     fromSingleton,
     unsafeFromSingleton,
+    unsafeFromSingleton',
     maybeToList,
     unsafeUntypedOutputDatum,
+    referenceDatums,
 ) where
 
 import Plutus.V1.Ledger.Value
@@ -64,6 +66,14 @@ unsafeFromSingleton [a] = a
 unsafeFromSingleton [] = traceError "empty list"
 unsafeFromSingleton _ = traceError "not singleton"
 
+{-# INLINEABLE unsafeFromSingleton' #-}
+unsafeFromSingleton' :: BuiltinString -> [a] -> a
+unsafeFromSingleton' _ [a]  = a
+unsafeFromSingleton' err [] = traceError $ err <> ".1"
+unsafeFromSingleton' err _  = traceError $ err <> ".2"
+
+
+
 {-# INLINEABLE output #-}
 output :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> Maybe (TxOut, a)
 output cs sc = fromSingleton . outputs cs sc
@@ -86,21 +96,26 @@ untypedOutputDatums cs sc tn =
 
 {-# INLINEABLE outputDatums #-}
 outputDatums :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [a]
-outputDatums cs sc tn =
-    [ datum
-    | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+outputDatums cs sc = map snd . outputs cs sc
+
+{-# INLINEABLE outputs #-}
+outputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut,a)]
+outputs cs sc = outputs' cs (getContinuingOutputs sc)
+
+{-# INLINEABLE outputs' #-}
+outputs' :: FromData a => CurrencySymbol -> [TxOut] -> TokenName -> [(TxOut,a)]
+outputs' cs outs tn =
+    [ (txOut, datum)
+    | txOut@(TxOut _ value (OutputDatum (Datum d)) _) <- outs
     , valueOf value cs tn == 1
     , Just datum <- [PlutusTx.fromBuiltinData d]
     ]
 
-{-# INLINEABLE outputs #-}
-outputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut,a)]
-outputs cs sc tn =
-    [ (txOut, datum)
-    | txOut@(TxOut _ value (OutputDatum (Datum d)) _) <- getContinuingOutputs sc
-    , valueOf value cs tn == 1
-    , Just datum <- [PlutusTx.fromBuiltinData d]
-    ]
+{-# INLINEABLE referenceDatums #-}
+referenceDatums :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [a]
+referenceDatums cs sc = map snd . outputs' cs (getOuts sc)
+  where
+    getOuts =  map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
 
 {-# INLINEABLE maybeToList #-}
 maybeToList :: Maybe a -> [a]

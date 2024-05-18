@@ -1,20 +1,21 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Fida.Contract.Insurance.PiggyBank (
     serialisablePiggyBankValidator,
 ) where
 
-import Fida.Contract.Insurance.Datum (PiggyBankDatum(..))
+import Fida.Contract.Insurance.Datum (PiggyBankDatum(..), InsurancePolicyDatum (..), InsurancePolicyState (Cancelled), unlockedPremiumToClaim)
 import Fida.Contract.Insurance.Identifier (InsuranceId(..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer(..))
-import Fida.Contract.Insurance.Tokens (fidaCardTokenName, fidaCardStatusTokenName)
-import Fida.Contract.Utils (outputDatum, fromSingleton, lovelaceValueOf, output)
+import Fida.Contract.Insurance.Tokens (fidaCardTokenName, fidaCardStatusTokenName, policyInfoTokenName)
+import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, unsafeFromSingleton', referenceDatums)
 import Plutus.V2.Ledger.Api
 import qualified PlutusTx
 import PlutusTx.Prelude
 import Plutus.V1.Ledger.Value
-import Plutus.V2.Ledger.Contexts (getContinuingOutputs, findOwnInput)
+import Plutus.V2.Ledger.Contexts (getContinuingOutputs, findOwnInput, txSignedBy)
 
 newtype FidaCardId = FidaCardId Integer
     deriving newtype (ToData, FromData, UnsafeFromData)
@@ -80,8 +81,36 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
                     Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-8"
 mkPiggyBankValidator _ _ _ ClaimPremium _ = False
 mkPiggyBankValidator _ _ _ UnlockCollateral _ = False
-mkPiggyBankValidator _ _ _ ClaimPremiumOnCancel _ = False
+
+mkPiggyBankValidator (InsuranceId cs) _ (PBankPremium initAmount) ClaimPremiumOnCancel sc =
+  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-9" isPolicyCancelled
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-10" isSignedByPolicyHolder
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-11" isClaimedPremiumAmountValid
+  where
+    txInfo = scriptContextTxInfo sc
+    (policyState, policyHolder, maybePolicyStartDate) =
+      unsafeFromSingleton' "ERROR-PIGGY-BANK-VALIDATOR-12"
+      [ (iInfoState, iInfoPolicyHolder, iInfoStartDate )
+      | InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName
+      ]
+    isPolicyCancelled = policyState == Cancelled
+    isSignedByPolicyHolder = txSignedBy txInfo policyHolder
+    remainingPremium = lovelaceValueOf . mconcat $
+      [ value
+      | Just (TxInInfo _ (TxOut _ value _ _)) <- [findOwnInput sc]
+      ]
+    claimedPremium = lovelaceValueOf . mconcat $
+      [ value
+      | TxOut (Address (PubKeyCredential _) _) value _ _ <- txInfoOutputs txInfo
+      ]
+    unlockedPremium =
+      case maybePolicyStartDate of
+        Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount start
+        Nothing -> initAmount
+    isClaimedPremiumAmountValid = remainingPremium - claimedPremium >= initAmount - unlockedPremium
+
 mkPiggyBankValidator _ _ _ UnlockCollateralOnCancel _ = False
+
 mkPiggyBankValidator _ _ _ _ _ = False
 
 

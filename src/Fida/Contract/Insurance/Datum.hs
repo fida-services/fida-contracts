@@ -7,13 +7,15 @@ module Fida.Contract.Insurance.Datum (
     InsurancePolicyDatum (..),
     PiggyBankDatum (..),
     updatePolicyState,
+    unlockedPremiumToClaim,
 ) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
-import Plutus.V2.Ledger.Api (Address, CurrencySymbol, POSIXTime, TokenName)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol, POSIXTime, TokenName, PubKeyHash)
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude as HPrelude
+import Plutus.V1.Ledger.Api (POSIXTimeRange)
 
 data InsurancePolicyState
     = Initiated
@@ -43,7 +45,7 @@ data InsurancePolicyDatum
         { iInfoCollateralAmount :: Integer
         , iInfoFidaCardValue :: Integer
         , iInfoPremiumAmount :: Integer
-        , iInfoPolicyHolder :: Address
+        , iInfoPolicyHolder :: PubKeyHash
         , iInfoPolicyAuthority :: InsuranceAuthority
         , iInfoStartDate :: Maybe POSIXTime
         , iInfoPaymentIntervals :: Integer
@@ -74,9 +76,11 @@ PlutusTx.makeIsDataIndexed
     , ('PremiumPaymentInfo, 2)
     ]
 
+type PremiumAmount = Integer
+
 data PiggyBankDatum
     = PBankCollateral
-    | PBankPremium
+    | PBankPremium PremiumAmount
     | PBankFidaCard { pbfcIsSold :: Bool, pbfcFidaCardValue :: Integer }
     deriving (HPrelude.Show)
 
@@ -86,3 +90,11 @@ PlutusTx.makeIsDataIndexed
     , ('PBankPremium, 1)
     , ('PBankFidaCard, 2)
     ]
+
+{-# INLINEABLE unlockedPremiumToClaim #-}
+unlockedPremiumToClaim ::
+  POSIXTimeRange -> -- current time
+  PremiumAmount ->  -- initial premium amount
+  POSIXTime ->      -- insurance policy start date
+  PremiumAmount
+unlockedPremiumToClaim curr amount start = 1
