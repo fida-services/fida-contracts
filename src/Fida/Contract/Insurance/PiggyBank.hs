@@ -82,7 +82,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
 mkPiggyBankValidator _ _ _ ClaimPremium _ = False
 mkPiggyBankValidator _ _ _ UnlockCollateral _ = False
 
-mkPiggyBankValidator (InsuranceId cs) _ (PBankPremium initAmount) ClaimPremiumOnCancel sc =
+mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPremiumOnCancel sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-9" isPolicyCancelled
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-10" isSignedByPolicyHolder
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-11" isClaimedPremiumAmountValid
@@ -95,19 +95,16 @@ mkPiggyBankValidator (InsuranceId cs) _ (PBankPremium initAmount) ClaimPremiumOn
       ]
     isPolicyCancelled = policyState == Cancelled
     isSignedByPolicyHolder = txSignedBy txInfo policyHolder
-    remainingPremium = lovelaceValueOf . mconcat $
+    lockedPremium = lovelaceValueOf . mconcat $
       [ value
-      | Just (TxInInfo _ (TxOut _ value _ _)) <- [findOwnInput sc]
-      ]
-    claimedPremium = lovelaceValueOf . mconcat $
-      [ value
-      | TxOut (Address (PubKeyCredential _) _) value _ _ <- txInfoOutputs txInfo
+      | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+      , d == toBuiltinData datum
       ]
     unlockedPremium =
       case maybePolicyStartDate of
         Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount start
         Nothing -> initAmount
-    isClaimedPremiumAmountValid = remainingPremium - claimedPremium >= initAmount - unlockedPremium
+    isClaimedPremiumAmountValid = lockedPremium >= initAmount - unlockedPremium
 
 mkPiggyBankValidator _ _ _ UnlockCollateralOnCancel _ = False
 
