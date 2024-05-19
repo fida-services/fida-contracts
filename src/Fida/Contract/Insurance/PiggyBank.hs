@@ -103,7 +103,6 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-11" isClaimedPremiumAmountValid
   where
     txInfo = scriptContextTxInfo sc
-
     (policyState, policyHolder, maybePolicyStartDate, paymentIntervals) =
       unsafeFromSingleton' "ERROR-PIGGY-BANK-VALIDATOR-12"
       [ (iInfoState, iInfoPolicyHolder, iInfoStartDate, iInfoInstallments)
