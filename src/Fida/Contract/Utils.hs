@@ -12,6 +12,7 @@ module Fida.Contract.Utils (
     maybeToList,
     unsafeUntypedOutputDatum,
     referenceDatums,
+    unsafeReferenceDatum,
 ) where
 
 import Plutus.V1.Ledger.Value
@@ -116,6 +117,10 @@ referenceDatums :: FromData a => CurrencySymbol -> ScriptContext -> TokenName ->
 referenceDatums cs sc = map snd . outputs' cs (getOuts sc)
   where
     getOuts =  map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
+
+{-# INLINEABLE unsafeReferenceDatum #-}
+unsafeReferenceDatum :: FromData a => BuiltinString -> CurrencySymbol -> ScriptContext -> TokenName -> [a]
+unsafeReferenceDatum err cs sc = unsafeFromSingleton' err . referenceDatums cs sc
 
 {-# INLINEABLE maybeToList #-}
 maybeToList :: Maybe a -> [a]

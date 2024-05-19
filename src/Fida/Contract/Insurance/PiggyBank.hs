@@ -15,7 +15,7 @@ import Plutus.V2.Ledger.Api
 import qualified PlutusTx
 import PlutusTx.Prelude
 import Plutus.V1.Ledger.Value
-import Plutus.V2.Ledger.Contexts (getContinuingOutputs, findOwnInput, txSignedBy)
+import Plutus.V2.Ledger.Contexts (getContinuingOutputs, findOwnInput, txSignedBy, valueSpent)
 
 newtype FidaCardId = FidaCardId Integer
     deriving newtype (ToData, FromData, UnsafeFromData)
@@ -41,6 +41,21 @@ newtype FidaCardId = FidaCardId Integer
   ERROR-PIGGY-BANK-VALIDATOR-7: output datum doesn't match input datum
 
   ERROR-PIGGY-BANK-VALIDATOR-8: datum not found
+
+  ERROR-PIGGY-BANK-VALIDATOR-9: TODO
+
+  ERROR-PIGGY-BANK-VALIDATOR-10: TODO
+
+  ERROR-PIGGY-BANK-VALIDATOR-11: TODO
+
+  ERROR-PIGGY-BANK-VALIDATOR-12: TODO
+
+  ERROR-PIGGY-BANK-VALIDATOR-13: TODO
+
+  ERROR-PIGGY-BANK-VALIDATOR-14: TODO
+
+  ERROR-PIGGY-BANK-VALIDATOR-15: TODO
+
 -}
 {-# INLINEABLE mkPiggyBankValidator #-}
 mkPiggyBankValidator ::
@@ -88,25 +103,43 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-11" isClaimedPremiumAmountValid
   where
     txInfo = scriptContextTxInfo sc
+
     (policyState, policyHolder, maybePolicyStartDate, paymentIntervals) =
       unsafeFromSingleton' "ERROR-PIGGY-BANK-VALIDATOR-12"
       [ (iInfoState, iInfoPolicyHolder, iInfoStartDate, iInfoInstallments)
       | InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName
       ]
+
     isPolicyCancelled = policyState == Cancelled
+
     isSignedByPolicyHolder = txSignedBy txInfo policyHolder
+
     lockedPremium = lovelaceValueOf . mconcat $
       [ value
       | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
       , d == toBuiltinData datum
       ]
+
     unlockedPremium =
       case maybePolicyStartDate of
         Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount paymentIntervals start
         Nothing -> initAmount
+
     isClaimedPremiumAmountValid = lockedPremium >= initAmount - unlockedPremium
 
-mkPiggyBankValidator _ _ _ UnlockCollateralOnCancel _ = False
+mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) PBankCollateral UnlockCollateralOnCancel sc =
+  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-13" isPolicyCancelled
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-14" isFidaCardOwner
+  where
+    txInfo = scriptContextTxInfo sc
+
+    isPolicyCancelled =
+      unsafeFromSingleton' "ERROR-PIGGY-BANK-VALIDATOR-15"
+      [ iInfoState == Cancelled
+      | InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName
+      ]
+
+    isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
 
 mkPiggyBankValidator _ _ _ _ _ = False
 
