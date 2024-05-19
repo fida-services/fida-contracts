@@ -113,7 +113,6 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
     isPolicyCancelled = policyState == Cancelled
 
     isSignedByPolicyHolder = txSignedBy txInfo policyHolder
-
     lockedPremium = lovelaceValueOf . mconcat $
       [ value
       | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
