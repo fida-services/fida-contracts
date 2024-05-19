@@ -88,9 +88,9 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-11" isClaimedPremiumAmountValid
   where
     txInfo = scriptContextTxInfo sc
-    (policyState, policyHolder, maybePolicyStartDate) =
+    (policyState, policyHolder, maybePolicyStartDate, paymentIntervals) =
       unsafeFromSingleton' "ERROR-PIGGY-BANK-VALIDATOR-12"
-      [ (iInfoState, iInfoPolicyHolder, iInfoStartDate )
+      [ (iInfoState, iInfoPolicyHolder, iInfoStartDate, iInfoInstallments)
       | InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName
       ]
     isPolicyCancelled = policyState == Cancelled
@@ -102,7 +102,7 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
       ]
     unlockedPremium =
       case maybePolicyStartDate of
-        Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount start
+        Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount paymentIntervals start
         Nothing -> initAmount
     isClaimedPremiumAmountValid = lockedPremium >= initAmount - unlockedPremium
 
