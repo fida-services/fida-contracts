@@ -20,12 +20,9 @@ policyPaymentTokenName :: TokenName
 policyPaymentTokenName = TokenName "POLICY-PAYMENT"
 
 {-# INLINEABLE fidaCardTokenName #-}
-fidaCardTokenName :: Integer -> TokenName
-fidaCardTokenName identifier = TokenName $ "CARD-" <> int2BBString identifier
+fidaCardTokenName :: BuiltinByteString -> TokenName
+fidaCardTokenName identifier = TokenName $ "CARD-" <> identifier
 
+{-# INLINEABLE fidaCardStatusTokenName #-}
 fidaCardStatusTokenName :: TokenName
 fidaCardStatusTokenName = TokenName "CARD-STATUS"
-
-{-# INLINEABLE int2BBString #-}
-int2BBString :: Integer -> BuiltinByteString
-int2BBString = toBuiltin . Text.encodeUtf8 . Text.pack . show

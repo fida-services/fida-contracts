@@ -82,6 +82,7 @@ library
     Fida.Contract.Insurance.Lifecycle.Cancelled
     Fida.Contract.Insurance.Lifecycle.Funding
     Fida.Contract.Insurance.Lifecycle.Initiated
+    Fida.Contract.Insurance.Lifecycle.OnRisk
     Fida.Contract.Insurance.PiggyBank
     Fida.Contract.Insurance.Redeemer
     Fida.Contract.Insurance.Tokens
