@@ -46,7 +46,9 @@ data PiggyBankRedeemer
     = BuyFidaCard
     | SellFidaCard
     | ClaimPremium
+    | ClaimPremiumOnCancel
     | UnlockCollateral
+    | UnlockCollateralOnCancel
     | ClaimCollateral
 
 PlutusTx.makeIsDataIndexed
@@ -56,4 +58,6 @@ PlutusTx.makeIsDataIndexed
     , ('ClaimPremium, 2)
     , ('UnlockCollateral, 3)
     , ('ClaimCollateral, 4)
+    , ('ClaimPremiumOnCancel, 5)
+    , ('UnlockCollateralOnCancel, 5)
     ]

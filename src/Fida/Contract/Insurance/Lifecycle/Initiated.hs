@@ -101,9 +101,12 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyI
     payments =
         [ address
         | TxOut address value (OutputDatum (Datum datum)) _ <- txInfoOutputs txInfo
-        , Just PBankPremium <- [PlutusTx.fromBuiltinData datum]
+        , Just (PBankPremium amount) <- [PlutusTx.fromBuiltinData datum]
         , elem address ppInfoPiggyBanks
-        , lovelaceValueOf value >= ppInfoPremiumAmountPerPiggyBank
+        , let
+            paid = lovelaceValueOf value
+          in
+            paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount
         ]
 lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} PolicyInitiatedPayPremium sc =
     traceIfNotSingleton "ERROR-INITST-VALIDATOR-6" verifyOut

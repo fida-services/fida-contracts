@@ -7,13 +7,19 @@ module Fida.Contract.Insurance.Datum (
     InsurancePolicyDatum (..),
     PiggyBankDatum (..),
     updatePolicyState,
+    unlockedPremiumToClaim,
 ) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
-import Plutus.V2.Ledger.Api (Address, CurrencySymbol, POSIXTime, TokenName)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol, POSIXTime, TokenName, PubKeyHash)
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude as HPrelude
+import Plutus.V1.Ledger.Api (POSIXTimeRange)
+import Plutus.V1.Ledger.Time (DiffMilliSeconds, fromMilliSeconds)
+import qualified Plutus.V1.Ledger.Interval as Interval
+
+type PremiumAmount = Integer
 
 data InsurancePolicyState
     = Initiated
@@ -38,15 +44,27 @@ PlutusTx.makeIsDataIndexed
     , ('Cancelled, 3)
     ]
 
+data InstallmentsInfo =
+  InstallmentsInfo
+    [DiffMilliSeconds] -- payment intervals
+    PremiumAmount      -- how much to pay per installment (for one fida card)
+  deriving (HPrelude.Show)
+
+PlutusTx.makeIsDataIndexed
+    ''InstallmentsInfo
+    [ ('InstallmentsInfo , 0)
+    ]
+
+
 data InsurancePolicyDatum
     = InsuranceInfo
         { iInfoCollateralAmount :: Integer
         , iInfoFidaCardValue :: Integer
         , iInfoPremiumAmount :: Integer
-        , iInfoPolicyHolder :: Address
+        , iInfoPolicyHolder :: PubKeyHash
         , iInfoPolicyAuthority :: InsuranceAuthority
         , iInfoStartDate :: Maybe POSIXTime
-        , iInfoPaymentIntervals :: Integer
+        , iInfoInstallments :: InstallmentsInfo
         , iInfoState :: InsurancePolicyState
         , iInfoFidaCardNumber :: Integer
         , iInfoFidaCardPurchaseProofCurrencySymbol :: CurrencySymbol
@@ -74,9 +92,10 @@ PlutusTx.makeIsDataIndexed
     , ('PremiumPaymentInfo, 2)
     ]
 
+
 data PiggyBankDatum
     = PBankCollateral
-    | PBankPremium
+    | PBankPremium PremiumAmount
     | PBankFidaCard { pbfcIsSold :: Bool, pbfcFidaCardValue :: Integer }
     deriving (HPrelude.Show)
 
@@ -86,3 +105,19 @@ PlutusTx.makeIsDataIndexed
     , ('PBankPremium, 1)
     , ('PBankFidaCard, 2)
     ]
+
+{-# INLINEABLE unlockedPremiumToClaim #-}
+unlockedPremiumToClaim ::
+  POSIXTimeRange ->   -- current time
+  PremiumAmount ->    -- locked premium amount (initial amount)
+  InstallmentsInfo ->  -- payment intervals
+  POSIXTime ->        -- insurance policy start date
+  PremiumAmount
+unlockedPremiumToClaim range locked (InstallmentsInfo intervals dpa) start = go 0 start intervals
+  where
+    go _ _ [] = locked
+    go unlocked date (dt:rest) =
+      let nextDate = fromMilliSeconds dt + date
+      in
+        if (Interval.before nextDate range) then go (unlocked + dpa) nextDate rest
+        else unlocked
