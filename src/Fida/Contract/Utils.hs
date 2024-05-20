@@ -11,8 +11,11 @@ module Fida.Contract.Utils (
     unsafeFromSingleton',
     maybeToList,
     unsafeUntypedOutputDatum,
+    untypedOutputDatum,
     referenceDatums,
     unsafeReferenceDatum,
+    findOutputDatumByType,
+    findOutputDatumsByType,
 ) where
 
 import Plutus.V1.Ledger.Value
@@ -83,6 +86,10 @@ output cs sc = fromSingleton . outputs cs sc
 outputDatum :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> Maybe a
 outputDatum cs sc = fromSingleton . outputDatums cs sc
 
+{-# INLINEABLE untypedOutputDatum #-}
+untypedOutputDatum :: CurrencySymbol -> ScriptContext -> TokenName -> Maybe BuiltinData
+untypedOutputDatum cs sc = fromSingleton . untypedOutputDatums cs sc
+
 {-# INLINEABLE unsafeUntypedOutputDatum #-}
 unsafeUntypedOutputDatum :: CurrencySymbol -> ScriptContext -> TokenName -> BuiltinData
 unsafeUntypedOutputDatum cs sc = unsafeFromSingleton . untypedOutputDatums cs sc
@@ -112,6 +119,18 @@ outputs' cs outs tn =
     , Just datum <- [PlutusTx.fromBuiltinData d]
     ]
 
+{-# INLINEABLE findOutputDatumByType #-}
+findOutputDatumByType :: FromData a => ScriptContext -> Maybe a
+findOutputDatumByType sc = fromSingleton $ findOutputDatumsByType sc
+
+{-# INLINEABLE findOutputDatumsByType #-}
+findOutputDatumsByType :: FromData a => ScriptContext -> [a]
+findOutputDatumsByType sc =
+    [ datum
+    | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+    , Just datum <- [PlutusTx.fromBuiltinData d]
+    ]
+
 {-# INLINEABLE referenceDatums #-}
 referenceDatums :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [a]
 referenceDatums cs sc = map snd . outputs' cs (getOuts sc)
@@ -119,7 +138,7 @@ referenceDatums cs sc = map snd . outputs' cs (getOuts sc)
     getOuts =  map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
 
 {-# INLINEABLE unsafeReferenceDatum #-}
-unsafeReferenceDatum :: FromData a => BuiltinString -> CurrencySymbol -> ScriptContext -> TokenName -> [a]
+unsafeReferenceDatum :: FromData a => BuiltinString -> CurrencySymbol -> ScriptContext -> TokenName -> a
 unsafeReferenceDatum err cs sc = unsafeFromSingleton' err . referenceDatums cs sc
 
 {-# INLINEABLE maybeToList #-}

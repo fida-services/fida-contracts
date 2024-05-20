@@ -15,4 +15,4 @@ lifecycleCancelledStateValidator ::
     InsurancePolicyRedeemer ->
     ScriptContext ->
     Bool
-lifecycleCancelledStateValidator _ _ _ _ = True
+lifecycleCancelledStateValidator _ _ _ _ = False
