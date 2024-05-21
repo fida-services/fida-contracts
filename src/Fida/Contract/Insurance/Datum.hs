@@ -94,6 +94,7 @@ data InsurancePolicyDatum
         , iInfoClaim :: Maybe ClaimInfo
         , iInfoClaimTimeToLive :: DiffMilliSeconds
         , iInfoTotalClaimsAcceptedAmount :: Integer
+        , iInfoClaimTimeToPay :: DiffMilliSeconds
         }
     | PremiumPaymentInfo
         { -- | in lovelace

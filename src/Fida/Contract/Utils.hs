@@ -16,6 +16,7 @@ module Fida.Contract.Utils (
     unsafeReferenceDatum,
     findOutputDatumByType,
     findOutputDatumsByType,
+    unsafeReferenceOutput,
 ) where
 
 import Plutus.V1.Ledger.Value
@@ -140,6 +141,16 @@ referenceDatums cs sc = map snd . outputs' cs (getOuts sc)
 {-# INLINEABLE unsafeReferenceDatum #-}
 unsafeReferenceDatum :: FromData a => BuiltinString -> CurrencySymbol -> ScriptContext -> TokenName -> a
 unsafeReferenceDatum err cs sc = unsafeFromSingleton' err . referenceDatums cs sc
+
+{-# INLINEABLE referenceOutputs #-}
+referenceOutputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut, a)]
+referenceOutputs cs sc = outputs' cs (getOuts sc)
+  where
+    getOuts =  map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
+
+{-# INLINEABLE unsafeReferenceOutput #-}
+unsafeReferenceOutput :: FromData a => BuiltinString -> CurrencySymbol -> ScriptContext -> TokenName -> (TxOut, a)
+unsafeReferenceOutput  err cs sc = unsafeFromSingleton' err . referenceOutputs cs sc
 
 {-# INLINEABLE maybeToList #-}
 maybeToList :: Maybe a -> [a]
