@@ -2,6 +2,7 @@
 
 module Fida.Contract.Insurance.Redeemer where
 
+import Fida.Contract.Insurance.Datum (ClaimInfo)
 import qualified PlutusTx
 
 data PolicyInitiatedRedemeer
@@ -29,13 +30,25 @@ PlutusTx.makeIsDataIndexed
     ]
 
 data PolicyOnRiskRedeemer
-    = PolicyOnRiskCreateClaim
+    = PolicyOnRiskCreateClaim ClaimInfo
+    | PolicyOnRiskCancelClaim
     | PolicyOnRiskAcceptClaim
+    | PolicyOnRiskFinalizeClaim
+    | PolicyOnRiskExpireClaim
+    | PolicyOnRiskFailClaim
+    | PolicyOnRiskCancel
+    | PolicyOnRiskExpire
 
 PlutusTx.makeIsDataIndexed
     ''PolicyOnRiskRedeemer
     [ ('PolicyOnRiskCreateClaim, 0)
-    , ('PolicyOnRiskAcceptClaim, 1)
+    , ('PolicyOnRiskCancelClaim, 1)
+    , ('PolicyOnRiskAcceptClaim, 2)
+    , ('PolicyOnRiskFinalizeClaim, 3)
+    , ('PolicyOnRiskExpireClaim, 4)
+    , ('PolicyOnRiskFailClaim, 5)
+    , ('PolicyOnRiskCancel, 6)
+    , ('PolicyOnRiskExpire, 7)
     ]
 
 data InsurancePolicyRedeemer
@@ -56,6 +69,7 @@ data PiggyBankRedeemer
     | ClaimPremium
     | ClaimPremiumOnCancel
     | PayForClaimWithCollateral
+    | PayForClaimWithoutOwnFunds
     | UnlockCollateralOnCancel
     | ClaimCollateral
 
@@ -65,7 +79,8 @@ PlutusTx.makeIsDataIndexed
     , ('SellFidaCard, 1)
     , ('ClaimPremium, 2)
     , ('PayForClaimWithCollateral, 3)
-    , ('ClaimCollateral, 4)
-    , ('ClaimPremiumOnCancel, 5)
-    , ('UnlockCollateralOnCancel, 5)
+    , ('PayForClaimWithoutOwnFunds, 4)
+    , ('ClaimCollateral, 5)
+    , ('ClaimPremiumOnCancel, 6)
+    , ('UnlockCollateralOnCancel, 7)
     ]

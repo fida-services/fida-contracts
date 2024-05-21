@@ -145,8 +145,32 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
 
     claimMarkedAsPaid = claimId `elem` paidClaims
 
-    -- txInfo = scriptContextTxInfo sc
-    -- isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
+
+
+mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=True, pbfcFidaCardValue, pbfcPaidClaims}) PayForClaimWithoutOwnFunds sc =
+  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-24" isClaimAccepted
+  && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-25" amountCorrect
+  && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-26" claimNotPaidYet
+  && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-27" claimMarkedAsPaid
+  where
+
+    InsuranceInfo{iInfoClaim = Just (ClaimInfo {claimAmount, claimAccepted, claimId}), iInfoFidaCardNumber} = unsafeReferenceDatum "ERROR-PIGGY-BANK-VALIDATOR-21" cs sc policyInfoTokenName
+
+    isClaimAccepted = claimAccepted
+
+    inputCollateral = case findOwnInput sc of
+            Just (TxInInfo _ (TxOut _ value _ _)) -> lovelaceValueOf value
+            Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-22"
+
+    (outputCollateral, paidClaims) = case output cs sc fidaCardStatusTokenName of
+            Just (TxOut _ value _ _, PBankFidaCard {pbfcPaidClaims=pbfcPaidClaims'}) -> (lovelaceValueOf value, pbfcPaidClaims')
+            Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-23"
+
+    amountCorrect = inputCollateral == outputCollateral
+
+    claimNotPaidYet = not (claimId `elem` pbfcPaidClaims)
+
+    claimMarkedAsPaid = claimId `elem` paidClaims
 
 
 mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPremiumOnCancel sc =

@@ -9,6 +9,7 @@ module Fida.Contract.Insurance.Datum (
     ClaimInfo(..),
     FidaCardId (..),
     updatePolicyState,
+    updateClaim,
     unlockedPremiumToClaim,
 ) where
 
@@ -91,6 +92,7 @@ data InsurancePolicyDatum
         , iInfoFidaCardPurchaseProofCurrencySymbol :: CurrencySymbol
         , iInfoFidaCardPurchaseProofTokenName :: TokenName
         , iInfoClaim :: Maybe ClaimInfo
+        , iInfoClaimTimeToLive :: DiffMilliSeconds
         , iInfoTotalClaimsAcceptedAmount :: Integer
         }
     | PremiumPaymentInfo
@@ -105,6 +107,11 @@ data InsurancePolicyDatum
 updatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe InsurancePolicyDatum
 updatePolicyState InsuranceInfo{..} state = Just $ InsuranceInfo{iInfoState = state, ..}
 updatePolicyState _ _ = Nothing
+
+{-# INLINEABLE updateClaim #-}
+updateClaim :: InsurancePolicyDatum -> Maybe ClaimInfo -> Maybe InsurancePolicyDatum
+updateClaim InsuranceInfo{..} claim = Just $ InsuranceInfo{iInfoClaim = claim, ..}
+updateClaim _ _ = Nothing
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyDatum
