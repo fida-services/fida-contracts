@@ -128,5 +128,9 @@ test-suite fida-contracts-test
     , tasty-golden
     , tasty-hunit
     , text
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-tx-plugin
+    , plutus-simple-model
 
   hs-source-dirs: test

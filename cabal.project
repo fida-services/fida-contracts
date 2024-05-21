@@ -63,6 +63,12 @@ source-repository-package
 
 source-repository-package
   type: git
+  location: https://github.com/geniusyield/plutus-simple-model
+  tag: d710c4c5400ff7072fe89c337c1cdd0128dc5d99
+  --sha256: 16zwqr5qqwrxnawgc2y4q72lny8inac21kxqsip530ravqcc153n
+
+source-repository-package
+  type: git
   location: https://github.com/well-typed/plutonomy
   tag: 14b9bd46084db1b785b3a99d55f7f10d38165ee8
   --sha256: 16jp16arikhjdczk88a7pw1rkpwqqhkgvbykby834fc9mq24slf1
