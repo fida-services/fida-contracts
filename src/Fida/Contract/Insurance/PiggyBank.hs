@@ -10,12 +10,14 @@ import Fida.Contract.Insurance.Datum (ClaimInfo(..), FidaCardId(..), PiggyBankDa
 import Fida.Contract.Insurance.Identifier (InsuranceId(..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer(..))
 import Fida.Contract.Insurance.Tokens (fidaCardTokenName, fidaCardStatusTokenName, policyInfoTokenName)
-import Fida.Contract.Utils (unsafeReferenceDatum, fromSingleton, lovelaceValueOf, output, unsafeFromSingleton', referenceDatums, outputDatum)
+import Fida.Contract.Utils (unsafeReferenceDatum, fromSingleton, lovelaceValueOf, output, unsafeFromSingleton', referenceDatums, outputDatum, unsafeReferenceOutput)
 import Plutus.V2.Ledger.Api
 import qualified PlutusTx
 import PlutusTx.Prelude
 import Plutus.V1.Ledger.Value
 import Plutus.V2.Ledger.Contexts (getContinuingOutputs, findOwnInput, txSignedBy, valueSpent)
+import Plutus.V1.Ledger.Time (fromMilliSeconds)
+import Plutus.V1.Ledger.Interval (before)
 
 
 {- |
@@ -125,9 +127,21 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
   && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-25" amountCorrect
   && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-26" claimNotPaidYet
   && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-27" claimMarkedAsPaid
+  && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-28" isPaidCorrect
+  && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-29" (isAfterClaimTimeToPay || isFidaCardOwner)
   where
+    txInfo = scriptContextTxInfo sc
 
-    InsuranceInfo{iInfoClaim = Just (ClaimInfo {claimAmount, claimAccepted, claimId}), iInfoFidaCardNumber} = unsafeReferenceDatum "ERROR-PIGGY-BANK-VALIDATOR-21" cs sc policyInfoTokenName
+    ( TxOut insuranceAddress _ _ _,
+      InsuranceInfo{iInfoClaim = Just (ClaimInfo {claimAmount, claimAccepted, claimId, claimDate}), ..}
+     ) = unsafeReferenceOutput "ERROR-PIGGY-BANK-VALIDATOR-21" cs sc policyInfoTokenName
+
+    paid = lovelaceValueOf $ mconcat
+      [ value
+      | TxOut address value (OutputDatum (Datum d)) _ <- txInfoOutputs txInfo
+      , insuranceAddress == address
+      , Just PolicyClaimPayment <- [fromBuiltinData d]
+      ]
 
     isClaimAccepted = claimAccepted
 
@@ -139,11 +153,17 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
             Just (TxOut _ value _ _, PBankFidaCard {pbfcPaidClaims=pbfcPaidClaims'}) -> (lovelaceValueOf value, pbfcPaidClaims')
             Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-23"
 
-    amountCorrect = (claimAmount) >= iInfoFidaCardNumber*(inputCollateral - outputCollateral)
+    amountCorrect = (claimAmount) >= iInfoFidaCardNumber * (inputCollateral - outputCollateral)
 
     claimNotPaidYet = not (claimId `elem` pbfcPaidClaims)
 
-    claimMarkedAsPaid = claimId `elem` paidClaims
+    claimMarkedAsPaid = claimId : pbfcPaidClaims == paidClaims
+
+    isPaidCorrect = iInfoFidaCardNumber * paid >= claimAmount
+
+    isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
+
+    isAfterClaimTimeToPay = before (claimDate + fromMilliSeconds iInfoClaimTimeToPay) $ txInfoValidRange txInfo
 
 
 
