@@ -151,7 +151,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
 
     (outputCollateral, paidClaims) = case output cs sc fidaCardStatusTokenName of
             Just (TxOut _ value _ _, PBankFidaCard {pbfcPaidClaims=pbfcPaidClaims'}) -> (lovelaceValueOf value, pbfcPaidClaims')
-            Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-23"
+            _ -> traceError "ERROR-PIGGY-BANK-VALIDATOR-23"
 
     amountCorrect = (claimAmount) >= iInfoFidaCardNumber * (inputCollateral - outputCollateral)
 
