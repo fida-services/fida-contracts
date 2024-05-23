@@ -8,25 +8,21 @@ import qualified PlutusTx
 data PolicyInitiatedRedemeer
     = PolicyInitiatedCancel
     | PolicyInitiatedPayPremium
-    | PolicyInitiatedExpire
 
 PlutusTx.makeIsDataIndexed
     ''PolicyInitiatedRedemeer
     [ ('PolicyInitiatedCancel, 0)
     , ('PolicyInitiatedPayPremium, 1)
-    , ('PolicyInitiatedExpire, 2)
     ]
 
 data PolicyFundingRedeemer
     = PolicyFundingCancel
     | PolicyFundingFundingComplete
-    | PolicyFundingExpire
 
 PlutusTx.makeIsDataIndexed
     ''PolicyFundingRedeemer
     [ ('PolicyFundingCancel, 0)
     , ('PolicyFundingFundingComplete, 1)
-    , ('PolicyFundingExpire, 2)
     ]
 
 data PolicyOnRiskRedeemer
@@ -37,7 +33,7 @@ data PolicyOnRiskRedeemer
     | PolicyOnRiskExpireClaim
     | PolicyOnRiskFailClaim
     | PolicyOnRiskCancel
-    | PolicyOnRiskExpire
+    | PolicyOnRiskClaimPayment
 
 PlutusTx.makeIsDataIndexed
     ''PolicyOnRiskRedeemer
@@ -48,19 +44,21 @@ PlutusTx.makeIsDataIndexed
     , ('PolicyOnRiskExpireClaim, 4)
     , ('PolicyOnRiskFailClaim, 5)
     , ('PolicyOnRiskCancel, 6)
-    , ('PolicyOnRiskExpire, 7)
+    , ('PolicyOnRiskClaimPayment, 7)
     ]
 
 data InsurancePolicyRedeemer
     = PolicyInitiated PolicyInitiatedRedemeer
     | PolicyFunding PolicyFundingRedeemer
     | PolicyOnRisk PolicyOnRiskRedeemer
+    | PolicyExpire
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyRedeemer
     [ ('PolicyInitiated, 0)
     , ('PolicyFunding, 1)
     , ('PolicyOnRisk, 2)
+    , ('PolicyExpire, 3)
     ]
 
 data PiggyBankRedeemer

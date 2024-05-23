@@ -16,7 +16,7 @@ import Fida.Contract.Insurance.Datum (
     updatePolicyState,
  )
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
-import Fida.Contract.Insurance.Redeemer (PolicyFundingRedeemer (PolicyFundingCancel, PolicyFundingExpire, PolicyFundingFundingComplete))
+import Fida.Contract.Insurance.Redeemer (PolicyFundingRedeemer (PolicyFundingCancel, PolicyFundingFundingComplete))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, fidaCardStatusTokenName)
 import Fida.Contract.Utils (outputDatum, unsafeUntypedOutputDatum)
 import Plutus.V1.Ledger.Value (valueOf)
@@ -73,5 +73,4 @@ lifecycleFundingStateValidator (InsuranceId cs) (d@InsuranceInfo{..}) PolicyFund
         outputDatum' = unsafeUntypedOutputDatum cs scriptContext policyInfoTokenName
         correctOutput = outputDatum' == PlutusTx.toBuiltinData (updatePolicyState d OnRisk)
         signedByAuthority = isSignedByTheAuthority scriptContext iInfoPolicyAuthority
-lifecycleFundingStateValidator _ _ PolicyFundingExpire _ = True
 lifecycleFundingStateValidator _ _ _ _ = False
