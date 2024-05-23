@@ -50,16 +50,17 @@ lifecycleFundingStateValidator ::
     PolicyFundingRedeemer ->
     ScriptContext ->
     Bool
-lifecycleFundingStateValidator (InsuranceId cs) InsuranceInfo{iInfoPolicyAuthority} PolicyFundingCancel sc =
-        traceIfFalse "ERROR-FUNDING-VALIDATOR-0" isSigned
-    where
-        isSigned = case outputDatum cs sc policyInfoTokenName of
-            Just (InsuranceInfo{iInfoState = Cancelled}) -> isSignedByTheAuthority sc iInfoPolicyAuthority
-            _ -> False
-lifecycleFundingStateValidator (InsuranceId cs) (d@InsuranceInfo{..}) PolicyFundingFundingComplete scriptContext =
+lifecycleFundingStateValidator (InsuranceId cs) datum@InsuranceInfo{iInfoPolicyAuthority} PolicyFundingCancel sc =
+    traceIfFalse "ERROR-FUNDING-VALIDATOR-1" isSigned
+        && traceIfFalse "ERROR-FUNDING-VALIDATOR-2" verifyOut
+  where
+    isSigned = isSignedByTheAuthority sc iInfoPolicyAuthority
+    verifyOut :: Bool
+    verifyOut = outputDatum cs sc policyInfoTokenName == Just (PlutusTx.toBuiltinData $ updatePolicyState datum Cancelled)
+
+lifecycleFundingStateValidator (InsuranceId cs) (d@InsuranceInfo{iInfoState = Funding, iInfoFidaCardNumber}) PolicyFundingFundingComplete scriptContext =
     traceIfFalse "ERROR-FUNDING-VALIDATOR-1" (fidaCardsSold >= iInfoFidaCardNumber)
     && traceIfFalse "ERROR-FUNDING-VALIDATOR-2" correctOutput
-    && traceIfFalse "ERROR-FUNDING-VALIDATOR-3" signedByAuthority
     where
         txInfo = scriptContextTxInfo scriptContext
         referenceInputs = txInfoReferenceInputs txInfo
@@ -72,5 +73,4 @@ lifecycleFundingStateValidator (InsuranceId cs) (d@InsuranceInfo{..}) PolicyFund
             ]
         outputDatum' = unsafeUntypedOutputDatum cs scriptContext policyInfoTokenName
         correctOutput = outputDatum' == PlutusTx.toBuiltinData (updatePolicyState d OnRisk)
-        signedByAuthority = isSignedByTheAuthority scriptContext iInfoPolicyAuthority
 lifecycleFundingStateValidator _ _ _ _ = False
