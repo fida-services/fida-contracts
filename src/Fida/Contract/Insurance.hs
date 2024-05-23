@@ -5,8 +5,10 @@ module Fida.Contract.Insurance (
     serialisableInsurancePolicyValidator,
 ) where
 
-import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..))
-import Fida.Contract.Insurance.Identifier (InsuranceId)
+import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), updatePolicyState)
+import Fida.Contract.Insurance.Identifier (InsuranceId(..))
+import Fida.Contract.Utils (untypedOutputDatum)
+import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
 import Fida.Contract.Insurance.Lifecycle.Cancelled (lifecycleCancelledStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Funding (lifecycleFundingStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator)
@@ -16,8 +18,10 @@ import Plutus.V2.Ledger.Api (
     ScriptContext (..),
     UnsafeFromData (unsafeFromBuiltinData),
     fromCompiledCode,
+    txInfoValidRange,
  )
 import qualified PlutusTx
+import Plutus.V1.Ledger.Interval (before)
 import PlutusTx.Prelude
 
 {-# INLINEABLE mkInsurancePolicyValidator #-}
@@ -32,6 +36,13 @@ mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Cancelled}) r sc =
     lifecycleCancelledStateValidator iid d r sc
 mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Funding}) (PolicyFunding r) sc =
     lifecycleFundingStateValidator iid d r sc
+mkInsurancePolicyValidator (InsuranceId cs) d@(InsuranceInfo{iInfoExpireDate}) PolicyExpire sc =
+    traceIfFalse "ERROR-INSURANCE-POLICY_VALIDATOR-0" (before iInfoExpireDate $ txInfoValidRange (scriptContextTxInfo sc))
+    && traceIfFalse "ERROR-INSURANCE-POLICY_VALIDATOR-1" correctOutputDatum
+    where
+        outputDatum = untypedOutputDatum cs sc policyInfoTokenName
+        correctOutputDatum = outputDatum == (PlutusTx.toBuiltinData <$> updatePolicyState d Expired)
+
 mkInsurancePolicyValidator _ _ _ _ =
     trace "ERROR-INSURANCE-POLICY_VALIDATOR-0" False
 

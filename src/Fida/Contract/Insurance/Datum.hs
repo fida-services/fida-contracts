@@ -32,6 +32,7 @@ data InsurancePolicyState
     | Funding
     | OnRisk
     | Cancelled
+    | Expired
     deriving (HPrelude.Show, HPrelude.Eq)
 
 instance Eq InsurancePolicyState where
@@ -48,6 +49,7 @@ PlutusTx.makeIsDataIndexed
     , ('Funding, 1)
     , ('OnRisk, 2)
     , ('Cancelled, 3)
+    , ('Expired, 4)
     ]
 
 data InstallmentsInfo =
@@ -86,6 +88,7 @@ data InsurancePolicyDatum
         , iInfoPolicyHolder :: PubKeyHash
         , iInfoPolicyAuthority :: InsuranceAuthority
         , iInfoStartDate :: Maybe POSIXTime
+        , iInfoExpireDate :: POSIXTime
         , iInfoInstallments :: InstallmentsInfo
         , iInfoState :: InsurancePolicyState
         , iInfoFidaCardNumber :: Integer

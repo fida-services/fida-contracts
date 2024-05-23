@@ -70,6 +70,7 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iIn
             _ -> False
 lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoClaim=Just (ClaimInfo {claimDate}), iInfoState, iInfoPolicyAuthority, iInfoClaimTimeToLive}) PolicyOnRiskExpireClaim sc =
         traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" correctOutputDatum
+        && traceIfFalse "ERROR-ON-RISK-VALIDATOR-4" claimExpired
     where
         outputDatum = untypedOutputDatum cs sc policyInfoTokenName
         correctOutputDatum = outputDatum == (PlutsTx.toBuiltinData <$> updateClaim d Nothing)
@@ -78,10 +79,19 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoClaim=Just
 
         claimExpired = before claimDeadLine (txInfoValidRange $ scriptContextTxInfo sc)
 
-lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState}) PolicyOnRiskFinalizeClaim sc =
-        traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" correctOutputDatum
+-- lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState}) PolicyOnRiskFinalizeClaim sc =
+--         traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" correctOutputDatum
+--     where
+--         outputDatum = untypedOutputDatum cs sc policyInfoTokenName
+--         correctOutputDatum = outputDatum == (PlutsTx.toBuiltinData <$> updateClaim d Nothing)
+
+lifecycleOnRiskStateValidator (InsuranceId cs) PolicyClaimPayment PolicyOnRiskClaimPayment sc =
+        traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" isSignedByPolicyHolder
     where
-        outputDatum = untypedOutputDatum cs sc policyInfoTokenName
-        correctOutputDatum = outputDatum == (PlutsTx.toBuiltinData <$> updateClaim d Nothing)
+        policyHolder = case outputDatum cs sc policyInfoTokenName of
+            Nothing -> traceError "ERROR-ON-RISK-VALIDATOR-4"
+            Just (InsuranceInfo{iInfoPolicyHolder}) -> iInfoPolicyHolder
+
+        isSignedByPolicyHolder = txSignedBy (scriptContextTxInfo sc) policyHolder
 
 lifecycleOnRiskStateValidator _ _ _ _ = False
