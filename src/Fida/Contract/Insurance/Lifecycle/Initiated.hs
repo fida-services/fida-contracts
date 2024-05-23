@@ -9,7 +9,7 @@ import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicy
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyInitiatedRedemeer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
-import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton)
+import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton, outputDatum)
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api
 import qualified Plutus.V2.Ledger.Api as PlutusTx
@@ -66,29 +66,17 @@ lifecycleInitiatedStateValidator ::
     Bool
 lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoState = Initiated}) PolicyInitiatedCancel sc =
     traceIfFalse "ERROR-INITST-VALIDATOR-1" isSigned
-        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-2" verifyOut
+        && traceIfFalse "ERROR-INITST-VALIDATOR-2" verifyOut
   where
     isSigned = isSignedByTheAuthority sc $ iInfoPolicyAuthority datum
-    verifyOut :: [Bool]
-    verifyOut =
-        [ True
-        | TxOut _ value (OutputDatum datum') _ <- getContinuingOutputs sc
-        , valueOf value cs policyInfoTokenName == 1
-        , Just (getDatum datum') == fmap PlutusTx.toBuiltinData (updatePolicyState datum Cancelled)
-        ]
+    verifyOut :: Bool
+    verifyOut = outputDatum cs sc policyInfoTokenName == Just (PlutusTx.toBuiltinData $ updatePolicyState datum Cancelled)
+
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyInitiatedPayPremium sc =
     traceIfFalse "ERROR-INITST-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
         && traceIfNotSingleton "ERROR-INITST-VALIDATOR-4" isPolicyInfoSpent
-        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-5" consumedInputIsValid
   where
     txInfo = scriptContextTxInfo sc
-
-    consumedInputIsValid :: [Bool]
-    consumedInputIsValid =
-        [ True
-        | Just (TxInInfo _ (TxOut _ value _ _)) <- [findOwnInput sc]
-        , valueOf value cs policyPaymentTokenName == 1
-        ]
 
     isPolicyInfoSpent :: [Bool]
     isPolicyInfoSpent =
@@ -108,20 +96,15 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyI
           in
             paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount
         ]
-lifecycleInitiatedStateValidator (InsuranceId cs) InsuranceInfo{} PolicyInitiatedPayPremium sc =
-    traceIfNotSingleton "ERROR-INITST-VALIDATOR-6" verifyOut
+lifecycleInitiatedStateValidator (InsuranceId cs) d@InsuranceInfo{} PolicyInitiatedPayPremium sc =
+    traceIfFalse "ERROR-INITST-VALIDATOR-6" verifyOut
         && traceIfNotSingleton "ERROR-INITST-VALIDATOR-7" isPremiumPaymentSpent
   where
     txInfo = scriptContextTxInfo sc
 
-    verifyOut :: [Bool]
-    verifyOut =
-        [ True
-        | TxOut _ value (OutputDatum (Datum datum)) _ <- getContinuingOutputs sc
-        , valueOf value cs policyInfoTokenName == 1
-        , Just (InsuranceInfo{iInfoState}) <- [PlutusTx.fromBuiltinData datum]
-        , iInfoState == Funding
-        ]
+    verifyOut :: Bool
+    verifyOut = outputDatum cs sc policyInfoTokenName == Just (PlutusTx.toBuiltinData $ updatePolicyState d Funding)
+
     isPremiumPaymentSpent :: [Bool]
     isPremiumPaymentSpent =
         [ True
