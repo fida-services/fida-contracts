@@ -49,7 +49,7 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iIn
         outputDatum = untypedOutputDatum cs sc policyInfoTokenName
         correctOutputDatum = outputDatum == (PlutsTx.toBuiltinData <$> updateClaim d (Just (c {claimAccepted = True})))
 
-lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iInfoPolicyHolder, iInfoClaim = Just c}) PolicyOnRiskCancelClaim sc =
+lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iInfoPolicyHolder, iInfoClaim = Just c}) PolicyOnRiskCloseClaim sc =
         traceIfFalse "ERROR-ON-RISK-VALIDATOR-2" (txSignedBy (scriptContextTxInfo sc) iInfoPolicyHolder)
         && traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" correctOutputDatum
     where
