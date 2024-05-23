@@ -17,6 +17,7 @@ module Fida.Contract.Utils (
     findOutputDatumByType,
     findOutputDatumsByType,
     unsafeReferenceOutput,
+    referenceOutputs,
 ) where
 
 import Plutus.V1.Ledger.Value
