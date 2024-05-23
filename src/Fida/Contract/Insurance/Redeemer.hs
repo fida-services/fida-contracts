@@ -27,7 +27,7 @@ PlutusTx.makeIsDataIndexed
 
 data PolicyOnRiskRedeemer
     = PolicyOnRiskCreateClaim ClaimInfo
-    | PolicyOnRiskCancelClaim
+    | PolicyOnRiskCloseClaim
     | PolicyOnRiskAcceptClaim
     | PolicyOnRiskFinalizeClaim
     | PolicyOnRiskExpireClaim
@@ -38,7 +38,7 @@ data PolicyOnRiskRedeemer
 PlutusTx.makeIsDataIndexed
     ''PolicyOnRiskRedeemer
     [ ('PolicyOnRiskCreateClaim, 0)
-    , ('PolicyOnRiskCancelClaim, 1)
+    , ('PolicyOnRiskCloseClaim, 1)
     , ('PolicyOnRiskAcceptClaim, 2)
     , ('PolicyOnRiskFinalizeClaim, 3)
     , ('PolicyOnRiskExpireClaim, 4)
@@ -67,7 +67,6 @@ data PiggyBankRedeemer
     | ClaimPremium
     | ClaimPremiumOnCancel
     | PayForClaimWithCollateral
-    | PayForClaimWithoutOwnFunds
     | UnlockCollateralOnCancel
     | ClaimCollateral
 
@@ -77,8 +76,7 @@ PlutusTx.makeIsDataIndexed
     , ('SellFidaCard, 1)
     , ('ClaimPremium, 2)
     , ('PayForClaimWithCollateral, 3)
-    , ('PayForClaimWithoutOwnFunds, 4)
-    , ('ClaimCollateral, 5)
-    , ('ClaimPremiumOnCancel, 6)
-    , ('UnlockCollateralOnCancel, 7)
+    , ('ClaimCollateral, 4)
+    , ('ClaimPremiumOnCancel, 5)
+    , ('UnlockCollateralOnCancel, 6)
     ]
