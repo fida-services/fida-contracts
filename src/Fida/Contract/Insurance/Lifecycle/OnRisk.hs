@@ -79,12 +79,6 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoClaim=Just
 
         claimExpired = before claimDeadLine (txInfoValidRange $ scriptContextTxInfo sc)
 
--- lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState}) PolicyOnRiskFinalizeClaim sc =
---         traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" correctOutputDatum
---     where
---         outputDatum = untypedOutputDatum cs sc policyInfoTokenName
---         correctOutputDatum = outputDatum == (PlutsTx.toBuiltinData <$> updateClaim d Nothing)
-
 lifecycleOnRiskStateValidator (InsuranceId cs) PolicyClaimPayment PolicyOnRiskClaimPayment sc =
         traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" isSignedByPolicyHolder
     where
