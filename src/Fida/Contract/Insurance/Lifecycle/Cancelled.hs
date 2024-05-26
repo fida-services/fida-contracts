@@ -3,7 +3,7 @@ module Fida.Contract.Insurance.Lifecycle.Cancelled (
 ) where
 
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum)
-import Fida.Contract.Insurance.Identifier (InsuranceId)
+import Fida.Contract.Insurance.InsuranceId (InsuranceId)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer)
 import Plutus.V2.Ledger.Api
 import PlutusTx.Prelude

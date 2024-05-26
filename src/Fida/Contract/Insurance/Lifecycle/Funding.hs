@@ -12,7 +12,7 @@ import Fida.Contract.Insurance.Datum (
     PiggyBankDatum(..),
     FidaCardId (..), untypedUpdatePolicyState
  )
-import Fida.Contract.Insurance.Identifier (InsuranceId (..))
+import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyFundingRedeemer (PolicyFundingCancel, PolicyFundingFundingComplete))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, fidaCardStatusTokenName)
 import Fida.Contract.Utils (untypedOutputDatum)

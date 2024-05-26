@@ -11,7 +11,7 @@ import Fida.Contract.Insurance.Datum
     , updateClaim
     , updatePolicyState, untypedUpdateClaim, untypedUnsetClaim, untypedUpdatePolicyState
     )
-import Fida.Contract.Insurance.Identifier (InsuranceId)
+import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyOnRiskRedeemer(..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
 import Plutus.V2.Ledger.Api
@@ -20,7 +20,6 @@ import Plutus.V2.Ledger.Contexts (txSignedBy)
 import PlutusTx.Prelude
 import PlutusTx as PlutusTx
 import Fida.Contract.Utils (untypedOutputDatum, outputDatum, referenceDatums)
-import Fida.Contract.Insurance.Identifier (InsuranceId(..))
 import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 

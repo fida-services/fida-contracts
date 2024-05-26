@@ -7,7 +7,7 @@ module Fida.Contract.Insurance.PiggyBank (
 ) where
 
 import Fida.Contract.Insurance.Datum (ClaimInfo(..), FidaCardId(..), PiggyBankDatum(..), InsurancePolicyDatum (..), InsurancePolicyState (Cancelled), unlockedPremiumToClaim)
-import Fida.Contract.Insurance.Identifier (InsuranceId(..))
+import Fida.Contract.Insurance.InsuranceId (InsuranceId(..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer(..))
 import Fida.Contract.Insurance.Tokens (fidaCardTokenName, fidaCardStatusTokenName, policyInfoTokenName)
 import Fida.Contract.Utils (unsafeReferenceDatum, fromSingleton, lovelaceValueOf, output, unsafeFromSingleton', referenceDatums, outputDatum, unsafeReferenceOutput, referenceOutputs)

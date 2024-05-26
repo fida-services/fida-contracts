@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Insurance.Identifier (
+module Fida.Contract.Insurance.InsuranceId (
     mkInsuranceIdMintingPolicy,
     serialisableInsuranceIdMintingPolicy,
     insuranceIdMintingPolicy,

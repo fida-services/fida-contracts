@@ -7,7 +7,7 @@ module Fida.Contract.Insurance (
 ) where
 
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), untypedUpdatePolicyState)
-import Fida.Contract.Insurance.Identifier (InsuranceId(..))
+import Fida.Contract.Insurance.InsuranceId (InsuranceId(..))
 import Fida.Contract.Utils (untypedOutputDatum, wrapValidator, unsafeFromJust)
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
 import Fida.Contract.Insurance.Lifecycle.Cancelled (lifecycleCancelledStateValidator)

@@ -10,9 +10,9 @@ import PlutusTx.Prelude (Bool (..), Integer, Eq ((==)), return, ($), (&&), (.))
 import Prelude (undefined)
 import Fida.Contract.Insurance.Datum
 import Fida.Contract.Insurance.Redeemer
-import Fida.Contract.Insurance.Identifier
+import Fida.Contract.Insurance.InsuranceId
 import Fida.Contract.Insurance
-import Fida.Contract.Insurance.Identifier
+import Fida.Contract.Insurance.InsuranceId
 import Fida.Contract.Insurance.Authority
 
 tests :: TestTree

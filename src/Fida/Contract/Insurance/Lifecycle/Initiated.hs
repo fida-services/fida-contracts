@@ -6,7 +6,7 @@ module Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValid
 
 import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), untypedUpdatePolicyState)
-import Fida.Contract.Insurance.Identifier (InsuranceId (..))
+import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyInitiatedRedemeer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
 import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton, untypedOutputDatum)
