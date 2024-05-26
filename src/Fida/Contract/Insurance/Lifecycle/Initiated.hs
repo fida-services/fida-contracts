@@ -5,16 +5,23 @@
 module Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator) where
 
 import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
-import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), updatePolicyState)
+import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), untypedUpdatePolicyState)
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyInitiatedRedemeer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
-import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton, outputDatum)
+import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton, untypedOutputDatum)
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api
-import qualified Plutus.V2.Ledger.Api as PlutusTx
-import Plutus.V2.Ledger.Contexts
+    ( TxInfo(..),
+      ScriptContext(..),
+      TxOut(..),
+      Address,
+      Datum(..),
+      TxInInfo(..),
+      OutputDatum(..) )
+import Plutus.V2.Ledger.Contexts ( getContinuingOutputs )
 import PlutusTx.Prelude
+import qualified PlutusTx
 
 {- |
 
@@ -41,21 +48,21 @@ import PlutusTx.Prelude
 
  On chain errors:
 
-  ERROR-INITST-VALIDATOR-0: Illegal action for Initiated state
+  ERROR-INITIATED-VALIDATOR-0: Illegal action for Initiated state
 
-  ERROR-INITST-VALIDATOR-1: Transaction not signed by policy authority
+  ERROR-INITIATED-VALIDATOR-1: Transaction not signed by policy authority
 
-  ERROR-INITST-VALIDATOR-2: Insurance policy state not changed to Cancelled
+  ERROR-INITIATED-VALIDATOR-2: Insurance policy state not changed to Cancelled
 
-  ERROR-INITST-VALIDATOR-3: Payments not properly distributed
+  ERROR-INITIATED-VALIDATOR-3: Payments not properly distributed
 
-  ERROR-INITST-VALIDATOR-4: UTxO with policy datum was not spent
+  ERROR-INITIATED-VALIDATOR-4: UTxO with policy datum was not spent
 
-  ERROR-INITST-VALIDATOR-5: Payment info not marked by NFT
+  ERROR-INITIATED-VALIDATOR-5: Payment info not marked by NFT
 
-  ERROR-INITST-VALIDATOR-6: Insurance policy state not changed to Funding
+  ERROR-INITIATED-VALIDATOR-6: Insurance policy state not changed to Funding
 
-  ERROR-INITST-VALIDATOR-7: UTxO with premium payment was not spent
+  ERROR-INITIATED-VALIDATOR-7: UTxO with premium payment was not spent
 
 -}
 {-# INLINEABLE lifecycleInitiatedStateValidator #-}
@@ -66,16 +73,18 @@ lifecycleInitiatedStateValidator ::
     ScriptContext ->
     Bool
 lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoState = Initiated}) PolicyInitiatedCancel sc =
-    traceIfFalse "ERROR-INITST-VALIDATOR-1" isSigned
-        && traceIfFalse "ERROR-INITST-VALIDATOR-2" verifyOut
+    traceIfFalse "ERROR-INITIATED-VALIDATOR-1" isSigned
+        && traceIfFalse "ERROR-INITIATED-VALIDATOR-2" hasCorrectOutput
   where
     isSigned = isSignedByTheAuthority sc $ iInfoPolicyAuthority datum
-    verifyOut :: Bool
-    verifyOut = outputDatum cs sc policyInfoTokenName == Just (PlutusTx.toBuiltinData $ updatePolicyState datum Cancelled)
+
+    outputDatum = untypedOutputDatum cs sc policyInfoTokenName
+
+    hasCorrectOutput = outputDatum == untypedUpdatePolicyState datum Cancelled
 
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyInitiatedPayPremium sc =
-    traceIfFalse "ERROR-INITST-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
-        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-4" isPolicyInfoSpent
+    traceIfFalse "ERROR-INITIATED-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
+        && traceIfNotSingleton "ERROR-INITIATED-VALIDATOR-4" isPolicyInfoSpent
   where
     txInfo = scriptContextTxInfo sc
 
@@ -97,14 +106,16 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyI
           in
             paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount
         ]
+
 lifecycleInitiatedStateValidator (InsuranceId cs) d@InsuranceInfo{} PolicyInitiatedPayPremium sc =
-    traceIfFalse "ERROR-INITST-VALIDATOR-6" verifyOut
-        && traceIfNotSingleton "ERROR-INITST-VALIDATOR-7" isPremiumPaymentSpent
+    traceIfFalse "ERROR-INITIATED-VALIDATOR-6" hasCorrectOutput
+        && traceIfNotSingleton "ERROR-INITIATED-VALIDATOR-7" isPremiumPaymentSpent
   where
     txInfo = scriptContextTxInfo sc
 
-    verifyOut :: Bool
-    verifyOut = outputDatum cs sc policyInfoTokenName == Just (PlutusTx.toBuiltinData $ updatePolicyState d Funding)
+    outputDatum = untypedOutputDatum cs sc policyInfoTokenName
+
+    hasCorrectOutput = outputDatum == untypedUpdatePolicyState d Funding
 
     isPremiumPaymentSpent :: [Bool]
     isPremiumPaymentSpent =
@@ -112,5 +123,6 @@ lifecycleInitiatedStateValidator (InsuranceId cs) d@InsuranceInfo{} PolicyInitia
         | TxInInfo _ (TxOut _ value _ _) <- txInfoInputs txInfo
         , valueOf value cs policyPaymentTokenName == 1
         ]
+
 lifecycleInitiatedStateValidator _ _ _ _ =
-    trace "ERROR-INITST-VALIDATOR-0" False
+    trace "ERROR-INITIATED-VALIDATOR-0" False

@@ -10,7 +10,7 @@ import Fida.Contract.Insurance.Datum (
     InsurancePolicyDatum (..),
     InsurancePolicyState (..),
     PiggyBankDatum(..),
-    updatePolicyState, FidaCardId (..)
+    FidaCardId (..), untypedUpdatePolicyState
  )
 import Fida.Contract.Insurance.Identifier (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyFundingRedeemer (PolicyFundingCancel, PolicyFundingFundingComplete))
@@ -26,7 +26,6 @@ import Plutus.V2.Ledger.Api (
     TxOut (..),
     fromBuiltinData,
  )
-import qualified Plutus.V2.Ledger.Api as PlutusTx
 import PlutusTx.Prelude
 
 
@@ -63,7 +62,7 @@ lifecycleFundingStateValidator (InsuranceId cs) d@InsuranceInfo{iInfoPolicyAutho
 
     outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
-    hasCorrectOutput = outputDatum == Just (PlutusTx.toBuiltinData $ updatePolicyState d Cancelled)
+    hasCorrectOutput = outputDatum == untypedUpdatePolicyState d Cancelled
 
 lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo{iInfoState = Funding, iInfoFidaCardNumber}) PolicyFundingFundingComplete sc =
     traceIfFalse "ERROR-FUNDING-VALIDATOR-3" (fidaCardsSold >= iInfoFidaCardNumber)
@@ -83,6 +82,6 @@ lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo{iInfoState 
 
         outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
-        hasCorrectOutput = outputDatum == Just (PlutusTx.toBuiltinData $ updatePolicyState iinfo OnRisk)
+        hasCorrectOutput = outputDatum == untypedUpdatePolicyState iinfo OnRisk
 
 lifecycleFundingStateValidator _ _ _ _ = trace "ERROR-FUNDING-VALIDATOR-0" False

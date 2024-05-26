@@ -19,22 +19,73 @@ module Fida.Contract.Utils (
     referenceOutputs,
     wrapPolicy,
     wrapStakeValidator,
-    wrapValidator
+    wrapValidator,
+    unsafeFromJust,
 ) where
 
 import Plutus.V1.Ledger.Value
+    ( TokenName, CurrencySymbol, adaSymbol, adaToken, valueOf, Value )
 import Plutus.V2.Ledger.Api
+    ( UnsafeFromData(..),
+      TxInfo(..),
+      ScriptContext(..),
+      FromData,
+      TxOut(..),
+      Datum(..),
+      TxInInfo(..),
+      OutputDatum(..) )
 import Plutus.V2.Ledger.Contexts (getContinuingOutputs)
 import qualified PlutusTx
 import PlutusTx.Prelude
 
-{- | Verify that a list contains only a single element,
-   or generate an error if it does not.
--}
+-- | common
+
+{-# INLINEABLE unsafeFromJust #-}
+unsafeFromJust :: Maybe a -> a
+unsafeFromJust (Just a) = a
+unsafeFromJust Nothing = traceError "nothing"
+
+{-# INLINEABLE lovelaceValueOf #-}
+lovelaceValueOf :: Value -> Integer
+lovelaceValueOf v = valueOf v adaSymbol adaToken
+
+{-# INLINEABLE fromSingleton #-}
+fromSingleton :: [a] -> Maybe a
+fromSingleton [a] = Just a
+fromSingleton _ = Nothing
+
+{-# INLINEABLE unsafeFromSingleton #-}
+unsafeFromSingleton :: [a] -> a
+unsafeFromSingleton [a] = a
+unsafeFromSingleton [] = traceError "empty list"
+unsafeFromSingleton _ = traceError "not singleton"
+
+{-# INLINEABLE unsafeFromSingleton' #-}
+unsafeFromSingleton' :: BuiltinString -> [a] -> a
+unsafeFromSingleton' _ [a]  = a
+unsafeFromSingleton' err [] = traceError $ err <> ".1"
+unsafeFromSingleton' err _  = traceError $ err <> ".2"
+
 {-# INLINEABLE traceIfNotSingleton #-}
 traceIfNotSingleton :: BuiltinString -> [a] -> a
 traceIfNotSingleton _ [x] = x
 traceIfNotSingleton msg _ = traceError msg
+
+{-# INLINEABLE maybeToList #-}
+maybeToList :: Maybe a -> [a]
+maybeToList (Just a) = [a]
+maybeToList _ = []
+
+{-# INLINEABLE count #-}
+count :: (a -> Bool) -> [a] -> Integer
+count p = go 0
+  where
+    go n [] = n
+    go n (x : xs)
+        | p x = go (n + 1) xs
+        | otherwise = go n xs
+
+-- | wrappers
 
 {-# INLINABLE wrapValidator #-}
 wrapValidator ::
@@ -64,40 +115,7 @@ wrapStakeValidator ::
   (BuiltinData -> BuiltinData -> ())
 wrapStakeValidator = wrapPolicy
 
-{-# INLINEABLE count #-}
-count :: (a -> Bool) -> [a] -> Integer
-count p = go 0
-  where
-    go n [] = n
-    go n (x : xs)
-        | p x = go (n + 1) xs
-        | otherwise = go n xs
-
--- TODO implement me
-{-# INLINEABLE bsearch #-}
-bsearch :: (Eq a, Ord a) => a -> [a] -> Bool
-bsearch x xs = False
-
-{-# INLINEABLE lovelaceValueOf #-}
-lovelaceValueOf :: Value -> Integer
-lovelaceValueOf v = valueOf v adaSymbol adaToken
-
-{-# INLINEABLE fromSingleton #-}
-fromSingleton :: [a] -> Maybe a
-fromSingleton [a] = Just a
-fromSingleton _ = Nothing
-
-{-# INLINEABLE unsafeFromSingleton #-}
-unsafeFromSingleton :: [a] -> a
-unsafeFromSingleton [a] = a
-unsafeFromSingleton [] = traceError "empty list"
-unsafeFromSingleton _ = traceError "not singleton"
-
-{-# INLINEABLE unsafeFromSingleton' #-}
-unsafeFromSingleton' :: BuiltinString -> [a] -> a
-unsafeFromSingleton' _ [a]  = a
-unsafeFromSingleton' err [] = traceError $ err <> ".1"
-unsafeFromSingleton' err _  = traceError $ err <> ".2"
+-- | outputs
 
 {-# INLINEABLE untypedOutputDatums #-}
 untypedOutputDatums :: CurrencySymbol -> ScriptContext -> TokenName -> [BuiltinData]
@@ -173,8 +191,3 @@ findOutputDatumsByType sc =
 {-# INLINEABLE findOutputDatumByType #-}
 findOutputDatumByType :: FromData a => ScriptContext -> Maybe a
 findOutputDatumByType sc = fromSingleton $ findOutputDatumsByType sc
-
-{-# INLINEABLE maybeToList #-}
-maybeToList :: Maybe a -> [a]
-maybeToList (Just a) = [a]
-maybeToList _ = []

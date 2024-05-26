@@ -9,18 +9,21 @@ module Fida.Contract.Insurance.Datum (
     ClaimInfo(..),
     FidaCardId (..),
     updatePolicyState,
+    untypedUpdatePolicyState,
     updateClaim,
+    untypedUnsetClaim,
+    untypedUpdateClaim,
     unlockedPremiumToClaim,
 ) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
-import Plutus.V2.Ledger.Api (Address, CurrencySymbol, POSIXTime, TokenName, PubKeyHash, ToData, FromData, UnsafeFromData)
+import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, ToData, FromData, UnsafeFromData)
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude as HPrelude
-import Plutus.V1.Ledger.Api (POSIXTimeRange)
 import Plutus.V1.Ledger.Time (DiffMilliSeconds, fromMilliSeconds)
 import qualified Plutus.V1.Ledger.Interval as Interval
+import Plutus.V2.Ledger.Api (POSIXTimeRange)
 
 newtype FidaCardId = FidaCardId BuiltinByteString
     deriving newtype (ToData, FromData, UnsafeFromData, HPrelude.Show)
@@ -88,22 +91,23 @@ data InsurancePolicyDatum
     = InsuranceInfo
         { iInfoCollateralAmount :: Integer
         , iInfoFidaCardValue :: Integer
-        , iInfoPremiumAmount :: Integer
-        , iInfoPolicyHolder :: PubKeyHash
-        , iInfoPolicyAuthority :: InsuranceAuthority
-        , iInfoInstallments :: InstallmentsInfo
-        , iInfoState :: InsurancePolicyState
         , iInfoFidaCardNumber :: Integer
+
+        , iInfoPremiumAmount :: Integer
+        , iInfoInstallments :: InstallmentsInfo
+
+        , iInfoInsurancePeriod :: DiffMilliSeconds
+        , iInfoPolicyHolder :: PubKeyHash
+
+        , iInfoPolicyAuthority :: InsuranceAuthority
+        , iInfoState :: InsurancePolicyState
+
         , iInfoClaimTimeToLive :: DiffMilliSeconds
         , iInfoTotalClaimsAcceptedAmount :: Integer
         , iInfoClaimTimeToPay :: DiffMilliSeconds
 
-        , iInfoFidaCardPurchaseProofCurrencySymbol :: CurrencySymbol
-        , iInfoFidaCardPurchaseProofTokenName :: TokenName
-
         , iInfoStartDate :: Maybe POSIXTime
         , iInfoClaim :: Maybe ClaimInfo
-        , iInfoExpireDate :: POSIXTime
         }
     | PremiumPaymentInfo
         { -- | in lovelace
@@ -118,10 +122,23 @@ updatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe Insur
 updatePolicyState InsuranceInfo{..} state = Just $ InsuranceInfo{iInfoState = state, ..}
 updatePolicyState _ _ = Nothing
 
+{-# INLINEABLE untypedUpdatePolicyState #-}
+untypedUpdatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe BuiltinData
+untypedUpdatePolicyState d = fmap PlutusTx.toBuiltinData . updatePolicyState d
+
 {-# INLINEABLE updateClaim #-}
 updateClaim :: InsurancePolicyDatum -> Maybe ClaimInfo -> Maybe InsurancePolicyDatum
 updateClaim InsuranceInfo{..} claim = Just $ InsuranceInfo{iInfoClaim = claim, ..}
 updateClaim _ _ = Nothing
+
+{-# INLINEABLE untypedUpdateClaim #-}
+untypedUpdateClaim :: InsurancePolicyDatum -> ClaimInfo -> Maybe BuiltinData
+untypedUpdateClaim d = fmap PlutusTx.toBuiltinData . updateClaim d . Just
+
+{-# INLINEABLE untypedUnsetClaim #-}
+untypedUnsetClaim :: InsurancePolicyDatum -> Maybe BuiltinData
+untypedUnsetClaim d = fmap PlutusTx.toBuiltinData . updateClaim d $ Nothing
+
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyDatum
