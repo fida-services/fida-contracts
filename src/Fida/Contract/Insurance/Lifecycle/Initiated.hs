@@ -56,6 +56,7 @@ import PlutusTx.Prelude
   ERROR-INITST-VALIDATOR-6: Insurance policy state not changed to Funding
 
   ERROR-INITST-VALIDATOR-7: UTxO with premium payment was not spent
+
 -}
 {-# INLINEABLE lifecycleInitiatedStateValidator #-}
 lifecycleInitiatedStateValidator ::

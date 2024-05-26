@@ -1,13 +1,19 @@
-module Fida.Contract.Insurance.Lifecycle.InitiatedTest where
+module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests) where
 
-import Fida.Contract.Insurance.Lifecycle.Initiated
 import Data.List
 import Test.Tasty (TestTree, testGroup)
 import Control.Monad (mapM, replicateM)
 import Plutus.V2.Ledger.Api
 import Test.Tasty.HUnit
 import Plutus.Model
-import PlutusTx.Prelude (Bool (..), Eq ((==)), return, ($), (&&), (.))
+import PlutusTx.Prelude (Bool (..), Integer, Eq ((==)), return, ($), (&&), (.))
+import Prelude (undefined)
+import Fida.Contract.Insurance.Datum
+import Fida.Contract.Insurance.Redeemer
+import Fida.Contract.Insurance.Identifier
+import Fida.Contract.Insurance
+import Fida.Contract.Insurance.Identifier
+import Fida.Contract.Insurance.Authority
 
 tests :: TestTree
 tests =
@@ -20,6 +26,23 @@ tests =
     good = testNoErrors (adaValue 10_000_000_000) defaultBabbage
 
 
+type InsurancePolicy = TypedValidator InsurancePolicyDatum InsurancePolicyRedeemer
+
+data InsuranceCreateParams
+    = InsuranceCreateParams
+        { icpPolicyHolder :: PubKeyHash
+        , icpPolicyPrice :: Integer
+        , icpFidaCardQuantity :: Integer
+        , icpFidaCardValue :: Integer
+        , icpPolicyAuthority :: InsuranceAuthority
+        }
+
+insurancePolicy :: InsuranceId -> InsurancePolicy
+insurancePolicy = TypedValidator . toV2 . insurancePolicyValidator
+
+insuranceIdNFT :: TxOutRef -> TypedPolicy ()
+insuranceIdNFT = TypedPolicy . toV2 . insuranceIdMintingPolicy 
+
 userExchange :: Run ()
 userExchange = do
   users <- setupUsers
@@ -27,6 +50,20 @@ userExchange = do
   sendValue u1 (adaValue 100) u2
   sendValue u2 (adaValue 100) u3
 
--- | alocate 3 users with 1000 lovelaces each
 setupUsers :: Run [PubKeyHash]
-setupUsers = replicateM 3 $ newUser $ adaValue 1000
+setupUsers = do
+  users@[u1, u2, u3, u4, u5] <- replicateM 5 $ newUser $ adaValue 100_000_000
+  writeUserName u1 "Policy Broker"
+  writeUserName u2 "Policy Holder"
+  writeUserName u3 "Investor 1"
+  writeUserName u4 "Investor 2"
+  writeUserName u5 "Investor 3"
+  return users
+
+createPolicy :: PubKeyHash -> InsuranceCreateParams -> Run ()
+createPolicy pkh datum = do
+  
+  return ()
+  where
+    paymentInfo :: InsuranceId -> Integer -> [Address] -> InsurancePolicyDatum
+    paymentInfo = undefined

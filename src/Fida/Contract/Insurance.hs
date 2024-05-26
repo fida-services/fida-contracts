@@ -3,11 +3,12 @@
 
 module Fida.Contract.Insurance (
     serialisableInsurancePolicyValidator,
+    insurancePolicyValidator
 ) where
 
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), updatePolicyState)
 import Fida.Contract.Insurance.Identifier (InsuranceId(..))
-import Fida.Contract.Utils (untypedOutputDatum)
+import Fida.Contract.Utils (untypedOutputDatum, wrapValidator)
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
 import Fida.Contract.Insurance.Lifecycle.Cancelled (lifecycleCancelledStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Funding (lifecycleFundingStateValidator)
@@ -18,7 +19,7 @@ import Plutus.V2.Ledger.Api (
     ScriptContext (..),
     UnsafeFromData (unsafeFromBuiltinData),
     fromCompiledCode,
-    txInfoValidRange,
+    txInfoValidRange, Validator, mkValidatorScript,
  )
 import qualified PlutusTx
 import Plutus.V1.Ledger.Interval (before)
@@ -53,14 +54,18 @@ mkInsurancePolicyValidatorUntyped ::
     BuiltinData ->
     BuiltinData ->
     ()
-mkInsurancePolicyValidatorUntyped insuranceId datum redeemer sc =
-    check $
+mkInsurancePolicyValidatorUntyped insuranceId =
+    wrapValidator $
         mkInsurancePolicyValidator
             (unsafeFromBuiltinData insuranceId)
-            (unsafeFromBuiltinData datum)
-            (unsafeFromBuiltinData redeemer)
-            (unsafeFromBuiltinData sc)
 
 serialisableInsurancePolicyValidator :: Script
 serialisableInsurancePolicyValidator =
     fromCompiledCode $$(PlutusTx.compile [||mkInsurancePolicyValidatorUntyped||])
+
+insurancePolicyValidator :: InsuranceId -> Validator
+insurancePolicyValidator iid = mkValidatorScript $
+    $$(PlutusTx.compile [|| wrappedValidator ||])
+      `PlutusTx.applyCode` PlutusTx.liftCode iid
+  where
+    wrappedValidator = wrapValidator . mkInsurancePolicyValidator

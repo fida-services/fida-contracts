@@ -107,7 +107,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold=
                     ]
           (pbfcIsSold, pbfcFidaCardValue') =
                 case datum of
-                    Just (PBankFidaCard isSold cardValue _) -> (isSold, cardValue)
+                    Just (PBankFidaCard {pbfcIsSold=isSold, pbfcFidaCardValue=cardValue }) -> (isSold, cardValue)
                     _ -> traceError "ERROR-PIGGY-BANK-VALIDATOR-8"
                     
 mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) datum@(PBankPremium initAmount) ClaimPremium sc =
@@ -220,7 +220,7 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
 
     isClaimedPremiumAmountValid = lockedPremium >= premiumLeftForInvestor
 
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard _ _ _) UnlockCollateralOnCancel sc =
+mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCollateralOnCancel sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-13" isPolicyCancelled
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-14" isFidaCardOwner
   where

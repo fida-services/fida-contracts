@@ -5,3 +5,6 @@ cradle:
 
     - path: "./app/serialise"
       component: "exe:fida-contracts-serialise"
+
+    - path: "./test"
+      component: "exe:fida-contracts-test"

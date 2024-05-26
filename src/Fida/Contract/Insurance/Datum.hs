@@ -23,7 +23,7 @@ import Plutus.V1.Ledger.Time (DiffMilliSeconds, fromMilliSeconds)
 import qualified Plutus.V1.Ledger.Interval as Interval
 
 newtype FidaCardId = FidaCardId BuiltinByteString
-    deriving newtype (ToData, FromData, UnsafeFromData)
+    deriving newtype (ToData, FromData, UnsafeFromData, HPrelude.Show)
 
 type PremiumAmount = Integer
 
@@ -52,6 +52,8 @@ PlutusTx.makeIsDataIndexed
     , ('Expired, 4)
     ]
 
+PlutusTx.makeLift ''InsurancePolicyState
+
 data InstallmentsInfo =
   InstallmentsInfo
     [DiffMilliSeconds] -- payment intervals
@@ -63,6 +65,7 @@ PlutusTx.makeIsDataIndexed
     [ ('InstallmentsInfo , 0)
     ]
 
+PlutusTx.makeLift ''InstallmentsInfo
 
 data ClaimInfo =
   ClaimInfo
@@ -79,6 +82,7 @@ PlutusTx.makeIsDataIndexed
     [ ('ClaimInfo, 0)
     ]
 
+PlutusTx.makeLift ''ClaimInfo
 
 data InsurancePolicyDatum
     = InsuranceInfo
@@ -87,17 +91,19 @@ data InsurancePolicyDatum
         , iInfoPremiumAmount :: Integer
         , iInfoPolicyHolder :: PubKeyHash
         , iInfoPolicyAuthority :: InsuranceAuthority
-        , iInfoStartDate :: Maybe POSIXTime
-        , iInfoExpireDate :: POSIXTime
         , iInfoInstallments :: InstallmentsInfo
         , iInfoState :: InsurancePolicyState
         , iInfoFidaCardNumber :: Integer
-        , iInfoFidaCardPurchaseProofCurrencySymbol :: CurrencySymbol
-        , iInfoFidaCardPurchaseProofTokenName :: TokenName
-        , iInfoClaim :: Maybe ClaimInfo
         , iInfoClaimTimeToLive :: DiffMilliSeconds
         , iInfoTotalClaimsAcceptedAmount :: Integer
         , iInfoClaimTimeToPay :: DiffMilliSeconds
+
+        , iInfoFidaCardPurchaseProofCurrencySymbol :: CurrencySymbol
+        , iInfoFidaCardPurchaseProofTokenName :: TokenName
+
+        , iInfoStartDate :: Maybe POSIXTime
+        , iInfoClaim :: Maybe ClaimInfo
+        , iInfoExpireDate :: POSIXTime
         }
     | PremiumPaymentInfo
         { -- | in lovelace
@@ -124,11 +130,18 @@ PlutusTx.makeIsDataIndexed
     , ('PolicyClaimPayment, 2)
     ]
 
+PlutusTx.makeLift ''InsurancePolicyDatum
+
+
 
 data PiggyBankDatum
     = PBankPremium PremiumAmount
     | PBankFidaCard
-        { pbfcIsSold :: Bool, pbfcFidaCardValue :: Integer, pbfcPaidClaims :: [BuiltinByteString] }
+        { pbfcIsSold :: Bool
+        , pbfcFidaCardId :: FidaCardId
+        , pbfcFidaCardValue :: Integer
+        , pbfcPaidClaims :: [BuiltinByteString]
+        }
     deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed

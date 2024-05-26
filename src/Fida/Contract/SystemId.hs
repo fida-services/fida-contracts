@@ -5,7 +5,7 @@ module Fida.Contract.SystemId (
     serialisableSystemIdMintingPolicy,
 ) where
 
-import Fida.Contract.Utils (mkUntypedMintingPolicy)
+import Fida.Contract.Utils (wrapPolicy)
 import Plutus.V2.Ledger.Api
 import Plutus.V2.Ledger.Contexts (txSignedBy)
 import qualified PlutusTx
@@ -42,7 +42,7 @@ mkSystemIdMintingPolicyUntyped ::
     BuiltinData ->
     ()
 mkSystemIdMintingPolicyUntyped gov magic =
-    mkUntypedMintingPolicy $
+    wrapPolicy $
         mkSystemIdMintingPolicy
             (unsafeFromBuiltinData gov)
             (unsafeFromBuiltinData magic)

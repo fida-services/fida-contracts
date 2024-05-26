@@ -28,6 +28,8 @@ PlutusTx.makeIsDataIndexed
     , ('MajorityMustSign, 3)
     ]
 
+PlutusTx.makeLift ''InsuranceAuthority
+
 {-# INLINEABLE isSignedByTheAuthority #-}
 isSignedByTheAuthority :: ScriptContext -> InsuranceAuthority -> Bool
 isSignedByTheAuthority sc auth =
