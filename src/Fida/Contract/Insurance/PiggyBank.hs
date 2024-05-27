@@ -79,16 +79,16 @@ mkPiggyBankValidator ::
     PiggyBankRedeemer ->
     ScriptContext ->
     Bool
-mkPiggyBankValidator (InsuranceId cs) _ (PBankFidaCard {pbfcIsSold=False, pbfcFidaCardValue}) BuyFidaCard scriptContext =
+mkPiggyBankValidator (InsuranceId cs) _ (PBankFidaCard {pbfcIsSold=False, pbfcFidaCardValue}) BuyFidaCard sc =
         traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-0" pbfcIsSold
         && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-1" (pbfcFidaCardValue == pbfcFidaCardValue')
     where
-        inputLovelace = case findOwnInput scriptContext of
+        inputLovelace = case findOwnInput sc of
             Just (TxInInfo _ (TxOut _ value _ _)) -> lovelaceValueOf value
             Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-2"
 
         (PBankFidaCard {pbfcIsSold, pbfcFidaCardValue=pbfcFidaCardValue'}) =
-                case outputDatum cs scriptContext fidaCardStatusTokenName of
+                case outputDatum cs sc fidaCardStatusTokenName of
                     Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-3"
                     Just (TxOut _ v _ _, d)
                       | lovelaceValueOf v >= pbfcFidaCardValue + inputLovelace -> d
