@@ -1,6 +1,7 @@
 module Main (main) where
 
 import qualified Fida.Contract.FidaPolicyContractTest as FidaPolicyContractTest
+import qualified Fida.Contract.Insurance.Lifecycle.InitiatedTest as InitiatedTest
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Prelude
 
@@ -12,4 +13,5 @@ tests =
     testGroup
         "Fida Contract Tests"
         [ FidaPolicyContractTest.tests
+        , InitiatedTest.tests
         ]

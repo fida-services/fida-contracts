@@ -6,24 +6,26 @@ module Fida.Contract.Insurance.Datum (
     InsurancePolicyState (..),
     InsurancePolicyDatum (..),
     PiggyBankDatum (..),
-    ClaimInfo(..),
+    ClaimInfo (..),
     FidaCardId (..),
     updatePolicyState,
+    untypedUpdatePolicyState,
     updateClaim,
+    untypedUnsetClaim,
+    untypedUpdateClaim,
     unlockedPremiumToClaim,
 ) where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
-import Plutus.V2.Ledger.Api (Address, CurrencySymbol, POSIXTime, TokenName, PubKeyHash, ToData, FromData, UnsafeFromData)
+import qualified Plutus.V1.Ledger.Interval as Interval
+import Plutus.V1.Ledger.Time (DiffMilliSeconds, fromMilliSeconds)
+import Plutus.V2.Ledger.Api (Address, FromData, POSIXTime, POSIXTimeRange, PubKeyHash, ToData, UnsafeFromData)
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude as HPrelude
-import Plutus.V1.Ledger.Api (POSIXTimeRange)
-import Plutus.V1.Ledger.Time (DiffMilliSeconds, fromMilliSeconds)
-import qualified Plutus.V1.Ledger.Interval as Interval
 
 newtype FidaCardId = FidaCardId BuiltinByteString
-    deriving newtype (ToData, FromData, UnsafeFromData)
+    deriving newtype (ToData, FromData, UnsafeFromData, HPrelude.Show)
 
 type PremiumAmount = Integer
 
@@ -52,52 +54,53 @@ PlutusTx.makeIsDataIndexed
     , ('Expired, 4)
     ]
 
-data InstallmentsInfo =
-  InstallmentsInfo
-    [DiffMilliSeconds] -- payment intervals
-    PremiumAmount      -- how much to pay per installment (for one fida card)
-  deriving (HPrelude.Show)
+PlutusTx.makeLift ''InsurancePolicyState
+
+data InstallmentsInfo
+    = InstallmentsInfo
+        [DiffMilliSeconds] -- payment intervals
+        PremiumAmount -- how much to pay per installment (for one fida card)
+    deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed
     ''InstallmentsInfo
-    [ ('InstallmentsInfo , 0)
+    [ ('InstallmentsInfo, 0)
     ]
 
+PlutusTx.makeLift ''InstallmentsInfo
 
-data ClaimInfo =
-  ClaimInfo
+data ClaimInfo = ClaimInfo
     { claimAmount :: Integer
     , claimDate :: POSIXTime
     , claimReason :: BuiltinByteString
     , claimAccepted :: Bool
     , claimId :: BuiltinByteString
     }
-  deriving (HPrelude.Show)
+    deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed
     ''ClaimInfo
     [ ('ClaimInfo, 0)
     ]
 
+PlutusTx.makeLift ''ClaimInfo
 
 data InsurancePolicyDatum
     = InsuranceInfo
         { iInfoCollateralAmount :: Integer
         , iInfoFidaCardValue :: Integer
+        , iInfoFidaCardNumber :: Integer
         , iInfoPremiumAmount :: Integer
+        , iInfoInstallments :: InstallmentsInfo
+        , iInfoInsurancePeriod :: DiffMilliSeconds
         , iInfoPolicyHolder :: PubKeyHash
         , iInfoPolicyAuthority :: InsuranceAuthority
-        , iInfoStartDate :: Maybe POSIXTime
-        , iInfoExpireDate :: POSIXTime
-        , iInfoInstallments :: InstallmentsInfo
         , iInfoState :: InsurancePolicyState
-        , iInfoFidaCardNumber :: Integer
-        , iInfoFidaCardPurchaseProofCurrencySymbol :: CurrencySymbol
-        , iInfoFidaCardPurchaseProofTokenName :: TokenName
-        , iInfoClaim :: Maybe ClaimInfo
         , iInfoClaimTimeToLive :: DiffMilliSeconds
         , iInfoTotalClaimsAcceptedAmount :: Integer
         , iInfoClaimTimeToPay :: DiffMilliSeconds
+        , iInfoStartDate :: Maybe POSIXTime
+        , iInfoClaim :: Maybe ClaimInfo
         }
     | PremiumPaymentInfo
         { -- | in lovelace
@@ -112,10 +115,22 @@ updatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe Insur
 updatePolicyState InsuranceInfo{..} state = Just $ InsuranceInfo{iInfoState = state, ..}
 updatePolicyState _ _ = Nothing
 
+{-# INLINEABLE untypedUpdatePolicyState #-}
+untypedUpdatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe BuiltinData
+untypedUpdatePolicyState d = fmap PlutusTx.toBuiltinData . updatePolicyState d
+
 {-# INLINEABLE updateClaim #-}
 updateClaim :: InsurancePolicyDatum -> Maybe ClaimInfo -> Maybe InsurancePolicyDatum
 updateClaim InsuranceInfo{..} claim = Just $ InsuranceInfo{iInfoClaim = claim, ..}
 updateClaim _ _ = Nothing
+
+{-# INLINEABLE untypedUpdateClaim #-}
+untypedUpdateClaim :: InsurancePolicyDatum -> ClaimInfo -> Maybe BuiltinData
+untypedUpdateClaim d = fmap PlutusTx.toBuiltinData . updateClaim d . Just
+
+{-# INLINEABLE untypedUnsetClaim #-}
+untypedUnsetClaim :: InsurancePolicyDatum -> Maybe BuiltinData
+untypedUnsetClaim d = fmap PlutusTx.toBuiltinData . updateClaim d $ Nothing
 
 PlutusTx.makeIsDataIndexed
     ''InsurancePolicyDatum
@@ -124,11 +139,16 @@ PlutusTx.makeIsDataIndexed
     , ('PolicyClaimPayment, 2)
     ]
 
+PlutusTx.makeLift ''InsurancePolicyDatum
 
 data PiggyBankDatum
     = PBankPremium PremiumAmount
     | PBankFidaCard
-        { pbfcIsSold :: Bool, pbfcFidaCardValue :: Integer, pbfcPaidClaims :: [BuiltinByteString] }
+        { pbfcIsSold :: Bool
+        , pbfcFidaCardId :: FidaCardId
+        , pbfcFidaCardValue :: Integer
+        , pbfcPaidClaims :: [BuiltinByteString]
+        }
     deriving (HPrelude.Show)
 
 PlutusTx.makeIsDataIndexed
@@ -139,16 +159,16 @@ PlutusTx.makeIsDataIndexed
 
 {-# INLINEABLE unlockedPremiumToClaim #-}
 unlockedPremiumToClaim ::
-  POSIXTimeRange ->   -- current time
-  PremiumAmount ->    -- locked premium amount (initial amount)
-  InstallmentsInfo ->  -- payment intervals
-  POSIXTime ->        -- insurance policy start date
-  PremiumAmount
+    POSIXTimeRange -> -- current time
+    PremiumAmount -> -- locked premium amount (initial amount)
+    InstallmentsInfo -> -- payment intervals
+    POSIXTime -> -- insurance policy start date
+    PremiumAmount
 unlockedPremiumToClaim range locked (InstallmentsInfo intervals dpa) start = go 0 start intervals
   where
     go _ _ [] = locked
-    go unlocked date (dt:rest) =
-      let nextDate = fromMilliSeconds dt + date
-      in
-        if (Interval.before nextDate range) then go (unlocked + dpa) nextDate rest
-        else unlocked
+    go unlocked date (dt : rest) =
+        let nextDate = fromMilliSeconds dt + date
+         in if (Interval.before nextDate range)
+                then go (unlocked + dpa) nextDate rest
+                else unlocked

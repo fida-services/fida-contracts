@@ -5,11 +5,8 @@ module Fida.Contract.Insurance.Tokens (
     policyPaymentTokenName,
 ) where
 
-import qualified Data.Text as Text
-import qualified Data.Text.Encoding as Text
 import Plutus.V2.Ledger.Api (TokenName (..))
 import PlutusTx.Prelude
-import Text.Show (Show (show))
 
 {-# INLINEABLE policyInfoTokenName #-}
 policyInfoTokenName :: TokenName

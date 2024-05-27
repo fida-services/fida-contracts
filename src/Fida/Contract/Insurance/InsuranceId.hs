@@ -1,15 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Fida.Contract.Insurance.Identifier (
+module Fida.Contract.Insurance.InsuranceId (
     mkInsuranceIdMintingPolicy,
     serialisableInsuranceIdMintingPolicy,
+    insuranceIdMintingPolicy,
     InsuranceId (..),
 ) where
 
-import Fida.Contract.Utils (mkUntypedMintingPolicy)
+import Fida.Contract.Utils (wrapPolicy)
 import Plutus.V2.Ledger.Api (
     CurrencySymbol,
     FromData,
+    MintingPolicy,
     Script,
     ScriptContext (..),
     ScriptPurpose (..),
@@ -19,6 +21,7 @@ import Plutus.V2.Ledger.Api (
     TxOutRef,
     UnsafeFromData (unsafeFromBuiltinData),
     fromCompiledCode,
+    mkMintingPolicyScript,
  )
 import qualified PlutusTx
 import PlutusTx.Prelude
@@ -52,10 +55,18 @@ mkInsuranceIdMintingPolicyUntyped ::
     BuiltinData ->
     ()
 mkInsuranceIdMintingPolicyUntyped ref =
-    mkUntypedMintingPolicy $
+    wrapPolicy $
         mkInsuranceIdMintingPolicy
             (unsafeFromBuiltinData ref)
 
 serialisableInsuranceIdMintingPolicy :: Script
 serialisableInsuranceIdMintingPolicy =
     fromCompiledCode $$(PlutusTx.compile [||mkInsuranceIdMintingPolicyUntyped||])
+
+insuranceIdMintingPolicy :: TxOutRef -> MintingPolicy
+insuranceIdMintingPolicy oref =
+    mkMintingPolicyScript $
+        $$(PlutusTx.compile [||wrappedPolicy||])
+            `PlutusTx.applyCode` PlutusTx.liftCode oref
+  where
+    wrappedPolicy = wrapPolicy . mkInsuranceIdMintingPolicy

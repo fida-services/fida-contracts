@@ -78,7 +78,7 @@ library
     Fida.Contract.Insurance
     Fida.Contract.Insurance.Authority
     Fida.Contract.Insurance.Datum
-    Fida.Contract.Insurance.Identifier
+    Fida.Contract.Insurance.InsuranceId
     Fida.Contract.Insurance.Lifecycle.Cancelled
     Fida.Contract.Insurance.Lifecycle.Funding
     Fida.Contract.Insurance.Lifecycle.Initiated
@@ -120,10 +120,17 @@ test-suite fida-contracts-test
   ghc-options:    -O2 -threaded -rtsopts -with-rtsopts=-N
   type:           exitcode-stdio-1.0
   main-is:        Main.hs
-  other-modules:  Fida.Contract.FidaPolicyContractTest
+  other-modules:
+    Fida.Contract.FidaPolicyContractTest
+    Fida.Contract.Insurance.Lifecycle.InitiatedTest
+
   build-depends:
     , bytestring
     , fida-contracts
+    , plutus-ledger-api
+    , plutus-simple-model
+    , plutus-tx
+    , plutus-tx-plugin
     , tasty
     , tasty-golden
     , tasty-hunit
