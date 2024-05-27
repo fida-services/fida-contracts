@@ -88,7 +88,6 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyI
   where
     txInfo = scriptContextTxInfo sc
 
-    isPolicyInfoSpent :: [Bool]
     isPolicyInfoSpent =
         [ True
         | TxOut _ value _ _ <- getContinuingOutputs sc

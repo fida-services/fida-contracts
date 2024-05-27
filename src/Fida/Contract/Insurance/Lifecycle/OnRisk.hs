@@ -8,18 +8,16 @@ import Fida.Contract.Insurance.Datum
     ( InsurancePolicyDatum(..)
     , ClaimInfo(..)
     , InsurancePolicyState(..)
-    , updateClaim
-    , updatePolicyState, untypedUpdateClaim, untypedUnsetClaim, untypedUpdatePolicyState
+    , untypedUpdateClaim, untypedUnsetClaim, untypedUpdatePolicyState
     )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyOnRiskRedeemer(..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
-import Plutus.V2.Ledger.Api
+import Plutus.V2.Ledger.Api ( TxInfo(..), ScriptContext(..) )
 import Plutus.V1.Ledger.Interval (before)
 import Plutus.V2.Ledger.Contexts (txSignedBy)
 import PlutusTx.Prelude
-import PlutusTx as PlutusTx
-import Fida.Contract.Utils (untypedOutputDatum, outputDatum, referenceDatums)
+import Fida.Contract.Utils (untypedOutputDatum, referenceDatums, traceIfNotSingleton)
 import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 
@@ -50,7 +48,6 @@ import Plutus.V1.Ledger.Time (fromMilliSeconds)
 
     ERROR-ON-RISK-VALIDATOR-12: Not signed by the policy holder
 
-    ERROR-ON-RISK-VALIDATOR-13: Reference InsuranceInfo utxo not found
 -}
 {-# INLINEABLE lifecycleOnRiskStateValidator #-}
 lifecycleOnRiskStateValidator ::
@@ -76,7 +73,7 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState=OnRi
             && claimAccepted == False
             && isClaimDateValid
 
-lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iInfoPolicyAuthority, iInfoClaim=Just c}) (PolicyOnRiskAcceptClaim) sc =
+lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoPolicyAuthority, iInfoClaim=Just c}) PolicyOnRiskAcceptClaim sc =
     traceIfFalse "ERROR-ON-RISK-VALIDATOR-2" (isSignedByTheAuthority sc iInfoPolicyAuthority)
         && traceIfFalse "ERROR-ON-RISK-VALIDATOR-3" correctOutputDatum
     where
@@ -84,15 +81,17 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iIn
 
         correctOutputDatum = outputDatum == untypedUpdateClaim d c {claimAccepted = True}
 
-lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iInfoPolicyHolder, iInfoClaim = Just c}) PolicyOnRiskCloseClaim sc =
-    traceIfFalse "ERROR-ON-RISK-VALIDATOR-4" (txSignedBy (scriptContextTxInfo sc) iInfoPolicyHolder)
+lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoPolicyHolder, iInfoClaim = Just _}) PolicyOnRiskCloseClaim sc =
+    traceIfFalse "ERROR-ON-RISK-VALIDATOR-4" (txSignedBy txInfo iInfoPolicyHolder)
         && traceIfFalse "ERROR-ON-RISK-VALIDATOR-5" correctOutputDatum
     where
-        outputDatum = untypedOutputDatum cs sc policyInfoTokenName
+      txInfo = scriptContextTxInfo sc
 
-        correctOutputDatum = outputDatum == untypedUnsetClaim d
+      outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
-lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iInfoPolicyAuthority}) (PolicyOnRiskFailClaim) sc =
+      correctOutputDatum = outputDatum == untypedUnsetClaim d
+
+lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoPolicyAuthority}) PolicyOnRiskFailClaim sc =
     traceIfFalse "ERROR-ON-RISK-VALIDATOR-6" (isSignedByTheAuthority sc iInfoPolicyAuthority)
         && traceIfFalse "ERROR-ON-RISK-VALIDATOR-7" correctOutputDatum
     where
@@ -100,7 +99,7 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iIn
 
         correctOutputDatum = outputDatum == untypedUnsetClaim d
 
-lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iInfoPolicyAuthority}) PolicyOnRiskCancel sc =
+lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoPolicyAuthority}) PolicyOnRiskCancel sc =
   traceIfFalse "ERROR-ON-RISK-VALIDATOR-8" isSigned
         && traceIfFalse "ERROR-ON-RISK-VALIDATOR-9" correctOutput
   where
@@ -110,24 +109,27 @@ lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoState, iIn
 
     correctOutput = outputDatum == untypedUpdatePolicyState d Cancelled
 
-lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoClaim=Just (ClaimInfo {claimDate}), iInfoState, iInfoPolicyAuthority, iInfoClaimTimeToLive}) PolicyOnRiskExpireClaim sc =
-        traceIfFalse "ERROR-ON-RISK-VALIDATOR-10" correctOutputDatum
+lifecycleOnRiskStateValidator (InsuranceId cs) d@(InsuranceInfo {iInfoClaim=Just (ClaimInfo {claimDate}), iInfoClaimTimeToLive}) PolicyOnRiskExpireClaim sc =
+    traceIfFalse "ERROR-ON-RISK-VALIDATOR-10" correctOutputDatum
         && traceIfFalse "ERROR-ON-RISK-VALIDATOR-11" claimExpired
     where
         outputDatum = untypedOutputDatum cs sc policyInfoTokenName
-        correctOutputDatum = outputDatum == (PlutusTx.toBuiltinData <$> updateClaim d Nothing)
+
+        correctOutputDatum = outputDatum == untypedUnsetClaim d
 
         claimDeadLine = claimDate + fromMilliSeconds iInfoClaimTimeToLive
 
         claimExpired = before claimDeadLine (txInfoValidRange $ scriptContextTxInfo sc)
 
 lifecycleOnRiskStateValidator (InsuranceId cs) PolicyClaimPayment PolicyOnRiskClaimPayment sc =
-        traceIfFalse "ERROR-ON-RISK-VALIDATOR-12" isSignedByPolicyHolder
+    traceIfNotSingleton "ERROR-ON-RISK-VALIDATOR-12" isSignedByPolicyHolder
     where
-        policyHolder = case referenceDatums cs sc policyInfoTokenName of
-            [InsuranceInfo {iInfoPolicyHolder}] -> iInfoPolicyHolder
-            _ -> traceError "ERROR-ON-RISK-VALIDATOR-13"
+      txInfo = scriptContextTxInfo sc
 
-        isSignedByPolicyHolder = txSignedBy (scriptContextTxInfo sc) policyHolder
+      isSignedByPolicyHolder =
+        [ True
+        | InsuranceInfo {iInfoPolicyHolder} <- referenceDatums cs sc policyInfoTokenName
+        , txSignedBy txInfo iInfoPolicyHolder
+        ]
 
 lifecycleOnRiskStateValidator _ _ _ _ = False
