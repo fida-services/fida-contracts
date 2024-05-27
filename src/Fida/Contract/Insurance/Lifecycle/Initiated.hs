@@ -11,17 +11,18 @@ import Fida.Contract.Insurance.Redeemer (PolicyInitiatedRedemeer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
 import Fida.Contract.Utils (lovelaceValueOf, traceIfNotSingleton, untypedOutputDatum)
 import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api
-    ( TxInfo(..),
-      ScriptContext(..),
-      TxOut(..),
-      Address,
-      Datum(..),
-      TxInInfo(..),
-      OutputDatum(..) )
-import Plutus.V2.Ledger.Contexts ( getContinuingOutputs )
-import PlutusTx.Prelude
+import Plutus.V2.Ledger.Api (
+    Address,
+    Datum (..),
+    OutputDatum (..),
+    ScriptContext (..),
+    TxInInfo (..),
+    TxInfo (..),
+    TxOut (..),
+ )
+import Plutus.V2.Ledger.Contexts (getContinuingOutputs)
 import qualified PlutusTx
+import PlutusTx.Prelude
 
 {- |
 
@@ -63,7 +64,6 @@ import qualified PlutusTx
   ERROR-INITIATED-VALIDATOR-6: Insurance policy state not changed to Funding
 
   ERROR-INITIATED-VALIDATOR-7: UTxO with premium payment was not spent
-
 -}
 {-# INLINEABLE lifecycleInitiatedStateValidator #-}
 lifecycleInitiatedStateValidator ::
@@ -81,7 +81,6 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo{iInfoStat
     outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
     hasCorrectOutput = outputDatum == untypedUpdatePolicyState datum Cancelled
-
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyInitiatedPayPremium sc =
     traceIfFalse "ERROR-INITIATED-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
         && traceIfNotSingleton "ERROR-INITIATED-VALIDATOR-4" isPolicyInfoSpent
@@ -100,12 +99,9 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo{..} PolicyI
         | TxOut address value (OutputDatum (Datum datum)) _ <- txInfoOutputs txInfo
         , Just (PBankPremium amount) <- [PlutusTx.fromBuiltinData datum]
         , elem address ppInfoPiggyBanks
-        , let
-            paid = lovelaceValueOf value
-          in
-            paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount
+        , let paid = lovelaceValueOf value
+           in paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount
         ]
-
 lifecycleInitiatedStateValidator (InsuranceId cs) d@InsuranceInfo{} PolicyInitiatedPayPremium sc =
     traceIfFalse "ERROR-INITIATED-VALIDATOR-6" hasCorrectOutput
         && traceIfNotSingleton "ERROR-INITIATED-VALIDATOR-7" isPremiumPaymentSpent
@@ -122,6 +118,5 @@ lifecycleInitiatedStateValidator (InsuranceId cs) d@InsuranceInfo{} PolicyInitia
         | TxInInfo _ (TxOut _ value _ _) <- txInfoInputs txInfo
         , valueOf value cs policyPaymentTokenName == 1
         ]
-
 lifecycleInitiatedStateValidator _ _ _ _ =
     trace "ERROR-INITIATED-VALIDATOR-0" False

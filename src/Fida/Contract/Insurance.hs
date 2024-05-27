@@ -3,29 +3,31 @@
 
 module Fida.Contract.Insurance (
     serialisableInsurancePolicyValidator,
-    insurancePolicyValidator
+    insurancePolicyValidator,
 ) where
 
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), untypedUpdatePolicyState)
-import Fida.Contract.Insurance.InsuranceId (InsuranceId(..))
-import Fida.Contract.Utils (untypedOutputDatum, wrapValidator, unsafeFromJust)
-import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
+import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Lifecycle.Cancelled (lifecycleCancelledStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Funding (lifecycleFundingStateValidator)
 import Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator)
+import Fida.Contract.Insurance.Lifecycle.OnRisk (lifecycleOnRiskStateValidator)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..))
+import Fida.Contract.Insurance.Tokens (policyInfoTokenName)
+import Fida.Contract.Utils (unsafeFromJust, untypedOutputDatum, wrapValidator)
+import Plutus.V1.Ledger.Interval (before)
+import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V2.Ledger.Api (
     Script,
     ScriptContext (..),
     UnsafeFromData (unsafeFromBuiltinData),
+    Validator,
     fromCompiledCode,
-    txInfoValidRange, Validator, mkValidatorScript,
+    mkValidatorScript,
+    txInfoValidRange,
  )
 import qualified PlutusTx
-import Plutus.V1.Ledger.Interval (before)
 import PlutusTx.Prelude
-import Plutus.V1.Ledger.Time (fromMilliSeconds)
-import Fida.Contract.Insurance.Lifecycle.OnRisk (lifecycleOnRiskStateValidator)
 
 {- |
 
@@ -40,10 +42,7 @@ import Fida.Contract.Insurance.Lifecycle.OnRisk (lifecycleOnRiskStateValidator)
     ERROR-INSURANCE-MAIN-VALIDATOR-2: TODO
 
     ERROR-INSURANCE-MAIN-VALIDATOR-3: TODO
-
-
 -}
-
 {-# INLINEABLE mkInsurancePolicyValidator #-}
 mkInsurancePolicyValidator ::
     InsuranceId ->
@@ -53,33 +52,28 @@ mkInsurancePolicyValidator ::
     Bool
 mkInsurancePolicyValidator iid d (PolicyInitiated r) sc =
     lifecycleInitiatedStateValidator iid d r sc
-
 mkInsurancePolicyValidator iid d@(InsuranceInfo{iInfoState = Cancelled}) r sc =
     lifecycleCancelledStateValidator iid d r sc
-
 mkInsurancePolicyValidator iid d (PolicyFunding r) sc =
     lifecycleFundingStateValidator iid d r sc
-
 mkInsurancePolicyValidator iid d (PolicyOnRisk r) sc =
     lifecycleOnRiskStateValidator iid d r sc
-
 mkInsurancePolicyValidator (InsuranceId cs) d@(InsuranceInfo{iInfoStartDate, iInfoInsurancePeriod}) PolicyExpire sc =
     traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-1" hasStartDate
         && traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-2" hasExpired
         && traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-3" correctOutputDatum
-    where
-      txInfo = scriptContextTxInfo sc
+  where
+    txInfo = scriptContextTxInfo sc
 
-      hasStartDate = isJust iInfoStartDate
+    hasStartDate = isJust iInfoStartDate
 
-      expireDate = unsafeFromJust iInfoStartDate + fromMilliSeconds iInfoInsurancePeriod
+    expireDate = unsafeFromJust iInfoStartDate + fromMilliSeconds iInfoInsurancePeriod
 
-      hasExpired = expireDate `before` txInfoValidRange txInfo
+    hasExpired = expireDate `before` txInfoValidRange txInfo
 
-      outputDatum = untypedOutputDatum cs sc policyInfoTokenName
+    outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
-      correctOutputDatum = outputDatum == untypedUpdatePolicyState d Expired
-
+    correctOutputDatum = outputDatum == untypedUpdatePolicyState d Expired
 mkInsurancePolicyValidator _ _ _ _ =
     trace "ERROR-INSURANCE-MAIN-VALIDATOR-0" False
 
@@ -100,8 +94,9 @@ serialisableInsurancePolicyValidator =
     fromCompiledCode $$(PlutusTx.compile [||mkInsurancePolicyValidatorUntyped||])
 
 insurancePolicyValidator :: InsuranceId -> Validator
-insurancePolicyValidator iid = mkValidatorScript $
-    $$(PlutusTx.compile [|| wrappedValidator ||])
-      `PlutusTx.applyCode` PlutusTx.liftCode iid
+insurancePolicyValidator iid =
+    mkValidatorScript $
+        $$(PlutusTx.compile [||wrappedValidator||])
+            `PlutusTx.applyCode` PlutusTx.liftCode iid
   where
     wrappedValidator = wrapValidator . mkInsurancePolicyValidator

@@ -11,6 +11,7 @@ import Fida.Contract.Utils (wrapPolicy)
 import Plutus.V2.Ledger.Api (
     CurrencySymbol,
     FromData,
+    MintingPolicy,
     Script,
     ScriptContext (..),
     ScriptPurpose (..),
@@ -19,7 +20,8 @@ import Plutus.V2.Ledger.Api (
     TxInfo (..),
     TxOutRef,
     UnsafeFromData (unsafeFromBuiltinData),
-    fromCompiledCode, MintingPolicy, mkMintingPolicyScript,
+    fromCompiledCode,
+    mkMintingPolicyScript,
  )
 import qualified PlutusTx
 import PlutusTx.Prelude
@@ -61,10 +63,10 @@ serialisableInsuranceIdMintingPolicy :: Script
 serialisableInsuranceIdMintingPolicy =
     fromCompiledCode $$(PlutusTx.compile [||mkInsuranceIdMintingPolicyUntyped||])
 
-
 insuranceIdMintingPolicy :: TxOutRef -> MintingPolicy
-insuranceIdMintingPolicy oref = mkMintingPolicyScript $
-    $$(PlutusTx.compile [|| wrappedPolicy ||])
-      `PlutusTx.applyCode` PlutusTx.liftCode oref
+insuranceIdMintingPolicy oref =
+    mkMintingPolicyScript $
+        $$(PlutusTx.compile [||wrappedPolicy||])
+            `PlutusTx.applyCode` PlutusTx.liftCode oref
   where
     wrappedPolicy = wrapPolicy . mkInsuranceIdMintingPolicy

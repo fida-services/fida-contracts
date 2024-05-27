@@ -23,23 +23,29 @@ module Fida.Contract.Utils (
     unsafeFromJust,
 ) where
 
-import Plutus.V1.Ledger.Value
-    ( TokenName, CurrencySymbol, adaSymbol, adaToken, valueOf, Value )
-import Plutus.V2.Ledger.Api
-    ( UnsafeFromData(..),
-      TxInfo(..),
-      ScriptContext(..),
-      FromData,
-      TxOut(..),
-      Datum(..),
-      TxInInfo(..),
-      OutputDatum(..) )
+import Plutus.V1.Ledger.Value (
+    CurrencySymbol,
+    TokenName,
+    Value,
+    adaSymbol,
+    adaToken,
+    valueOf,
+ )
+import Plutus.V2.Ledger.Api (
+    Datum (..),
+    FromData,
+    OutputDatum (..),
+    ScriptContext (..),
+    TxInInfo (..),
+    TxInfo (..),
+    TxOut (..),
+    UnsafeFromData (..),
+ )
 import Plutus.V2.Ledger.Contexts (getContinuingOutputs)
 import qualified PlutusTx
 import PlutusTx.Prelude
 
 -- | common
-
 {-# INLINEABLE unsafeFromJust #-}
 unsafeFromJust :: Maybe a -> a
 unsafeFromJust (Just a) = a
@@ -62,9 +68,9 @@ unsafeFromSingleton _ = traceError "not singleton"
 
 {-# INLINEABLE unsafeFromSingleton' #-}
 unsafeFromSingleton' :: BuiltinString -> [a] -> a
-unsafeFromSingleton' _ [a]  = a
+unsafeFromSingleton' _ [a] = a
 unsafeFromSingleton' err [] = traceError $ err <> ".1"
-unsafeFromSingleton' err _  = traceError $ err <> ".2"
+unsafeFromSingleton' err _ = traceError $ err <> ".2"
 
 {-# INLINEABLE traceIfNotSingleton #-}
 traceIfNotSingleton :: BuiltinString -> [a] -> a
@@ -86,37 +92,37 @@ count p = go 0
         | otherwise = go n xs
 
 -- | wrappers
-
-{-# INLINABLE wrapValidator #-}
+{-# INLINEABLE wrapValidator #-}
 wrapValidator ::
-  ( UnsafeFromData d, UnsafeFromData r) =>
-  (d -> r -> ScriptContext -> Bool)->
-  (BuiltinData -> BuiltinData -> BuiltinData -> ())
+    (UnsafeFromData d, UnsafeFromData r) =>
+    (d -> r -> ScriptContext -> Bool) ->
+    (BuiltinData -> BuiltinData -> BuiltinData -> ())
 wrapValidator f d r ctx =
-  check $ f
-      (unsafeFromBuiltinData d)
-      (unsafeFromBuiltinData r)
-      (unsafeFromBuiltinData ctx)
+    check $
+        f
+            (unsafeFromBuiltinData d)
+            (unsafeFromBuiltinData r)
+            (unsafeFromBuiltinData ctx)
 
-{-# INLINABLE wrapPolicy #-}
+{-# INLINEABLE wrapPolicy #-}
 wrapPolicy ::
-  UnsafeFromData r =>
-  (r -> ScriptContext -> Bool)->
-  (BuiltinData -> BuiltinData -> ())
+    UnsafeFromData r =>
+    (r -> ScriptContext -> Bool) ->
+    (BuiltinData -> BuiltinData -> ())
 wrapPolicy f r ctx =
-  check $ f
-      (unsafeFromBuiltinData r)
-      (unsafeFromBuiltinData ctx)
+    check $
+        f
+            (unsafeFromBuiltinData r)
+            (unsafeFromBuiltinData ctx)
 
-{-# INLINABLE wrapStakeValidator #-}
+{-# INLINEABLE wrapStakeValidator #-}
 wrapStakeValidator ::
-  UnsafeFromData r =>
-  (r -> ScriptContext -> Bool) ->
-  (BuiltinData -> BuiltinData -> ())
+    UnsafeFromData r =>
+    (r -> ScriptContext -> Bool) ->
+    (BuiltinData -> BuiltinData -> ())
 wrapStakeValidator = wrapPolicy
 
 -- | outputs
-
 {-# INLINEABLE untypedOutputDatums #-}
 untypedOutputDatums :: CurrencySymbol -> ScriptContext -> TokenName -> [BuiltinData]
 untypedOutputDatums cs sc tn =
@@ -134,7 +140,7 @@ unsafeUntypedOutputDatum :: CurrencySymbol -> ScriptContext -> TokenName -> Buil
 unsafeUntypedOutputDatum cs sc = unsafeFromSingleton . untypedOutputDatums cs sc
 
 {-# INLINEABLE outputs' #-}
-outputs' :: FromData a => CurrencySymbol -> [TxOut] -> TokenName -> [(TxOut,a)]
+outputs' :: FromData a => CurrencySymbol -> [TxOut] -> TokenName -> [(TxOut, a)]
 outputs' cs outs tn =
     [ (txOut, datum)
     | txOut@(TxOut _ value (OutputDatum (Datum d)) _) <- outs
@@ -143,7 +149,7 @@ outputs' cs outs tn =
     ]
 
 {-# INLINEABLE outputs #-}
-outputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut,a)]
+outputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut, a)]
 outputs cs sc = outputs' cs (getContinuingOutputs sc)
 
 {-# INLINEABLE output #-}
@@ -166,7 +172,7 @@ unsafeOutputDatum cs sc = unsafeFromSingleton . outputDatums cs sc
 referenceOutputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut, a)]
 referenceOutputs cs sc = outputs' cs (getOuts sc)
   where
-    getOuts =  map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
+    getOuts = map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
 
 {-# INLINEABLE unsafeReferenceOutput #-}
 unsafeReferenceOutput :: FromData a => BuiltinString -> CurrencySymbol -> ScriptContext -> TokenName -> (TxOut, a)

@@ -123,16 +123,17 @@ test-suite fida-contracts-test
   other-modules:
     Fida.Contract.FidaPolicyContractTest
     Fida.Contract.Insurance.Lifecycle.InitiatedTest
+
   build-depends:
     , bytestring
     , fida-contracts
+    , plutus-ledger-api
+    , plutus-simple-model
+    , plutus-tx
+    , plutus-tx-plugin
     , tasty
     , tasty-golden
     , tasty-hunit
     , text
-    , plutus-ledger-api
-    , plutus-tx
-    , plutus-tx-plugin
-    , plutus-simple-model
 
   hs-source-dirs: test

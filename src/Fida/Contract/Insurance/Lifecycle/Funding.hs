@@ -7,19 +7,20 @@ module Fida.Contract.Insurance.Lifecycle.Funding (
 
 import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
 import Fida.Contract.Insurance.Datum (
+    FidaCardId (..),
     InsurancePolicyDatum (..),
     InsurancePolicyState (..),
-    PiggyBankDatum(..),
-    FidaCardId (..), untypedUpdatePolicyState
+    PiggyBankDatum (..),
+    untypedUpdatePolicyState,
  )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyFundingRedeemer (PolicyFundingCancel, PolicyFundingFundingComplete))
-import Fida.Contract.Insurance.Tokens (policyInfoTokenName, fidaCardStatusTokenName)
+import Fida.Contract.Insurance.Tokens (fidaCardStatusTokenName, policyInfoTokenName)
 import Fida.Contract.Utils (untypedOutputDatum)
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api (
-    Datum(Datum),
-    OutputDatum(OutputDatum),
+    Datum (Datum),
+    OutputDatum (OutputDatum),
     ScriptContext (..),
     TxInInfo (..),
     TxInfo (..),
@@ -27,7 +28,6 @@ import Plutus.V2.Ledger.Api (
     fromBuiltinData,
  )
 import PlutusTx.Prelude
-
 
 {- |
 
@@ -44,9 +44,7 @@ import PlutusTx.Prelude
     ERROR-FUNDING-VALIDATOR-3: the number of sold fida cards is smaller than the number of fida cards
 
     ERROR-FUNDING-VALIDATOR-4: the output datum is not updated correctly
-
 -}
-
 {-# INLINEABLE lifecycleFundingStateValidator #-}
 lifecycleFundingStateValidator ::
     InsuranceId ->
@@ -63,25 +61,23 @@ lifecycleFundingStateValidator (InsuranceId cs) d@InsuranceInfo{iInfoPolicyAutho
     outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
     hasCorrectOutput = outputDatum == untypedUpdatePolicyState d Cancelled
-
 lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo{iInfoState = Funding, iInfoFidaCardNumber}) PolicyFundingFundingComplete sc =
     traceIfFalse "ERROR-FUNDING-VALIDATOR-3" (fidaCardsSold >= iInfoFidaCardNumber)
         && traceIfFalse "ERROR-FUNDING-VALIDATOR-4" hasCorrectOutput
-    where
-        txInfo = scriptContextTxInfo sc
+  where
+    txInfo = scriptContextTxInfo sc
 
-        referenceInputs = txInfoReferenceInputs txInfo
+    referenceInputs = txInfoReferenceInputs txInfo
 
-        fidaCardsSold =
-          length . nub $
+    fidaCardsSold =
+        length . nub $
             [ cid
             | TxInInfo _ (TxOut _ v (OutputDatum (Datum d)) _) <- referenceInputs
             , valueOf v cs fidaCardStatusTokenName == 1
-            , Just (PBankFidaCard {pbfcIsSold = True, pbfcFidaCardId = FidaCardId cid}) <- [fromBuiltinData d]
+            , Just (PBankFidaCard{pbfcIsSold = True, pbfcFidaCardId = FidaCardId cid}) <- [fromBuiltinData d]
             ]
 
-        outputDatum = untypedOutputDatum cs sc policyInfoTokenName
+    outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
-        hasCorrectOutput = outputDatum == untypedUpdatePolicyState iinfo OnRisk
-
+    hasCorrectOutput = outputDatum == untypedUpdatePolicyState iinfo OnRisk
 lifecycleFundingStateValidator _ _ _ _ = trace "ERROR-FUNDING-VALIDATOR-0" False
