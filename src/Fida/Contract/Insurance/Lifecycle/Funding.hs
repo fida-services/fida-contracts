@@ -29,6 +29,9 @@ import Plutus.V2.Ledger.Api
     fromBuiltinData,
   )
 import PlutusTx.Prelude
+import qualified Plutus.V1.Ledger.Api as PlutusTx
+import Plutus.V1.Ledger.Interval (before)
+import Plutus.V2.Ledger.Contexts (txSignedBy)
 
 -- |
 --
@@ -45,6 +48,11 @@ import PlutusTx.Prelude
 --    ERROR-FUNDING-VALIDATOR-3: the number of sold fida cards is smaller than the number of fida cards
 --
 --    ERROR-FUNDING-VALIDATOR-4: the output datum is not updated correctly
+--
+--    ERROR-FUNDING-VALIDATOR-5: start date must be before valid range
+--
+--    ERROR-FUNDING-VALIDATOR-6: tx is not signed by the policy holder
+--
 {-# INLINEABLE lifecycleFundingStateValidator #-}
 lifecycleFundingStateValidator ::
   InsuranceId ->
@@ -61,9 +69,12 @@ lifecycleFundingStateValidator (InsuranceId cs) d@InsuranceInfo {iInfoPolicyAuth
   outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
   hasCorrectOutput = outputDatum == untypedUpdatePolicyState d Cancelled
-lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState = Funding, iInfoFidaCardNumber}) PolicyFundingFundingComplete sc =
+
+lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState = Funding, iInfoFidaCardNumber, iInfoPolicyHolder}) (PolicyFundingFundingComplete startDate) sc =
   traceIfFalse "ERROR-FUNDING-VALIDATOR-3" (fidaCardsSold >= iInfoFidaCardNumber)
     && traceIfFalse "ERROR-FUNDING-VALIDATOR-4" hasCorrectOutput
+    && traceIfFalse "ERROR-FUNDING-VALIDATOR-5" isStartDateCorrect
+    && traceIfFalse "ERROR-FUNDING-VALIDATOR-6" isSignedByPolicyHolder
  where
   txInfo = scriptContextTxInfo sc
 
@@ -79,5 +90,12 @@ lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState
 
   outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
-  hasCorrectOutput = outputDatum == untypedUpdatePolicyState iinfo OnRisk
+  updatedDatum = PlutusTx.toBuiltinData $ iinfo {iInfoState = OnRisk, iInfoStartDate = Just startDate}
+
+  hasCorrectOutput = outputDatum == Just updatedDatum
+
+  isStartDateCorrect = startDate `before` txInfoValidRange txInfo
+
+  isSignedByPolicyHolder = txSignedBy txInfo iInfoPolicyHolder
+
 lifecycleFundingStateValidator _ _ _ _ = trace "ERROR-FUNDING-VALIDATOR-0" False
