@@ -100,6 +100,7 @@ data InsurancePolicyDatum
       , iInfoClaimTimeToLive :: DiffMilliSeconds
       , iInfoTotalClaimsAcceptedAmount :: Integer
       , iInfoClaimTimeToPay :: DiffMilliSeconds
+      , iInfoFundingDeadline :: POSIXTime
       , iInfoStartDate :: Maybe POSIXTime
       , iInfoClaim :: Maybe ClaimInfo
       }

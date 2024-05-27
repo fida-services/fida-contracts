@@ -4,6 +4,7 @@ module Fida.Contract.Insurance.Redeemer where
 
 import Fida.Contract.Insurance.Datum (ClaimInfo)
 import qualified PlutusTx
+import Plutus.V2.Ledger.Api (POSIXTime)
 
 data PolicyInitiatedRedemeer
   = PolicyInitiatedCancel
@@ -17,7 +18,7 @@ PlutusTx.makeIsDataIndexed
 
 data PolicyFundingRedeemer
   = PolicyFundingCancel
-  | PolicyFundingFundingComplete
+  | PolicyFundingFundingComplete POSIXTime
 
 PlutusTx.makeIsDataIndexed
   ''PolicyFundingRedeemer
@@ -69,6 +70,7 @@ data PiggyBankRedeemer
   | PayForClaimWithCollateral
   | UnlockCollateralOnCancel
   | ClaimCollateral
+  | UnlockCollateral
 
 PlutusTx.makeIsDataIndexed
   ''PiggyBankRedeemer
@@ -79,4 +81,5 @@ PlutusTx.makeIsDataIndexed
   , ('ClaimCollateral, 4)
   , ('ClaimPremiumOnCancel, 5)
   , ('UnlockCollateralOnCancel, 6)
+  , ('UnlockCollateral, 7)
   ]

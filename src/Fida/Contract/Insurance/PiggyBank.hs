@@ -69,6 +69,11 @@ import PlutusTx.Prelude
 --  ERROR-PIGGY-BANK-VALIDATOR-21:
 --
 --  ERROR-PIGGY-BANK-VALIDATOR-22:
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-23:
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-24:
+
 {-# INLINEABLE mkPiggyBankValidator #-}
 mkPiggyBankValidator ::
   InsuranceId ->
@@ -233,6 +238,18 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCo
       ]
 
   isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
+
+mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCollateral sc =
+  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-15" isPolicyExpired
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-16" isFidaCardOwner
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-17" isClaimPaid
+
+  where
+   isPolicyExpired = False
+   isFidaCardOwner = False
+   isClaimPaid = False
+  
+
 mkPiggyBankValidator _ _ _ _ _ = False
 
 {-# INLINEABLE mkPiggyBankValidatorUntyped #-}
