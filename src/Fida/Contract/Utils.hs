@@ -1,5 +1,5 @@
-module Fida.Contract.Utils (
-    traceIfNotSingleton,
+module Fida.Contract.Utils
+  ( traceIfNotSingleton,
     count,
     lovelaceValueOf,
     output,
@@ -21,18 +21,19 @@ module Fida.Contract.Utils (
     wrapStakeValidator,
     wrapValidator,
     unsafeFromJust,
-) where
+  )
+where
 
-import Plutus.V1.Ledger.Value (
-    CurrencySymbol,
+import Plutus.V1.Ledger.Value
+  ( CurrencySymbol,
     TokenName,
     Value,
     adaSymbol,
     adaToken,
     valueOf,
- )
-import Plutus.V2.Ledger.Api (
-    Datum (..),
+  )
+import Plutus.V2.Ledger.Api
+  ( Datum (..),
     FromData,
     OutputDatum (..),
     ScriptContext (..),
@@ -40,7 +41,7 @@ import Plutus.V2.Ledger.Api (
     TxInfo (..),
     TxOut (..),
     UnsafeFromData (..),
- )
+  )
 import Plutus.V2.Ledger.Contexts (getContinuingOutputs)
 import qualified PlutusTx
 import PlutusTx.Prelude
@@ -85,51 +86,51 @@ maybeToList _ = []
 {-# INLINEABLE count #-}
 count :: (a -> Bool) -> [a] -> Integer
 count p = go 0
-  where
-    go n [] = n
-    go n (x : xs)
-        | p x = go (n + 1) xs
-        | otherwise = go n xs
+ where
+  go n [] = n
+  go n (x : xs)
+    | p x = go (n + 1) xs
+    | otherwise = go n xs
 
 -- | wrappers
 {-# INLINEABLE wrapValidator #-}
 wrapValidator ::
-    (UnsafeFromData d, UnsafeFromData r) =>
-    (d -> r -> ScriptContext -> Bool) ->
-    (BuiltinData -> BuiltinData -> BuiltinData -> ())
+  (UnsafeFromData d, UnsafeFromData r) =>
+  (d -> r -> ScriptContext -> Bool) ->
+  (BuiltinData -> BuiltinData -> BuiltinData -> ())
 wrapValidator f d r ctx =
-    check $
-        f
-            (unsafeFromBuiltinData d)
-            (unsafeFromBuiltinData r)
-            (unsafeFromBuiltinData ctx)
+  check $
+    f
+      (unsafeFromBuiltinData d)
+      (unsafeFromBuiltinData r)
+      (unsafeFromBuiltinData ctx)
 
 {-# INLINEABLE wrapPolicy #-}
 wrapPolicy ::
-    UnsafeFromData r =>
-    (r -> ScriptContext -> Bool) ->
-    (BuiltinData -> BuiltinData -> ())
+  UnsafeFromData r =>
+  (r -> ScriptContext -> Bool) ->
+  (BuiltinData -> BuiltinData -> ())
 wrapPolicy f r ctx =
-    check $
-        f
-            (unsafeFromBuiltinData r)
-            (unsafeFromBuiltinData ctx)
+  check $
+    f
+      (unsafeFromBuiltinData r)
+      (unsafeFromBuiltinData ctx)
 
 {-# INLINEABLE wrapStakeValidator #-}
 wrapStakeValidator ::
-    UnsafeFromData r =>
-    (r -> ScriptContext -> Bool) ->
-    (BuiltinData -> BuiltinData -> ())
+  UnsafeFromData r =>
+  (r -> ScriptContext -> Bool) ->
+  (BuiltinData -> BuiltinData -> ())
 wrapStakeValidator = wrapPolicy
 
 -- | outputs
 {-# INLINEABLE untypedOutputDatums #-}
 untypedOutputDatums :: CurrencySymbol -> ScriptContext -> TokenName -> [BuiltinData]
 untypedOutputDatums cs sc tn =
-    [ d
-    | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
-    , valueOf value cs tn == 1
-    ]
+  [ d
+  | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+  , valueOf value cs tn == 1
+  ]
 
 {-# INLINEABLE untypedOutputDatum #-}
 untypedOutputDatum :: CurrencySymbol -> ScriptContext -> TokenName -> Maybe BuiltinData
@@ -142,11 +143,11 @@ unsafeUntypedOutputDatum cs sc = unsafeFromSingleton . untypedOutputDatums cs sc
 {-# INLINEABLE outputs' #-}
 outputs' :: FromData a => CurrencySymbol -> [TxOut] -> TokenName -> [(TxOut, a)]
 outputs' cs outs tn =
-    [ (txOut, datum)
-    | txOut@(TxOut _ value (OutputDatum (Datum d)) _) <- outs
-    , valueOf value cs tn == 1
-    , Just datum <- [PlutusTx.fromBuiltinData d]
-    ]
+  [ (txOut, datum)
+  | txOut@(TxOut _ value (OutputDatum (Datum d)) _) <- outs
+  , valueOf value cs tn == 1
+  , Just datum <- [PlutusTx.fromBuiltinData d]
+  ]
 
 {-# INLINEABLE outputs #-}
 outputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut, a)]
@@ -171,8 +172,8 @@ unsafeOutputDatum cs sc = unsafeFromSingleton . outputDatums cs sc
 {-# INLINEABLE referenceOutputs #-}
 referenceOutputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut, a)]
 referenceOutputs cs sc = outputs' cs (getOuts sc)
-  where
-    getOuts = map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
+ where
+  getOuts = map txInInfoResolved . txInfoReferenceInputs . scriptContextTxInfo
 
 {-# INLINEABLE unsafeReferenceOutput #-}
 unsafeReferenceOutput :: FromData a => BuiltinString -> CurrencySymbol -> ScriptContext -> TokenName -> (TxOut, a)
@@ -189,10 +190,10 @@ unsafeReferenceDatum err cs sc = unsafeFromSingleton' err . referenceDatums cs s
 {-# INLINEABLE findOutputDatumsByType #-}
 findOutputDatumsByType :: FromData a => ScriptContext -> [a]
 findOutputDatumsByType sc =
-    [ datum
-    | TxOut _ _value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
-    , Just datum <- [PlutusTx.fromBuiltinData d]
-    ]
+  [ datum
+  | TxOut _ _value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
+  , Just datum <- [PlutusTx.fromBuiltinData d]
+  ]
 
 {-# INLINEABLE findOutputDatumByType #-}
 findOutputDatumByType :: FromData a => ScriptContext -> Maybe a

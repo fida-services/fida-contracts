@@ -1,6 +1,7 @@
-module Fida.Contract.Insurance.Lifecycle.Cancelled (
-    lifecycleCancelledStateValidator,
-) where
+module Fida.Contract.Insurance.Lifecycle.Cancelled
+  ( lifecycleCancelledStateValidator,
+  )
+where
 
 import Fida.Contract.Insurance.Datum (InsurancePolicyDatum)
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
@@ -10,9 +11,9 @@ import PlutusTx.Prelude
 
 {-# INLINEABLE lifecycleCancelledStateValidator #-}
 lifecycleCancelledStateValidator ::
-    InsuranceId ->
-    InsurancePolicyDatum ->
-    InsurancePolicyRedeemer ->
-    ScriptContext ->
-    Bool
+  InsuranceId ->
+  InsurancePolicyDatum ->
+  InsurancePolicyRedeemer ->
+  ScriptContext ->
+  Bool
 lifecycleCancelledStateValidator _ _ _ _ = trace "ERROR-CANCELLED-VALIDATOR-0" False

@@ -10,8 +10,8 @@ main = defaultMain tests
 
 tests :: TestTree
 tests =
-    testGroup
-        "Fida Contract Tests"
-        [ FidaPolicyContractTest.tests
-        , InitiatedTest.tests
-        ]
+  testGroup
+    "Fida Contract Tests"
+    [ FidaPolicyContractTest.tests
+    , InitiatedTest.tests
+    ]

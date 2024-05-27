@@ -6,77 +6,77 @@ import Fida.Contract.Insurance.Datum (ClaimInfo)
 import qualified PlutusTx
 
 data PolicyInitiatedRedemeer
-    = PolicyInitiatedCancel
-    | PolicyInitiatedPayPremium
+  = PolicyInitiatedCancel
+  | PolicyInitiatedPayPremium
 
 PlutusTx.makeIsDataIndexed
-    ''PolicyInitiatedRedemeer
-    [ ('PolicyInitiatedCancel, 0)
-    , ('PolicyInitiatedPayPremium, 1)
-    ]
+  ''PolicyInitiatedRedemeer
+  [ ('PolicyInitiatedCancel, 0)
+  , ('PolicyInitiatedPayPremium, 1)
+  ]
 
 data PolicyFundingRedeemer
-    = PolicyFundingCancel
-    | PolicyFundingFundingComplete
+  = PolicyFundingCancel
+  | PolicyFundingFundingComplete
 
 PlutusTx.makeIsDataIndexed
-    ''PolicyFundingRedeemer
-    [ ('PolicyFundingCancel, 0)
-    , ('PolicyFundingFundingComplete, 1)
-    ]
+  ''PolicyFundingRedeemer
+  [ ('PolicyFundingCancel, 0)
+  , ('PolicyFundingFundingComplete, 1)
+  ]
 
 data PolicyOnRiskRedeemer
-    = PolicyOnRiskCreateClaim ClaimInfo
-    | PolicyOnRiskCloseClaim
-    | PolicyOnRiskAcceptClaim
-    | PolicyOnRiskFinalizeClaim
-    | PolicyOnRiskExpireClaim
-    | PolicyOnRiskFailClaim
-    | PolicyOnRiskCancel
-    | PolicyOnRiskClaimPayment
+  = PolicyOnRiskCreateClaim ClaimInfo
+  | PolicyOnRiskCloseClaim
+  | PolicyOnRiskAcceptClaim
+  | PolicyOnRiskFinalizeClaim
+  | PolicyOnRiskExpireClaim
+  | PolicyOnRiskFailClaim
+  | PolicyOnRiskCancel
+  | PolicyOnRiskClaimPayment
 
 PlutusTx.makeIsDataIndexed
-    ''PolicyOnRiskRedeemer
-    [ ('PolicyOnRiskCreateClaim, 0)
-    , ('PolicyOnRiskCloseClaim, 1)
-    , ('PolicyOnRiskAcceptClaim, 2)
-    , ('PolicyOnRiskFinalizeClaim, 3)
-    , ('PolicyOnRiskExpireClaim, 4)
-    , ('PolicyOnRiskFailClaim, 5)
-    , ('PolicyOnRiskCancel, 6)
-    , ('PolicyOnRiskClaimPayment, 7)
-    ]
+  ''PolicyOnRiskRedeemer
+  [ ('PolicyOnRiskCreateClaim, 0)
+  , ('PolicyOnRiskCloseClaim, 1)
+  , ('PolicyOnRiskAcceptClaim, 2)
+  , ('PolicyOnRiskFinalizeClaim, 3)
+  , ('PolicyOnRiskExpireClaim, 4)
+  , ('PolicyOnRiskFailClaim, 5)
+  , ('PolicyOnRiskCancel, 6)
+  , ('PolicyOnRiskClaimPayment, 7)
+  ]
 
 data InsurancePolicyRedeemer
-    = PolicyInitiated PolicyInitiatedRedemeer
-    | PolicyFunding PolicyFundingRedeemer
-    | PolicyOnRisk PolicyOnRiskRedeemer
-    | PolicyExpire
+  = PolicyInitiated PolicyInitiatedRedemeer
+  | PolicyFunding PolicyFundingRedeemer
+  | PolicyOnRisk PolicyOnRiskRedeemer
+  | PolicyExpire
 
 PlutusTx.makeIsDataIndexed
-    ''InsurancePolicyRedeemer
-    [ ('PolicyInitiated, 0)
-    , ('PolicyFunding, 1)
-    , ('PolicyOnRisk, 2)
-    , ('PolicyExpire, 3)
-    ]
+  ''InsurancePolicyRedeemer
+  [ ('PolicyInitiated, 0)
+  , ('PolicyFunding, 1)
+  , ('PolicyOnRisk, 2)
+  , ('PolicyExpire, 3)
+  ]
 
 data PiggyBankRedeemer
-    = BuyFidaCard
-    | SellFidaCard
-    | ClaimPremium
-    | ClaimPremiumOnCancel
-    | PayForClaimWithCollateral
-    | UnlockCollateralOnCancel
-    | ClaimCollateral
+  = BuyFidaCard
+  | SellFidaCard
+  | ClaimPremium
+  | ClaimPremiumOnCancel
+  | PayForClaimWithCollateral
+  | UnlockCollateralOnCancel
+  | ClaimCollateral
 
 PlutusTx.makeIsDataIndexed
-    ''PiggyBankRedeemer
-    [ ('BuyFidaCard, 0)
-    , ('SellFidaCard, 1)
-    , ('ClaimPremium, 2)
-    , ('PayForClaimWithCollateral, 3)
-    , ('ClaimCollateral, 4)
-    , ('ClaimPremiumOnCancel, 5)
-    , ('UnlockCollateralOnCancel, 6)
-    ]
+  ''PiggyBankRedeemer
+  [ ('BuyFidaCard, 0)
+  , ('SellFidaCard, 1)
+  , ('ClaimPremium, 2)
+  , ('PayForClaimWithCollateral, 3)
+  , ('ClaimCollateral, 4)
+  , ('ClaimPremiumOnCancel, 5)
+  , ('UnlockCollateralOnCancel, 6)
+  ]

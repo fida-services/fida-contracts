@@ -7,9 +7,9 @@ import Prelude
 
 tests :: TestTree
 tests =
-    testGroup
-        "Unit tests for FidaPolicyContract module"
-        [ simpleTest
-        ]
+  testGroup
+    "Unit tests for FidaPolicyContract module"
+    [ simpleTest
+    ]
 
 simpleTest = testCase "sorting array" $ [1, 2, 3] @?= sort [2, 3, 1]

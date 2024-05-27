@@ -1,9 +1,10 @@
-module Fida.Contract.Insurance.Tokens (
-    policyInfoTokenName,
+module Fida.Contract.Insurance.Tokens
+  ( policyInfoTokenName,
     fidaCardTokenName,
     fidaCardStatusTokenName,
     policyPaymentTokenName,
-) where
+  )
+where
 
 import Plutus.V2.Ledger.Api (TokenName (..))
 import PlutusTx.Prelude
