@@ -8,6 +8,7 @@ module Fida.Contract.Insurance.Datum
     PiggyBankDatum (..),
     ClaimInfo (..),
     FidaCardId (..),
+    InstallmentsInfo (..),
     updatePolicyState,
     untypedUpdatePolicyState,
     updateClaim,
