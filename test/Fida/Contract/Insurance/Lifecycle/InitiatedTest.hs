@@ -10,7 +10,7 @@ import Fida.Contract.Insurance.Datum
 import Fida.Contract.Insurance.InsuranceId
 import Fida.Contract.Insurance.Redeemer
 import Fida.Contract.Insurance.PiggyBank
-import Plutus.Model
+import Plutus.Model hiding (days)
 import Plutus.V2.Ledger.Api
 --import PlutusTx.Prelude (Bool (..), Eq ((==)), Integer, return, ($), (&&), (.))
 import Test.Tasty (TestTree, testGroup)
@@ -18,6 +18,8 @@ import Test.Tasty.HUnit
 import Prelude
 import Fida.Contract.Insurance.Tokens
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
+import Plutus.V1.Ledger.Time (DiffMilliSeconds (..), fromMilliSeconds)
+
 
 tests :: TestTree
 tests =
@@ -38,6 +40,7 @@ data InsuranceCreateParams = InsuranceCreateParams
   , icpPolicyPrice :: Integer
   , icpFidaCardQuantity :: Integer
   , icpFidaCardValue :: Integer
+  , icpPolicyAuthority :: InsuranceAuthority
   }
 
 insurancePolicy :: InsuranceId -> InsurancePolicy
@@ -75,6 +78,24 @@ fidaCardFromInt = FidaCardId . stringToBuiltinByteString . show
 iinfoFromParams :: InsuranceCreateParams -> InsurancePolicyDatum
 iinfoFromParams InsuranceCreateParams {..} =
   let iInfoClaim = Nothing
+      iInfoStartDate = Nothing
+      iInfoCollateralAmount = icpFidaCardQuantity * icpFidaCardValue
+      iInfoFidaCardValue = icpFidaCardValue
+      iInfoFidaCardNumber = icpFidaCardQuantity
+      iInfoPremiumAmount = icpPolicyPrice
+      iInfoInstallments =
+        InstallmentsInfo
+          [ days 90
+          , days 90
+          , days 90
+          ]
+          (iInfoPremiumAmount `div` iInfoFidaCardNumber `div` 4)
+      iInfoInsurancePeriod = days 365
+      iInfoPolicyHolder = icpPolicyHolder
+      iInfoPolicyAuthority = icpPolicyAuthority
+      iInfoState = Initiated
+      iInfoClaimTimeToLive = days 7
+      iInfoFoundingDeadline = beginningOfTime + fromMilliSeconds (days 7)
   in InsuranceInfo {..}
 
 
@@ -133,3 +154,10 @@ fidaCardNFT (InsuranceId cs) (FidaCardId fcid) = singleton cs (fidaCardTokenName
 
 fidaCardStatusNFT :: InsuranceId -> Value
 fidaCardStatusNFT (InsuranceId cs) = singleton cs fidaCardStatusTokenName 1
+
+-- | Friday, 1 March 2024 12:12:12
+beginningOfTime :: POSIXTime
+beginningOfTime = POSIXTime 1709295132000
+
+days :: Integer -> DiffMilliSeconds
+days n = DiffMilliSeconds $ 1000 * 60 * 60 * 24 * n
