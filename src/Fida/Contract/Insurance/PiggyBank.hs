@@ -4,6 +4,7 @@
 
 module Fida.Contract.Insurance.PiggyBank
   ( serialisablePiggyBankValidator,
+    piggyBankValidator,
   )
 where
 
@@ -11,7 +12,7 @@ import Fida.Contract.Insurance.Datum (ClaimInfo (..), FidaCardId (..), Insurance
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer (..))
 import Fida.Contract.Insurance.Tokens (fidaCardStatusTokenName, fidaCardTokenName, policyInfoTokenName)
-import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, outputDatum, referenceDatums, referenceOutputs, unsafeFromSingleton')
+import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, outputDatum, referenceDatums, referenceOutputs, unsafeFromSingleton', wrapValidator)
 import Plutus.V1.Ledger.Interval (before)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V1.Ledger.Value
@@ -260,15 +261,21 @@ mkPiggyBankValidatorUntyped ::
   BuiltinData ->
   BuiltinData ->
   ()
-mkPiggyBankValidatorUntyped insuranceId fidaCardId datum redeemer sc =
-  check $
+mkPiggyBankValidatorUntyped insuranceId fidaCardId =
+  wrapValidator $
     mkPiggyBankValidator
       (unsafeFromBuiltinData insuranceId)
       (unsafeFromBuiltinData fidaCardId)
-      (unsafeFromBuiltinData datum)
-      (unsafeFromBuiltinData redeemer)
-      (unsafeFromBuiltinData sc)
 
 serialisablePiggyBankValidator :: Script
 serialisablePiggyBankValidator =
   fromCompiledCode $$(PlutusTx.compile [||mkPiggyBankValidatorUntyped||])
+
+piggyBankValidator :: InsuranceId -> FidaCardId -> Validator
+piggyBankValidator iid fcid =
+  mkValidatorScript $
+    $$(PlutusTx.compile [||wrappedValidator||])
+      `PlutusTx.applyCode` PlutusTx.liftCode iid
+      `PlutusTx.applyCode` PlutusTx.liftCode fcid
+  where
+    wrappedValidator iid' = wrapValidator . mkPiggyBankValidator iid'
