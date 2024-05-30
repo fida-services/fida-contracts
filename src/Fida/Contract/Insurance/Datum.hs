@@ -28,6 +28,8 @@ import qualified Prelude as HPrelude
 newtype FidaCardId = FidaCardId BuiltinByteString
   deriving newtype (ToData, FromData, UnsafeFromData, HPrelude.Show)
 
+PlutusTx.makeLift ''FidaCardId
+
 type PremiumAmount = Integer
 
 data InsurancePolicyState
