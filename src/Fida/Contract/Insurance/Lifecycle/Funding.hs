@@ -18,6 +18,8 @@ import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyFundingRedeemer (PolicyFundingCancel, PolicyFundingFundingComplete))
 import Fida.Contract.Insurance.Tokens (fidaCardStatusTokenName, policyInfoTokenName)
 import Fida.Contract.Utils (untypedOutputDatum)
+import qualified Plutus.V1.Ledger.Api as PlutusTx
+import Plutus.V1.Ledger.Interval (before)
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api
   ( Datum (Datum),
@@ -28,10 +30,8 @@ import Plutus.V2.Ledger.Api
     TxOut (..),
     fromBuiltinData,
   )
-import PlutusTx.Prelude
-import qualified Plutus.V1.Ledger.Api as PlutusTx
-import Plutus.V1.Ledger.Interval (before)
 import Plutus.V2.Ledger.Contexts (txSignedBy)
+import PlutusTx.Prelude
 
 -- |
 --
@@ -52,7 +52,6 @@ import Plutus.V2.Ledger.Contexts (txSignedBy)
 --    ERROR-FUNDING-VALIDATOR-5: start date must be before valid range
 --
 --    ERROR-FUNDING-VALIDATOR-6: tx is not signed by the policy holder
---
 {-# INLINEABLE lifecycleFundingStateValidator #-}
 lifecycleFundingStateValidator ::
   InsuranceId ->
@@ -69,7 +68,6 @@ lifecycleFundingStateValidator (InsuranceId cs) d@InsuranceInfo {iInfoPolicyAuth
   outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
   hasCorrectOutput = outputDatum == untypedUpdatePolicyState d Cancelled
-
 lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState = Funding, iInfoFidaCardNumber, iInfoPolicyHolder}) (PolicyFundingFundingComplete startDate) sc =
   traceIfFalse "ERROR-FUNDING-VALIDATOR-3" (fidaCardsSold >= iInfoFidaCardNumber)
     && traceIfFalse "ERROR-FUNDING-VALIDATOR-4" hasCorrectOutput
@@ -97,5 +95,4 @@ lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState
   isStartDateCorrect = startDate `before` txInfoValidRange txInfo
 
   isSignedByPolicyHolder = txSignedBy txInfo iInfoPolicyHolder
-
 lifecycleFundingStateValidator _ _ _ _ = trace "ERROR-FUNDING-VALIDATOR-0" False

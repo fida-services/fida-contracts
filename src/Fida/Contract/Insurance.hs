@@ -59,15 +59,15 @@ mkInsurancePolicyValidator iid d (PolicyFunding r) sc =
 mkInsurancePolicyValidator iid d (PolicyOnRisk r) sc =
   lifecycleOnRiskStateValidator iid d r sc
 mkInsurancePolicyValidator (InsuranceId cs) d@(InsuranceInfo {iInfoStartDate, iInfoInsurancePeriod, iInfoState, iInfoFundingDeadline}) PolicyExpire sc =
-    traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-2" hasExpired
+  traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-2" hasExpired
     && traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-3" correctOutputDatum
  where
   txInfo = scriptContextTxInfo sc
 
   expireDate =
     case (iInfoState, iInfoStartDate) of
-      (Funding, _)             -> iInfoFundingDeadline
-      (OnRisk, Just startDate)  -> startDate + fromMilliSeconds iInfoInsurancePeriod
+      (Funding, _) -> iInfoFundingDeadline
+      (OnRisk, Just startDate) -> startDate + fromMilliSeconds iInfoInsurancePeriod
       _ -> traceError "ERROR-INSURANCE-MAIN-VALIDATOR-1"
 
   hasExpired = expireDate `before` txInfoValidRange txInfo
@@ -75,7 +75,6 @@ mkInsurancePolicyValidator (InsuranceId cs) d@(InsuranceInfo {iInfoStartDate, iI
   outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
   correctOutputDatum = outputDatum == untypedUpdatePolicyState d Expired
-
 mkInsurancePolicyValidator _ _ _ _ =
   trace "ERROR-INSURANCE-MAIN-VALIDATOR-0" False
 
