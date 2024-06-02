@@ -4,18 +4,15 @@
 module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests) where
 
 import Control.Monad (mapM, replicateM, void)
-import Data.List
 import Fida.Contract.Insurance
 import Fida.Contract.Insurance.Authority
 import Fida.Contract.Insurance.Datum
 import Fida.Contract.Insurance.InsuranceId
 import Fida.Contract.Insurance.Redeemer
 import Fida.Contract.Insurance.PiggyBank
-import Fida.Contract.Insurance.Authority
 import Plutus.Model hiding (days)
 import Plutus.V2.Ledger.Api
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit
 import Prelude
 import Fida.Contract.Insurance.Tokens
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
@@ -26,42 +23,63 @@ tests :: TestTree
 tests =
   testGroup
     "Unit tests for Insurance.Lifecycle.Initiated module"
-    [ good "Creating policy works" createPolicyTest
-    , good "Broker is allowed to cancell policy" cancelPolicyByBrokerTest
+    [ good "Creating policy works" testCreatePolicy
+    , good "Broker is allowed to cancell a policy" testCancelPolicyByBroker
+    , bad "Unauthorized user is not allowed to cancell a policy" testCancelPolicyByUnauthorizedUser
+    , bad "Cancelling policy can't set state to Funding" $ testCancelPolicyIfIllegalState Funding
+    , bad "Cancelling policy can't set state to OnRisk" $ testCancelPolicyIfIllegalState OnRisk
+    , bad "Cancelling policy can't set state to Initiated" $ testCancelPolicyIfIllegalState Initiated
     ]
  where
   bad msg = good msg . mustFail
-  good = testNoErrorsTrace (adaValue 1000_000_000_000) defaultBabbage
+  good = testNoErrors (adaValue 1000_000_000_000) defaultBabbage
 
-userExchange :: Run ()
-userExchange = do
-  Users {..} <- setupUsers
-  sendValue investor1 (adaValue 100) investor2
-  sendValue investor2 (adaValue 100) investor3
+testCreatePolicy :: Run ()
+testCreatePolicy = void $ setupUsers >>= newSamplePolicy
 
-createPolicyTest :: Run ()
-createPolicyTest = void $ setupUsers >>= newSamplePolicy
-
-cancelPolicyByBrokerTest :: Run ()
-cancelPolicyByBrokerTest = do
-  users@Users {..} <- setupUsers
-  logInfo "start test"
-  iid <- newSamplePolicy users
-  logInfo $ "iid: " <> show iid
-  --iinfo <- boxAt @ InsurancePolicy $ insurancePolicy iid
+runUpdatePolicyState ::
+  InsurancePolicyState ->
+  InsurancePolicyRedeemer ->
+  InsuranceId ->
+  PubKeyHash ->
+  Run ()
+runUpdatePolicyState state r iid pkh = do
   let tv = insurancePolicy iid
   withBox @ InsurancePolicy (iinfoBox iid) tv $
-    \box@(TxBox ref (TxOut _ value _ _) iinfo) -> do
-    let maybeIinfo = updatePolicyState iinfo Cancelled
-    withMay "Can't update policy state to cancelled" (pure maybeIinfo) $ \iinfo' -> do
+    \box@(TxBox _ (TxOut _ value _ _) iinfo) -> do
+    let maybeIinfo = updatePolicyState iinfo state
+    withMay "Can't update policy state" (pure maybeIinfo) $ \iinfo' -> do
       let tx =
             mconcat
-              [ spendBox tv (PolicyInitiated PolicyInitiatedCancel) box
+              [ spendBox tv r box
               , payToScript tv (InlineDatum iinfo') value
               ]
-      submitTx broker1 tx
+      submitTx pkh tx
 
-iinfoBox :: IsValidator script => InsuranceId -> TxBox script -> Bool
+
+cancelPolicy :: InsuranceId -> PubKeyHash -> Run ()
+cancelPolicy = runUpdatePolicyState Cancelled (PolicyInitiated PolicyInitiatedCancel)
+
+testCancelPolicyIfIllegalState :: InsurancePolicyState -> Run ()
+testCancelPolicyIfIllegalState state = do
+  users@Users {..} <- setupUsers
+  iid <- newSamplePolicy users
+  runUpdatePolicyState state (PolicyInitiated PolicyInitiatedCancel) iid broker1
+
+
+testCancelPolicyByBroker :: Run ()
+testCancelPolicyByBroker = do
+  users@Users {..} <- setupUsers
+  iid <- newSamplePolicy users
+  cancelPolicy iid broker1
+
+testCancelPolicyByUnauthorizedUser :: Run ()
+testCancelPolicyByUnauthorizedUser = do
+  users@Users {..} <- setupUsers
+  iid <- newSamplePolicy users
+  cancelPolicy iid investor1
+
+iinfoBox :: InsuranceId -> TxBox script -> Bool
 iinfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs  policyInfoTokenName == 1
 
@@ -156,7 +174,7 @@ makePolicy broker params@InsuranceCreateParams {..} = do
   utxos <- utxoAt broker
   sp <- spend broker $ scale (icpFidaCardQuantity + 2) oneAda
   let
-    [(ref, out)] = utxos
+    [(ref, _)] = utxos
     insuranceIdNFTScript = insuranceIdNFT ref
     iid = InsuranceId $ scriptCurrencySymbol insuranceIdNFTScript
     insuranceScript = insurancePolicy iid
