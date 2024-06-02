@@ -3,8 +3,8 @@
 module Fida.Contract.Insurance.Redeemer where
 
 import Fida.Contract.Insurance.Datum (ClaimInfo)
-import qualified PlutusTx
 import Plutus.V2.Ledger.Api (POSIXTime)
+import qualified PlutusTx
 
 data PolicyInitiatedRedemeer
   = PolicyInitiatedCancel

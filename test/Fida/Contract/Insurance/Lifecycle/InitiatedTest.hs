@@ -8,16 +8,16 @@ import Fida.Contract.Insurance
 import Fida.Contract.Insurance.Authority
 import Fida.Contract.Insurance.Datum
 import Fida.Contract.Insurance.InsuranceId
-import Fida.Contract.Insurance.Redeemer
 import Fida.Contract.Insurance.PiggyBank
+import Fida.Contract.Insurance.Redeemer
+import Fida.Contract.Insurance.Tokens
 import Plutus.Model hiding (days)
+import Plutus.V1.Ledger.Time (DiffMilliSeconds (..), fromMilliSeconds)
+import Plutus.V1.Ledger.Value (scale, valueOf)
 import Plutus.V2.Ledger.Api
+import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import Test.Tasty (TestTree, testGroup)
 import Prelude
-import Fida.Contract.Insurance.Tokens
-import PlutusTx.Builtins.Class (stringToBuiltinByteString)
-import Plutus.V1.Ledger.Time (DiffMilliSeconds (..), fromMilliSeconds)
-import Plutus.V1.Ledger.Value (valueOf, scale)
 
 tests :: TestTree
 tests =
@@ -47,15 +47,14 @@ runUpdatePolicyState state r iid pkh = do
   let tv = insurancePolicy iid
   withBox @ InsurancePolicy (iinfoBox iid) tv $
     \box@(TxBox _ (TxOut _ value _ _) iinfo) -> do
-    let maybeIinfo = updatePolicyState iinfo state
-    withMay "Can't update policy state" (pure maybeIinfo) $ \iinfo' -> do
-      let tx =
-            mconcat
-              [ spendBox tv r box
-              , payToScript tv (InlineDatum iinfo') value
-              ]
-      submitTx pkh tx
-
+      let maybeIinfo = updatePolicyState iinfo state
+      withMay "Can't update policy state" (pure maybeIinfo) $ \iinfo' -> do
+        let tx =
+              mconcat
+                [ spendBox tv r box
+                , payToScript tv (InlineDatum iinfo') value
+                ]
+        submitTx pkh tx
 
 cancelPolicy :: InsuranceId -> PubKeyHash -> Run ()
 cancelPolicy = runUpdatePolicyState Cancelled (PolicyInitiated PolicyInitiatedCancel)
@@ -65,7 +64,6 @@ testCancelPolicyIfIllegalState state = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
   runUpdatePolicyState state (PolicyInitiated PolicyInitiatedCancel) iid broker1
-
 
 testCancelPolicyByBroker :: Run ()
 testCancelPolicyByBroker = do
@@ -81,32 +79,31 @@ testCancelPolicyByUnauthorizedUser = do
 
 iinfoBox :: InsuranceId -> TxBox script -> Bool
 iinfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
-  valueOf value cs  policyInfoTokenName == 1
+  valueOf value cs policyInfoTokenName == 1
 
 newSamplePolicy :: Users -> Run InsuranceId
 newSamplePolicy Users {..} = do
-  let
-    icpPolicyHolder = policyHolder
-    icpFidaCardQuantity = 10
-    icpPolicyPrice = icpFidaCardQuantity * 4 * 5 * 1_000_000
-    icpFidaCardValue = 1_000 * 1_000_000 
-    icpPolicyAuthority = AtLeastOneSign [fidaSystem, broker1]
+  let icpPolicyHolder = policyHolder
+      icpFidaCardQuantity = 10
+      icpPolicyPrice = icpFidaCardQuantity * 4 * 5 * 1_000_000
+      icpFidaCardValue = 1_000 * 1_000_000
+      icpPolicyAuthority = AtLeastOneSign [fidaSystem, broker1]
   makePolicy broker1 InsuranceCreateParams {..}
 
-data Users =
-  Users
-    { fidaSystem   :: PubKeyHash
-    , broker1      :: PubKeyHash
-    , broker2      :: PubKeyHash
-    , policyHolder :: PubKeyHash
-    , investor1    :: PubKeyHash
-    , investor2    :: PubKeyHash
-    , investor3    :: PubKeyHash
-    } deriving (Show)
+data Users = Users
+  { fidaSystem :: PubKeyHash
+  , broker1 :: PubKeyHash
+  , broker2 :: PubKeyHash
+  , policyHolder :: PubKeyHash
+  , investor1 :: PubKeyHash
+  , investor2 :: PubKeyHash
+  , investor3 :: PubKeyHash
+  }
+  deriving (Show)
 
 type InsurancePolicy = TypedValidator InsurancePolicyDatum InsurancePolicyRedeemer
 
-type PiggyBank = TypedValidator  PiggyBankDatum PiggyBankRedeemer
+type PiggyBank = TypedValidator PiggyBankDatum PiggyBankRedeemer
 
 data InsuranceCreateParams = InsuranceCreateParams
   { icpPolicyHolder :: PubKeyHash
@@ -120,7 +117,7 @@ insurancePolicy :: InsuranceId -> InsurancePolicy
 insurancePolicy = TypedValidator . toV2 . insurancePolicyValidator
 
 piggyBank :: InsuranceId -> FidaCardId -> PiggyBank
-piggyBank iid = TypedValidator . toV2 . piggyBankValidator iid 
+piggyBank iid = TypedValidator . toV2 . piggyBankValidator iid
 
 piggyBankAddr :: InsuranceId -> FidaCardId -> Address
 piggyBankAddr iid = toAddress . piggyBank iid
@@ -167,55 +164,54 @@ iinfoFromParams InsuranceCreateParams {..} =
       iInfoFundingDeadline = beginningOfTime + fromMilliSeconds (days 7)
       iInfoTotalClaimsAcceptedAmount = 0
       iInfoClaimTimeToPay = days 7
-  in InsuranceInfo {..}
+   in InsuranceInfo {..}
 
 makePolicy :: PubKeyHash -> InsuranceCreateParams -> Run InsuranceId
 makePolicy broker params@InsuranceCreateParams {..} = do
   utxos <- utxoAt broker
   sp <- spend broker $ scale (icpFidaCardQuantity + 2) oneAda
-  let
-    [(ref, _)] = utxos
-    insuranceIdNFTScript = insuranceIdNFT ref
-    iid = InsuranceId $ scriptCurrencySymbol insuranceIdNFTScript
-    insuranceScript = insurancePolicy iid
-    tx = mconcat $
+  let [(ref, _)] = utxos
+      insuranceIdNFTScript = insuranceIdNFT ref
+      iid = InsuranceId $ scriptCurrencySymbol insuranceIdNFTScript
+      insuranceScript = insurancePolicy iid
+      tx =
+        mconcat $
           [ payToScript insuranceScript (InlineDatum iinfo) (oneAda <> policyInfoNFT iid)
           , payToScript insuranceScript (InlineDatum $ paymentInfo iid) (oneAda <> policyPaymentNFT iid)
           , spendPubKey ref
           , userSpend sp
           , mintValue insuranceIdNFTScript () (policyInfoNFT iid <> policyPaymentNFT iid)
-          ] <> payToPgiggyBanks insuranceIdNFTScript iid
+          ]
+            <> payToPgiggyBanks insuranceIdNFTScript iid
   submitTx broker tx
   return iid
-  where
-    oneAda = adaValue 1
-    
-    iinfo = iinfoFromParams params
+ where
+  oneAda = adaValue 1
 
-    payToPgiggyBanks script iid =
-      map (payToPiggyBank script iid . fidaCardFromInt) [1..icpFidaCardQuantity]
-    
-    fidaCardDatum fcid =
-      let pbfcIsSold = False
-          pbfcFidaCardId = fcid
-          pbfcFidaCardValue = icpFidaCardValue
-          pbfcPaidClaims = []
-      in  PBankFidaCard {..}
+  iinfo = iinfoFromParams params
 
-    payToPiggyBank insuranceIdNFTScript iid fcid =
-      let script = piggyBank iid fcid
-          value = fidaCardStatusNFT iid <> fidaCardNFT iid fcid
-      in  mconcat
-            [ payToScript script (InlineDatum $ fidaCardDatum fcid) (oneAda <> value)
-            , mintValue insuranceIdNFTScript () value
-            ]
-    
-    paymentInfo iid =
-      let
-         ppInfoPremiumAmountPerPiggyBank = icpPolicyPrice `div` icpFidaCardQuantity
-         ppInfoPiggyBanks =  map (piggyBankAddr iid . fidaCardFromInt) [1..icpFidaCardQuantity]
-      in PremiumPaymentInfo {..}
+  payToPgiggyBanks script iid =
+    map (payToPiggyBank script iid . fidaCardFromInt) [1 .. icpFidaCardQuantity]
 
+  fidaCardDatum fcid =
+    let pbfcIsSold = False
+        pbfcFidaCardId = fcid
+        pbfcFidaCardValue = icpFidaCardValue
+        pbfcPaidClaims = []
+     in PBankFidaCard {..}
+
+  payToPiggyBank insuranceIdNFTScript iid fcid =
+    let script = piggyBank iid fcid
+        value = fidaCardStatusNFT iid <> fidaCardNFT iid fcid
+     in mconcat
+          [ payToScript script (InlineDatum $ fidaCardDatum fcid) (oneAda <> value)
+          , mintValue insuranceIdNFTScript () value
+          ]
+
+  paymentInfo iid =
+    let ppInfoPremiumAmountPerPiggyBank = icpPolicyPrice `div` icpFidaCardQuantity
+        ppInfoPiggyBanks = map (piggyBankAddr iid . fidaCardFromInt) [1 .. icpFidaCardQuantity]
+     in PremiumPaymentInfo {..}
 
 policyInfoNFT :: InsuranceId -> Value
 policyInfoNFT (InsuranceId cs) = singleton cs policyInfoTokenName 1
