@@ -100,10 +100,10 @@ data InsurancePolicyDatum
       , iInfoPolicyHolder :: PubKeyHash
       , iInfoPolicyAuthority :: InsuranceAuthority
       , iInfoState :: InsurancePolicyState
-      , iInfoClaimTimeToLive :: DiffMilliSeconds
-      , iInfoTotalClaimsAcceptedAmount :: Integer
-      , iInfoClaimTimeToPay :: DiffMilliSeconds
       , iInfoFundingDeadline :: POSIXTime
+      , iInfoTotalClaimsAcceptedAmount :: Integer
+      , iInfoClaimTimeToLive :: DiffMilliSeconds
+      , iInfoClaimTimeToPay :: DiffMilliSeconds
       , iInfoStartDate :: Maybe POSIXTime
       , iInfoClaim :: Maybe ClaimInfo
       }

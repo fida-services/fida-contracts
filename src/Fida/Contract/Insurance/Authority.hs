@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-specialise #-}
 
 module Fida.Contract.Insurance.Authority
-  ( InsuranceAuthority,
+  ( InsuranceAuthority (..),
     isSignedByTheAuthority,
   )
 where
