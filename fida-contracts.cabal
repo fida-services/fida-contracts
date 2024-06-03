@@ -127,6 +127,7 @@ test-suite fida-contracts-test
     Fida.Contract.TestToolbox.Users
     Fida.Contract.TestToolbox.TypedValidators
     Fida.Contract.TestToolbox.Time
+    Fida.Contract.TestToolbox.Action
     Fida.Contract.TestToolbox.Action.MakeInsurancePolicy
 
   build-depends:
