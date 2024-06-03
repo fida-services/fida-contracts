@@ -122,7 +122,10 @@ test-suite fida-contracts-test
   main-is:        Main.hs
   other-modules:
     Fida.Contract.FidaPolicyContractTest
+    Fida.Contract.Insurance.PiggyBankTest
     Fida.Contract.Insurance.Lifecycle.InitiatedTest
+    Fida.Contract.Insurance.Lifecycle.FundingTest
+    Fida.Contract.Insurance.Lifecycle.OnRiskTest
     Fida.Contract.TestToolbox
     Fida.Contract.TestToolbox.Users
     Fida.Contract.TestToolbox.TypedValidators
