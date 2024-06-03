@@ -123,6 +123,11 @@ test-suite fida-contracts-test
   other-modules:
     Fida.Contract.FidaPolicyContractTest
     Fida.Contract.Insurance.Lifecycle.InitiatedTest
+    Fida.Contract.TestToolbox
+    Fida.Contract.TestToolbox.Users
+    Fida.Contract.TestToolbox.TypedValidators
+    Fida.Contract.TestToolbox.Time
+    Fida.Contract.TestToolbox.Action.MakeInsurancePolicy
 
   build-depends:
     , bytestring
