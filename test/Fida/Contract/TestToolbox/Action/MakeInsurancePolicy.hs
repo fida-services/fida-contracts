@@ -62,9 +62,10 @@ newSamplePolicy Users {..} = do
 
 makePolicy :: PubKeyHash -> InsuranceCreateParams -> Run InsuranceId
 makePolicy broker params@InsuranceCreateParams {..} = do
-  utxos <- utxoAt broker
+  --         policy info nft + policy payment nft  -|
+  --                                                |
   sp <- spend broker $ scale (icpFidaCardQuantity + 2) oneAda
-  let [(ref, _)] = utxos
+  let ref = getHeadRef sp
       insuranceIdNFTScript = insuranceIdNFT ref
       iid = InsuranceId $ scriptCurrencySymbol insuranceIdNFTScript
       insuranceScript = insurancePolicy iid
@@ -78,6 +79,7 @@ makePolicy broker params@InsuranceCreateParams {..} = do
           ]
             <> payToPgiggyBanks insuranceIdNFTScript iid
   submitTx broker tx
+  runLoadRefScript broker insuranceScript
   return iid
  where
   oneAda = adaValue 1

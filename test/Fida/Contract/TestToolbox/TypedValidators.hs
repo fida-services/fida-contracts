@@ -12,6 +12,7 @@ module Fida.Contract.TestToolbox.TypedValidators
   , fidaCardFromInt
   , iinfoBox
   , ppInfoBox
+  , runLoadRefScript
   ) where
 
 import Fida.Contract.Insurance (insurancePolicyValidator)
@@ -21,9 +22,10 @@ import Fida.Contract.Insurance.PiggyBank (piggyBankValidator)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer, PiggyBankRedeemer)
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName, fidaCardTokenName,
                                        fidaCardStatusTokenName)
-import Plutus.Model (TypedValidator (..), TypedPolicy (..), TxBox (..), toV2, toAddress)
+import Plutus.Model (TypedValidator (..), TypedPolicy (..), TxBox (..), toV2, toAddress, IsValidator,
+                     Run, spend, submitTx, userSpend, loadRefScript, adaValue)
 import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api (Value, TxOut(..), TxOutRef(..), Address, singleton)
+import Plutus.V2.Ledger.Api (Value, TxOut(..), TxOutRef(..), Address, singleton, PubKeyHash)
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import Prelude
 
@@ -74,3 +76,16 @@ iinfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
 ppInfoBox :: InsuranceId -> TxBox script -> Bool
 ppInfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs policyPaymentTokenName == 1
+
+runLoadRefScript ::
+  (IsValidator script) =>
+  PubKeyHash ->
+  script ->
+  Run ()
+runLoadRefScript pkh script = do
+    sp <- spend pkh $ adaValue 1
+    submitTx pkh $
+      mconcat
+        [ userSpend sp
+        , loadRefScript script (adaValue 1)
+        ]

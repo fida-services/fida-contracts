@@ -16,7 +16,7 @@ import Test.Tasty (TestTree)
 import Plutus.Model.Fork.Ledger.Tx qualified as P
 import Plutus.Model.Fork.TxExtra (Tx, toExtra)
 import Plutus.V2.Ledger.Api (Address, Value, ToData, TxOut (..), OutputDatum (..),
-                             DatumHash (..), Datum (..), toBuiltinData)
+                             DatumHash (..), Datum (..), toBuiltinData, PubKeyHash)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Prelude
