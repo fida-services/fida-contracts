@@ -2,17 +2,27 @@
 
 module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests) where
 
-import Fida.Contract.TestToolbox (Users(..), setupUsers,
-                                  newSamplePolicy, runUpdatePolicyState, bad, good, Run,
-                                  insurancePolicy)
 import Control.Monad (void)
-import Fida.Contract.Insurance.Datum (InsurancePolicyState (..), InsurancePolicyDatum (..),
-                                      PiggyBankDatum(..))
+import Fida.Contract.Insurance.Datum
+  ( InsurancePolicyDatum (..),
+    InsurancePolicyState (..),
+    PiggyBankDatum (..),
+  )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..), PolicyInitiatedRedemeer (..))
+import Fida.Contract.TestToolbox
+  ( Run,
+    Users (..),
+    bad,
+    good,
+    insurancePolicy,
+    newSamplePolicy,
+    runUpdatePolicyState,
+    setupUsers,
+  )
+import Plutus.Model
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
 import Test.Tasty (TestTree, testGroup)
-import Plutus.Model
 import Prelude
 
 import Fida.Contract.TestToolbox
@@ -62,20 +72,19 @@ payPremiumToPiggyBanks ::
   Maybe Tx
 payPremiumToPiggyBanks tv box@(TxBox _ (TxOut _ value _ _) ppinfo@PremiumPaymentInfo {..}) pkh =
   Just $ mconcat (payToPiggyBankTx <$> ppInfoPiggyBanks) <> spendPPaymentInfo
-  where
-    r = PolicyInitiated PolicyInitiatedPayPremium
+ where
+  r = PolicyInitiated PolicyInitiatedPayPremium
 
-    spendPPaymentInfo =
-      mconcat
-        [ spendBox tv r box
-        , payToKey pkh value
-        ]
-    
-    datum = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank
+  spendPPaymentInfo =
+    mconcat
+      [ spendBox tv r box
+      , payToKey pkh value
+      ]
 
-    payToPiggyBankTx addr =
-      payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
-        
+  datum = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank
+
+  payToPiggyBankTx addr =
+    payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
 payPremiumToPiggyBanks _ _ _ = Nothing
 
 testPayPremium :: Run ()
@@ -86,14 +95,14 @@ testPayPremium = do
   let tv = insurancePolicy iid
   withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox ->
     withBox @InsurancePolicy (ppInfoBox iid) tv $ \piBox -> do
-      let
-        r = PolicyInitiated PolicyInitiatedPayPremium
-        maybeUpdateStTx = updatePolicyStateTx tv iiBox Funding r
-        maybePayToPiggyBanksTx = payPremiumToPiggyBanks tv piBox policyHolder
-        maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
+      let r = PolicyInitiated PolicyInitiatedPayPremium
+          maybeUpdateStTx = updatePolicyStateTx tv iiBox Funding r
+          maybePayToPiggyBanksTx = payPremiumToPiggyBanks tv piBox policyHolder
+          maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
       withMay "Can't update policy state" (pure maybePayPremiumTx) $ \payPremiumTx -> do
-        let tx = mconcat
-              [ payPremiumTx
-              , userSpend sp
-              ]
+        let tx =
+              mconcat
+                [ payPremiumTx
+                , userSpend sp
+                ]
         submitTx policyHolder tx

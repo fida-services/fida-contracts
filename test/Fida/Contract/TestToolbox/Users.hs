@@ -2,15 +2,15 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 
 module Fida.Contract.TestToolbox.Users
-  ( Users(..)
-  , setupUsers
-  ) where
+  ( Users (..),
+    setupUsers,
+  )
+where
 
 import Control.Monad (replicateM)
-import Plutus.Model (Run, newUser, adaValue, writeUserName)
+import Plutus.Model (Run, adaValue, newUser, writeUserName)
 import Plutus.V2.Ledger.Api (PubKeyHash)
 import Prelude
-
 
 data Users = Users
   { fidaSystem :: PubKeyHash
@@ -22,7 +22,6 @@ data Users = Users
   , investor3 :: PubKeyHash
   }
   deriving (Show)
-
 
 setupUsers :: Run Users
 setupUsers = do

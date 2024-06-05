@@ -1,7 +1,8 @@
 module Fida.Contract.TestToolbox.Time
-  ( beginningOfTime
-  , days
-  ) where
+  ( beginningOfTime,
+    days,
+  )
+where
 
 import Plutus.V1.Ledger.Time (DiffMilliSeconds (..))
 import Plutus.V2.Ledger.Api (POSIXTime (..))

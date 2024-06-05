@@ -1,40 +1,55 @@
 module Fida.Contract.TestToolbox.TypedValidators
-  ( InsurancePolicy
-  , PiggyBank
-  , insurancePolicy
-  , piggyBank
-  , insuranceIdNFT
-  , piggyBankAddr
-  , policyInfoNFT
-  , policyPaymentNFT
-  , fidaCardNFT
-  , fidaCardStatusNFT
-  , fidaCardFromInt
-  , iinfoBox
-  , ppInfoBox
-  , runLoadRefScript
-  ) where
+  ( InsurancePolicy,
+    PiggyBank,
+    insurancePolicy,
+    piggyBank,
+    insuranceIdNFT,
+    piggyBankAddr,
+    policyInfoNFT,
+    policyPaymentNFT,
+    fidaCardNFT,
+    fidaCardStatusNFT,
+    fidaCardFromInt,
+    iinfoBox,
+    ppInfoBox,
+    runLoadRefScript,
+  )
+where
 
 import Fida.Contract.Insurance (insurancePolicyValidator)
-import Fida.Contract.Insurance.Datum (InsurancePolicyDatum, PiggyBankDatum, FidaCardId(..))
+import Fida.Contract.Insurance.Datum (FidaCardId (..), InsurancePolicyDatum, PiggyBankDatum)
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..), insuranceIdMintingPolicy)
 import Fida.Contract.Insurance.PiggyBank (piggyBankValidator)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer, PiggyBankRedeemer)
-import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName, fidaCardTokenName,
-                                       fidaCardStatusTokenName)
-import Plutus.Model (TypedValidator (..), TypedPolicy (..), TxBox (..), toV2, toAddress, IsValidator,
-                     Run, spend, submitTx, userSpend, loadRefScript, adaValue)
+import Fida.Contract.Insurance.Tokens
+  ( fidaCardStatusTokenName,
+    fidaCardTokenName,
+    policyInfoTokenName,
+    policyPaymentTokenName,
+  )
+import Plutus.Model
+  ( IsValidator,
+    Run,
+    TxBox (..),
+    TypedPolicy (..),
+    TypedValidator (..),
+    adaValue,
+    loadRefScript,
+    spend,
+    submitTx,
+    toAddress,
+    toV2,
+    userSpend,
+  )
 import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api (Value, TxOut(..), TxOutRef(..), Address, singleton, PubKeyHash)
+import Plutus.V2.Ledger.Api (Address, PubKeyHash, TxOut (..), TxOutRef (..), Value, singleton)
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import Prelude
 
 -- | Typed validators
-
 type InsurancePolicy = TypedValidator InsurancePolicyDatum InsurancePolicyRedeemer
 
 type PiggyBank = TypedValidator PiggyBankDatum PiggyBankRedeemer
-
 
 insurancePolicy :: InsuranceId -> InsurancePolicy
 insurancePolicy = TypedValidator . toV2 . insurancePolicyValidator
@@ -46,12 +61,10 @@ insuranceIdNFT :: TxOutRef -> TypedPolicy ()
 insuranceIdNFT = TypedPolicy . toV2 . insuranceIdMintingPolicy
 
 -- | Validator addresses
-
 piggyBankAddr :: InsuranceId -> FidaCardId -> Address
 piggyBankAddr iid = toAddress . piggyBank iid
 
 -- | Validator NFTs
-
 policyInfoNFT :: InsuranceId -> Value
 policyInfoNFT (InsuranceId cs) = singleton cs policyInfoTokenName 1
 
@@ -68,7 +81,6 @@ fidaCardFromInt :: Integer -> FidaCardId
 fidaCardFromInt = FidaCardId . stringToBuiltinByteString . show
 
 -- | Helper functions related to tv
-
 iinfoBox :: InsuranceId -> TxBox script -> Bool
 iinfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs policyInfoTokenName == 1
@@ -83,9 +95,9 @@ runLoadRefScript ::
   script ->
   Run ()
 runLoadRefScript pkh script = do
-    sp <- spend pkh $ adaValue 1
-    submitTx pkh $
-      mconcat
-        [ userSpend sp
-        , loadRefScript script (adaValue 1)
-        ]
+  sp <- spend pkh $ adaValue 1
+  submitTx pkh $
+    mconcat
+      [ userSpend sp
+      , loadRefScript script (adaValue 1)
+      ]

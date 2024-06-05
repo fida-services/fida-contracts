@@ -1,17 +1,18 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Fida.Contract.TestToolbox.Action.MakeInsurancePolicy
-  ( InsuranceCreateParams (..)
-  , newSamplePolicy
-  , makePolicy
-  ) where
+  ( InsuranceCreateParams (..),
+    newSamplePolicy,
+    makePolicy,
+  )
+where
 
-import Fida.Contract.TestToolbox.Users (Users(..))
-import Fida.Contract.TestToolbox.TypedValidators
-import Fida.Contract.TestToolbox.Time (days, beginningOfTime)
 import Fida.Contract.Insurance.Authority
 import Fida.Contract.Insurance.Datum
 import Fida.Contract.Insurance.InsuranceId
+import Fida.Contract.TestToolbox.Time (beginningOfTime, days)
+import Fida.Contract.TestToolbox.TypedValidators
+import Fida.Contract.TestToolbox.Users (Users (..))
 import Plutus.Model hiding (days)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V1.Ledger.Value (scale)

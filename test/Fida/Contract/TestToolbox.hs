@@ -1,24 +1,43 @@
 module Fida.Contract.TestToolbox
-  ( module X
-  , bad
-  , good
-  , Run
-  , payToAddressDatum
-  ) where
+  ( module X,
+    bad,
+    good,
+    Run,
+    payToAddressDatum,
+  )
+where
 
-import Fida.Contract.TestToolbox.Action as X
-import Fida.Contract.TestToolbox.Users as X
-import Fida.Contract.TestToolbox.TypedValidators as X
-import Fida.Contract.TestToolbox.Time as X
-import Plutus.Model (Run, mustFail, testNoErrors, adaValue, defaultBabbage, DatumMode (..),
-                     HasDatum, DatumType (..), datumHash)
-import Test.Tasty (TestTree)
-import Plutus.Model.Fork.Ledger.Tx qualified as P
-import Plutus.Model.Fork.TxExtra (Tx, toExtra)
-import Plutus.V2.Ledger.Api (Address, Value, ToData, TxOut (..), OutputDatum (..),
-                             DatumHash (..), Datum (..), toBuiltinData, PubKeyHash)
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
+import qualified Data.Map.Strict as M
+import Fida.Contract.TestToolbox.Action as X
+import Fida.Contract.TestToolbox.Time as X
+import Fida.Contract.TestToolbox.TypedValidators as X
+import Fida.Contract.TestToolbox.Users as X
+import Plutus.Model
+  ( DatumMode (..),
+    DatumType (..),
+    HasDatum,
+    Run,
+    adaValue,
+    datumHash,
+    defaultBabbage,
+    mustFail,
+    testNoErrors,
+  )
+import qualified Plutus.Model.Fork.Ledger.Tx as P
+import Plutus.Model.Fork.TxExtra (Tx, toExtra)
+import Plutus.V2.Ledger.Api
+  ( Address,
+    Datum (..),
+    DatumHash (..),
+    OutputDatum (..),
+    PubKeyHash,
+    ToData,
+    TxOut (..),
+    Value,
+    toBuiltinData,
+  )
+import Test.Tasty (TestTree)
 import Prelude
 
 bad :: String -> Run a -> TestTree
@@ -33,21 +52,23 @@ payToAddressDatum ::
   DatumMode a ->
   Value ->
   Tx
-payToAddressDatum address dat val = toExtra $
-  mempty
-    { P.txOutputs = [TxOut address val outDatum Nothing]
-    , P.txData = datumMap
-    }
-  where
-    (outDatum, datumMap) = fromDatumMode dat
+payToAddressDatum address dat val =
+  toExtra $
+    mempty
+      { P.txOutputs = [TxOut address val outDatum Nothing]
+      , P.txData = datumMap
+      }
+ where
+  (outDatum, datumMap) = fromDatumMode dat
 
 -- | Copied from Plutus.Model.Contract
+--
 fromDatumMode :: ToData a => DatumMode a -> (OutputDatum, Map DatumHash Datum)
 fromDatumMode = \case
   HashDatum dat ->
     let dh = datumHash datum
         datum = Datum $ toBuiltinData dat
-    in (OutputDatumHash dh, M.singleton dh datum)
+     in (OutputDatumHash dh, M.singleton dh datum)
   InlineDatum dat ->
     let datum = Datum $ toBuiltinData dat
-    in  (OutputDatum datum, M.empty)
+     in (OutputDatum datum, M.empty)
