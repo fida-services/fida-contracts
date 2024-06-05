@@ -55,7 +55,7 @@ newSamplePolicy :: Users -> Run InsuranceId
 newSamplePolicy Users {..} = do
   let icpPolicyHolder = policyHolder
       icpFidaCardQuantity = 10
-      icpPolicyPrice = icpFidaCardQuantity * 4 * 5 * 1_000_000
+      icpPolicyPrice = icpFidaCardQuantity * 4 * 5 * 1_000_000 -- 200_000_000
       icpFidaCardValue = 1_000 * 1_000_000
       icpPolicyAuthority = AtLeastOneSign [fidaSystem, broker1]
   makePolicy broker1 InsuranceCreateParams {..}

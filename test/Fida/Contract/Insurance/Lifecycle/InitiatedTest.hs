@@ -3,14 +3,20 @@
 module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests) where
 
 import Fida.Contract.TestToolbox (Users(..), setupUsers,
-                                  newSamplePolicy, runUpdatePolicyState, bad, good, Run)
+                                  newSamplePolicy, runUpdatePolicyState, bad, good, Run,
+                                  insurancePolicy)
 import Control.Monad (void)
-import Fida.Contract.Insurance.Datum (InsurancePolicyState (..))
+import Fida.Contract.Insurance.Datum (InsurancePolicyState (..), InsurancePolicyDatum (..),
+                                      PiggyBankDatum(..))
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..), PolicyInitiatedRedemeer (..))
-import Plutus.V2.Ledger.Api (PubKeyHash)
+import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
 import Test.Tasty (TestTree, testGroup)
+import Plutus.Model
 import Prelude
+
+import Fida.Contract.TestToolbox
+import Plutus.V2.Ledger.Api
 
 tests :: TestTree
 tests =
@@ -22,6 +28,7 @@ tests =
     , bad "Cancelling policy can't set state to Funding" $ testCancelPolicyIfIllegalState Funding
     , bad "Cancelling policy can't set state to OnRisk" $ testCancelPolicyIfIllegalState OnRisk
     , bad "Cancelling policy can't set state to Initiated" $ testCancelPolicyIfIllegalState Initiated
+    , good "Paying premium works" testPayPremium
     ]
 
 testCreatePolicy :: Run ()
@@ -47,3 +54,46 @@ testCancelPolicyByUnauthorizedUser = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
   cancelPolicy iid investor1
+
+payPremiumToPiggyBanks ::
+  InsurancePolicy ->
+  TxBox InsurancePolicy ->
+  PubKeyHash ->
+  Maybe Tx
+payPremiumToPiggyBanks tv box@(TxBox _ (TxOut _ value _ _) ppinfo@PremiumPaymentInfo {..}) pkh =
+  Just $ mconcat (payToPiggyBankTx <$> ppInfoPiggyBanks) <> spendPPaymentInfo
+  where
+    r = PolicyInitiated PolicyInitiatedPayPremium
+
+    spendPPaymentInfo =
+      mconcat
+        [ spendBox tv r box
+        , payToKey pkh value
+        ]
+    
+    datum = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank
+
+    payToPiggyBankTx addr =
+      payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
+        
+payPremiumToPiggyBanks _ _ _ = Nothing
+
+testPayPremium :: Run ()
+testPayPremium = do
+  users@Users {..} <- setupUsers
+  iid <- newSamplePolicy users
+  sp <- spend policyHolder $ adaValue 200_000_000
+  let tv = insurancePolicy iid
+  withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox ->
+    withBox @InsurancePolicy (ppInfoBox iid) tv $ \piBox -> do
+      let
+        r = PolicyInitiated PolicyInitiatedPayPremium
+        maybeUpdateStTx = updatePolicyStateTx tv iiBox Funding r
+        maybePayToPiggyBanksTx = payPremiumToPiggyBanks tv piBox policyHolder
+        maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
+      withMay "Can't update policy state" (pure maybePayPremiumTx) $ \payPremiumTx -> do
+        let tx = mconcat
+              [ payPremiumTx
+              , userSpend sp
+              ]
+        submitTx policyHolder tx

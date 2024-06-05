@@ -11,6 +11,7 @@ module Fida.Contract.TestToolbox.TypedValidators
   , fidaCardStatusNFT
   , fidaCardFromInt
   , iinfoBox
+  , ppInfoBox
   ) where
 
 import Fida.Contract.Insurance (insurancePolicyValidator)
@@ -69,3 +70,7 @@ fidaCardFromInt = FidaCardId . stringToBuiltinByteString . show
 iinfoBox :: InsuranceId -> TxBox script -> Bool
 iinfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs policyInfoTokenName == 1
+
+ppInfoBox :: InsuranceId -> TxBox script -> Bool
+ppInfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
+  valueOf value cs policyPaymentTokenName == 1

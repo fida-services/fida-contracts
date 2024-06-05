@@ -1,5 +1,6 @@
 module Fida.Contract.TestToolbox.Action
   ( runUpdatePolicyState
+  , updatePolicyStateTx
   , module X
   ) where
 
@@ -8,7 +9,8 @@ import Fida.Contract.TestToolbox.TypedValidators (InsurancePolicy, insurancePoli
 import Fida.Contract.Insurance.Datum (InsurancePolicyState, updatePolicyState)
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer)
-import Plutus.Model (Run, TxBox (..), withBox, withMay, submitTx, spendBox, payToScript,  DatumMode (..))
+import Plutus.Model (Run, TxBox (..), withBox, withMay, submitTx, spendBox, payToScript,  DatumMode (..),
+                     Tx, logError)
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
 import Prelude
 
@@ -20,13 +22,21 @@ runUpdatePolicyState ::
   Run ()
 runUpdatePolicyState state r iid pkh = do
   let tv = insurancePolicy iid
-  withBox @ InsurancePolicy (iinfoBox iid) tv $
-    \box@(TxBox _ (TxOut _ value _ _) iinfo) -> do
-      let maybeIinfo = updatePolicyState iinfo state
-      withMay "Can't update policy state" (pure maybeIinfo) $ \iinfo' -> do
-        let tx =
-              mconcat
-                [ spendBox tv r box
-                , payToScript tv (InlineDatum iinfo') value
-                ]
-        submitTx pkh tx
+  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box -> do
+    let maybeTx = updatePolicyStateTx tv box state r
+    withMay "Can't update policy state" (pure maybeTx) (submitTx pkh)
+
+updatePolicyStateTx ::
+  InsurancePolicy ->
+  TxBox InsurancePolicy ->
+  InsurancePolicyState ->
+  InsurancePolicyRedeemer ->
+  Maybe Tx
+updatePolicyStateTx tv box@(TxBox _ (TxOut _ value _ _) iinfo) state r =
+  mkTx <$> updatePolicyState iinfo state
+  where
+    mkTx iinfo =
+      mconcat
+        [ spendBox tv r box
+        , payToScript tv (InlineDatum iinfo) value
+        ]

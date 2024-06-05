@@ -26,7 +26,7 @@ data Users = Users
 
 setupUsers :: Run Users
 setupUsers = do
-  users <- replicateM 7 $ newUser $ adaValue 100_000_000
+  users <- replicateM 7 $ newUser $ adaValue 1000_000_000
   let [fidaSystem, broker1, broker2, policyHolder, investor1, investor2, investor3] = users
   writeUserName fidaSystem "Fida System Wallet"
   writeUserName broker1 "Policy Broker 1"
