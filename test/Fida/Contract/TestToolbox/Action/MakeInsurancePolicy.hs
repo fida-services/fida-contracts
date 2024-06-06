@@ -72,8 +72,8 @@ makePolicy broker params@InsuranceCreateParams {..} = do
       insuranceScript = insurancePolicy iid
       tx =
         mconcat $
-          [ payToScript insuranceScript (InlineDatum iinfo) (oneAda <> policyInfoNFT iid)
-          , payToScript insuranceScript (InlineDatum $ paymentInfo iid) (oneAda <> policyPaymentNFT iid)
+          [ payToRef insuranceScript (InlineDatum iinfo) (oneAda <> policyInfoNFT iid)
+          , payToRef insuranceScript (InlineDatum $ paymentInfo iid) (oneAda <> policyPaymentNFT iid)
           , spendPubKey ref
           , userSpend sp
           , mintValue insuranceIdNFTScript () (policyInfoNFT iid <> policyPaymentNFT iid)

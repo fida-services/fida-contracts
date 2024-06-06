@@ -1,6 +1,7 @@
 module Fida.Contract.TestToolbox.Action
   ( runUpdatePolicyState,
     updatePolicyStateTx,
+    updatePolicyStateTxRef,
     module X,
   )
 where
@@ -10,6 +11,7 @@ import Fida.Contract.Insurance.InsuranceId (InsuranceId)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer)
 import Fida.Contract.TestToolbox.Action.MakeInsurancePolicy as X
 import Fida.Contract.TestToolbox.TypedValidators (InsurancePolicy, iinfoBox, insurancePolicy)
+import Plutus.Model.Contract.Ext (spendBoxRef)
 import Plutus.Model
   ( DatumMode (..),
     Run,
@@ -22,7 +24,7 @@ import Plutus.Model
     withBox,
     withMay,
   )
-import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
+import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..), TxOutRef)
 import Prelude
 
 runUpdatePolicyState ::
@@ -49,5 +51,21 @@ updatePolicyStateTx tv box@(TxBox _ (TxOut _ value _ _) iinfo) state r =
   mkTx iinfo =
     mconcat
       [ spendBox tv r box
+      , payToScript tv (InlineDatum iinfo) value
+      ]
+
+updatePolicyStateTxRef ::
+  TxOutRef ->
+  InsurancePolicy ->
+  TxBox InsurancePolicy ->
+  InsurancePolicyState ->
+  InsurancePolicyRedeemer ->
+  Maybe Tx
+updatePolicyStateTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) iinfo) state r =
+  mkTx <$> updatePolicyState iinfo state
+ where
+  mkTx iinfo =
+    mconcat
+      [ spendBoxRef scriptRef tv r box
       , payToScript tv (InlineDatum iinfo) value
       ]

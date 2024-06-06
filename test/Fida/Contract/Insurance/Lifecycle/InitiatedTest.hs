@@ -66,18 +66,19 @@ testCancelPolicyByUnauthorizedUser = do
   cancelPolicy iid investor1
 
 payPremiumToPiggyBanks ::
+  TxOutRef ->
   InsurancePolicy ->
   TxBox InsurancePolicy ->
   PubKeyHash ->
   Maybe Tx
-payPremiumToPiggyBanks tv box@(TxBox _ (TxOut _ value _ _) ppinfo@PremiumPaymentInfo {..}) pkh =
+payPremiumToPiggyBanks scriptRef tv box@(TxBox _ (TxOut _ value _ _) ppinfo@PremiumPaymentInfo {..}) pkh =
   Just $ mconcat (payToPiggyBankTx <$> ppInfoPiggyBanks) <> spendPPaymentInfo
  where
   r = PolicyInitiated PolicyInitiatedPayPremium
 
   spendPPaymentInfo =
     mconcat
-      [ spendBox tv r box
+      [ spendBoxRef scriptRef tv r box
       , payToKey pkh value
       ]
 
@@ -85,7 +86,7 @@ payPremiumToPiggyBanks tv box@(TxBox _ (TxOut _ value _ _) ppinfo@PremiumPayment
 
   payToPiggyBankTx addr =
     payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
-payPremiumToPiggyBanks _ _ _ = Nothing
+payPremiumToPiggyBanks _ _ _ _ = Nothing
 
 testPayPremium :: Run ()
 testPayPremium = do
@@ -93,16 +94,23 @@ testPayPremium = do
   iid <- newSamplePolicy users
   sp <- spend policyHolder $ adaValue 200_000_000
   let tv = insurancePolicy iid
-  withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox ->
-    withBox @InsurancePolicy (ppInfoBox iid) tv $ \piBox -> do
-      let r = PolicyInitiated PolicyInitiatedPayPremium
-          maybeUpdateStTx = updatePolicyStateTx tv iiBox Funding r
-          maybePayToPiggyBanksTx = payPremiumToPiggyBanks tv piBox policyHolder
-          maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
-      withMay "Can't update policy state" (pure maybePayPremiumTx) $ \payPremiumTx -> do
-        let tx =
-              mconcat
-                [ payPremiumTx
-                , userSpend sp
-                ]
-        submitTx policyHolder tx
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) ->
+    withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox ->
+      withBox @InsurancePolicy (ppInfoBox iid) tv $ \piBox -> do
+        let r = PolicyInitiated PolicyInitiatedPayPremium
+            maybeUpdateStTx = updatePolicyStateTxRef scriptRef tv iiBox Funding r
+            maybePayToPiggyBanksTx = payPremiumToPiggyBanks scriptRef tv piBox policyHolder
+            maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
+        withMay "Can't update policy state" (pure maybePayPremiumTx) $ \payPremiumTx -> do
+          let tx =
+                mconcat
+                  [ payPremiumTx
+                  , userSpend sp
+                  ]
+          submitTx policyHolder tx
+  
+  		
+isScriptRef :: HasValidatorHash script => script -> (TxOutRef, TxOut) -> Bool
+isScriptRef script (ref, TxOut _ _ _ (Just (ScriptHash hash))) =
+  let ValidatorHash hash' = toValidatorHash script
+  in hash' == hash
