@@ -1,25 +1,26 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Plutus.Model.Contract.Ext
-  ( spendBoxRef
-  , payToAddressDatum
-  ) where
+  ( spendBoxRef,
+    payToAddressDatum,
+  )
+where
 
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Plutus.Model
   ( DatumMode (..),
     DatumType (..),
+    HasDatum,
     IsValidator,
     RedeemerType,
-    TxBox (..),
-    HasDatum,
     Run,
-    spendScriptRef,
+    TxBox (..),
     adaValue,
     datumHash,
     defaultBabbage,
     mustFail,
+    spendScriptRef,
     testNoErrorsTrace,
   )
 import qualified Plutus.Model.Fork.Ledger.Tx as P
@@ -32,8 +33,8 @@ import Plutus.V2.Ledger.Api
     PubKeyHash,
     ToData,
     TxOut (..),
-    Value,
     TxOutRef (..),
+    Value,
     toBuiltinData,
   )
 import Test.Tasty (TestTree)
@@ -46,7 +47,7 @@ spendBoxRef ::
   RedeemerType script ->
   TxBox script ->
   Tx
-spendBoxRef refScript tv red TxBox{..} =
+spendBoxRef refScript tv red TxBox {..} =
   spendScriptRef refScript tv txBoxRef red txBoxDatum
 
 payToAddressDatum ::
@@ -65,7 +66,6 @@ payToAddressDatum address dat val =
   (outDatum, datumMap) = fromDatumMode dat
 
 -- | Copied from Plutus.Model.Contract
---
 fromDatumMode :: ToData a => DatumMode a -> (OutputDatum, Map DatumHash Datum)
 fromDatumMode = \case
   HashDatum dat ->

@@ -11,7 +11,6 @@ import Fida.Contract.Insurance.InsuranceId (InsuranceId)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer)
 import Fida.Contract.TestToolbox.Action.MakeInsurancePolicy as X
 import Fida.Contract.TestToolbox.TypedValidators (InsurancePolicy, iinfoBox, insurancePolicy)
-import Plutus.Model.Contract.Ext (spendBoxRef)
 import Plutus.Model
   ( DatumMode (..),
     Run,
@@ -24,6 +23,7 @@ import Plutus.Model
     withBox,
     withMay,
   )
+import Plutus.Model.Contract.Ext (spendBoxRef)
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..), TxOutRef)
 import Prelude
 

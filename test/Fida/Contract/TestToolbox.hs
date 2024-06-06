@@ -2,7 +2,7 @@ module Fida.Contract.TestToolbox
   ( module X,
     bad,
     good,
-    Run
+    Run,
   )
 where
 
@@ -10,7 +10,6 @@ import Fida.Contract.TestToolbox.Action as X
 import Fida.Contract.TestToolbox.Time as X
 import Fida.Contract.TestToolbox.TypedValidators as X
 import Fida.Contract.TestToolbox.Users as X
-import Plutus.Model.Contract.Ext as X
 import Plutus.Model
   ( Run,
     adaValue,
@@ -19,6 +18,7 @@ import Plutus.Model
     testNoErrors,
     testNoErrorsTrace,
   )
+import Plutus.Model.Contract.Ext as X
 import Test.Tasty (TestTree)
 import Prelude
 

@@ -108,9 +108,8 @@ testPayPremium = do
                   , userSpend sp
                   ]
           submitTx policyHolder tx
-  
-  		
+
 isScriptRef :: HasValidatorHash script => script -> (TxOutRef, TxOut) -> Bool
 isScriptRef script (ref, TxOut _ _ _ (Just (ScriptHash hash))) =
   let ValidatorHash hash' = toValidatorHash script
-  in hash' == hash
+   in hash' == hash
