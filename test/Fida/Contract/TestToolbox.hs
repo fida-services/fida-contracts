@@ -28,7 +28,7 @@ bad :: String -> Run a -> TestTree
 bad msg = good msg . mustFail
 
 good :: String -> Run a -> TestTree
-good = testNoErrors (adaValue 1000_000_000_000) defaultBabbage
+good = testNoErrors (adaValue 1_000_000_000_000) defaultBabbage
 
 assertTrue :: String -> Bool -> Run ()
 assertTrue msg False = logError msg
