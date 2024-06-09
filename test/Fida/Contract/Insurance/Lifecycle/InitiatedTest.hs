@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests) where
+module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests, testPayPremium) where
 
 import Control.Monad (void, forM_)
 import Fida.Contract.Insurance.Datum
@@ -32,7 +32,7 @@ import Fida.Contract.TestToolbox
     piggyBank,
     piggyBankInfoBox,
     assertTrue,
-    payPremiumToPiggyBanks
+    payPremium
   )
 import Plutus.Model (TxBox (..), adaValue, spend,
                     withBox, withMay, withRefScript, userSpend, submitTx, logError)
@@ -84,22 +84,7 @@ testPayPremium :: Run ()
 testPayPremium = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
-  sp <- spend policyHolder $ adaValue 200_000_000
-  let tv = insurancePolicy iid
-  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) ->
-    withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox ->
-      withBox @InsurancePolicy (ppInfoBox iid) tv $ \piBox -> do
-        let r = PolicyInitiated PolicyInitiatedPayPremium
-            maybeUpdateStTx = updatePolicyStateTxRef scriptRef tv iiBox Funding r
-            maybePayToPiggyBanksTx = payPremiumToPiggyBanks scriptRef tv piBox policyHolder
-            maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
-        withMay "Can't update policy state" (pure maybePayPremiumTx) $ \payPremiumTx -> do
-          let tx =
-                mconcat
-                  [ payPremiumTx
-                  , userSpend sp
-                  ]
-          submitTx policyHolder tx
+  payPremium iid users
 
 testRequiredUtxos :: Run ()
 testRequiredUtxos = do

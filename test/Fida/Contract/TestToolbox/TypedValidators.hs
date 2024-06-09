@@ -1,3 +1,6 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Fida.Contract.TestToolbox.TypedValidators
   ( InsurancePolicy,
     PiggyBank,
@@ -8,7 +11,9 @@ module Fida.Contract.TestToolbox.TypedValidators
     policyInfoNFT,
     policyPaymentNFT,
     fidaCardNFT,
+    fidaCardNegateNFT,
     fidaCardStatusNFT,
+    fidaCardStatusNegateNFT,
     fidaCardFromInt,
     iinfoBox,
     ppInfoBox,
@@ -19,7 +24,7 @@ module Fida.Contract.TestToolbox.TypedValidators
 where
 
 import Fida.Contract.Insurance (insurancePolicyValidator)
-import Fida.Contract.Insurance.Datum (FidaCardId (..), InsurancePolicyDatum, PiggyBankDatum)
+import Fida.Contract.Insurance.Datum (FidaCardId (..), InsurancePolicyDatum, PiggyBankDatum (..))
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..), insuranceIdMintingPolicy)
 import Fida.Contract.Insurance.PiggyBank (piggyBankValidator)
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer, PiggyBankRedeemer)
@@ -78,8 +83,14 @@ policyPaymentNFT (InsuranceId cs) = singleton cs policyPaymentTokenName 1
 fidaCardNFT :: InsuranceId -> FidaCardId -> Value
 fidaCardNFT (InsuranceId cs) (FidaCardId fcid) = singleton cs (fidaCardTokenName fcid) 1
 
+fidaCardNegateNFT :: InsuranceId -> FidaCardId -> Value
+fidaCardNegateNFT (InsuranceId cs) (FidaCardId fcid) = singleton cs (fidaCardTokenName fcid) (-1)
+
 fidaCardStatusNFT :: InsuranceId -> Value
 fidaCardStatusNFT (InsuranceId cs) = singleton cs fidaCardStatusTokenName 1
+
+fidaCardStatusNegateNFT :: InsuranceId -> Value
+fidaCardStatusNegateNFT (InsuranceId cs) = singleton cs fidaCardStatusTokenName (-1)
 
 fidaCardFromInt :: Integer -> FidaCardId
 fidaCardFromInt = FidaCardId . stringToBuiltinByteString . show
@@ -99,9 +110,16 @@ ppInfoBox :: InsuranceId -> TxBox script -> Bool
 ppInfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs policyPaymentTokenName == 1
 
-piggyBankInfoBox :: InsuranceId -> FidaCardId -> TxBox script -> Bool
-piggyBankInfoBox (InsuranceId cs) (FidaCardId fcid) (TxBox _ (TxOut _ value _ _) _) =
-  valueOf value cs (fidaCardTokenName fcid) == 1
+piggyBankInfoBox :: InsuranceId -> FidaCardId -> TxBox PiggyBank -> Bool
+piggyBankInfoBox (InsuranceId cs) fcid (TxBox _ (TxOut _ value _ _) PBankFidaCard {..}) =
+  valueOf value cs fidaCardStatusTokenName == 1 && pbfcFidaCardId == fcid
+piggyBankInfoBox _ _ _ = False
+
+--pbBox :: InsuranceId -> FidaCardId -> TxBox PiggyBank -> Bool
+--pbBox (InsuranceId cs) fcid (TxBox _ (TxOut _ value _ _) PBankFidaCard{pbfcFidaCardId}) =
+--  valueOf value cs fidaCardStatusTokenName == 1
+--  && pbfcFidaCardId == fcid
+--pbBox _ _ _ = False
 
 runLoadRefScript ::
   (IsValidator script) =>

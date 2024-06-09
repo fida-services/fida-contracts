@@ -10,11 +10,14 @@ module Fida.Contract.Insurance.Datum
     FidaCardId (..),
     InstallmentsInfo (..),
     updatePolicyState,
+    completeFunding,
     untypedUpdatePolicyState,
     updateClaim,
     untypedUnsetClaim,
     untypedUpdateClaim,
     unlockedPremiumToClaim,
+    updatePiggyBankFidaCardStatus,
+    untypedUpdatePiggyBankFidaCardStatus,
   )
 where
 
@@ -124,6 +127,12 @@ updatePolicyState _ _ = Nothing
 untypedUpdatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe BuiltinData
 untypedUpdatePolicyState d = fmap PlutusTx.toBuiltinData . updatePolicyState d
 
+{-# INLINEABLE completeFunding #-}
+completeFunding :: InsurancePolicyDatum -> POSIXTime -> Maybe InsurancePolicyDatum
+completeFunding InsuranceInfo {..} startDate = Just $ InsuranceInfo {iInfoState = OnRisk, iInfoStartDate = Just startDate, ..}
+
+
+
 {-# INLINEABLE updateClaim #-}
 updateClaim :: InsurancePolicyDatum -> Maybe ClaimInfo -> Maybe InsurancePolicyDatum
 updateClaim InsuranceInfo {..} claim = Just $ InsuranceInfo {iInfoClaim = claim, ..}
@@ -155,6 +164,16 @@ data PiggyBankDatum
       , pbfcPaidClaims :: [BuiltinByteString]
       }
   deriving (HPrelude.Show)
+
+
+{-# INLINEABLE updatePiggyBankFidaCardStatus #-}
+updatePiggyBankFidaCardStatus :: PiggyBankDatum -> Bool -> Maybe PiggyBankDatum
+updatePiggyBankFidaCardStatus PBankFidaCard {..} status = Just $ PBankFidaCard {pbfcIsSold = status, ..}
+updatePiggyBankFidaCardStatus _ _ = Nothing
+
+{-# INLINEABLE untypedUpdatePiggyBankFidaCardStatus #-}
+untypedUpdatePiggyBankFidaCardStatus :: PiggyBankDatum -> Bool -> Maybe BuiltinData
+untypedUpdatePiggyBankFidaCardStatus d = fmap PlutusTx.toBuiltinData . updatePiggyBankFidaCardStatus d
 
 PlutusTx.makeIsDataIndexed
   ''PiggyBankDatum
