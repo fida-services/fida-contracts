@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests) where
+module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests, testPayPremium) where
 
 import Control.Monad (void)
 import Fida.Contract.Insurance.Datum
@@ -20,6 +20,7 @@ import Fida.Contract.TestToolbox
     runUpdatePolicyState,
     setupUsers,
   )
+import Fida.Contract.TestToolbox.Action (payPremium)
 import Plutus.Model
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
 import Test.Tasty (TestTree, testGroup)
@@ -65,51 +66,10 @@ testCancelPolicyByUnauthorizedUser = do
   iid <- newSamplePolicy users
   cancelPolicy iid investor1
 
-payPremiumToPiggyBanks ::
-  TxOutRef ->
-  InsurancePolicy ->
-  TxBox InsurancePolicy ->
-  PubKeyHash ->
-  Maybe Tx
-payPremiumToPiggyBanks scriptRef tv box@(TxBox _ (TxOut _ value _ _) ppinfo@PremiumPaymentInfo {..}) pkh =
-  Just $ mconcat (payToPiggyBankTx <$> ppInfoPiggyBanks) <> spendPPaymentInfo
- where
-  r = PolicyInitiated PolicyInitiatedPayPremium
-
-  spendPPaymentInfo =
-    mconcat
-      [ spendBoxRef scriptRef tv r box
-      , payToKey pkh value
-      ]
-
-  datum = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank
-
-  payToPiggyBankTx addr =
-    payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
-payPremiumToPiggyBanks _ _ _ _ = Nothing
-
 testPayPremium :: Run ()
 testPayPremium = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
-  sp <- spend policyHolder $ adaValue 200_000_000
-  let tv = insurancePolicy iid
-  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) ->
-    withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox ->
-      withBox @InsurancePolicy (ppInfoBox iid) tv $ \piBox -> do
-        let r = PolicyInitiated PolicyInitiatedPayPremium
-            maybeUpdateStTx = updatePolicyStateTxRef scriptRef tv iiBox Funding r
-            maybePayToPiggyBanksTx = payPremiumToPiggyBanks scriptRef tv piBox policyHolder
-            maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
-        withMay "Can't update policy state" (pure maybePayPremiumTx) $ \payPremiumTx -> do
-          let tx =
-                mconcat
-                  [ payPremiumTx
-                  , userSpend sp
-                  ]
-          submitTx policyHolder tx
+  payPremium iid users
 
-isScriptRef :: HasValidatorHash script => script -> (TxOutRef, TxOut) -> Bool
-isScriptRef script (ref, TxOut _ _ _ (Just (ScriptHash hash))) =
-  let ValidatorHash hash' = toValidatorHash script
-   in hash' == hash
+

@@ -14,6 +14,14 @@ index-state: cardano-haskell-packages 2022-10-25T20:00:00Z
 
 packages: ./.
 
+package *
+  coverage: True
+  library-coverage: True
+
+package cardano-api
+  coverage: False
+  library-coverage: False
+
 tests: true
 benchmarks: true
 
@@ -75,3 +83,4 @@ source-repository-package
 
 -- Configure plutonomy to use the closest plutus version to ours
 flags: +plutus-f680ac697
+

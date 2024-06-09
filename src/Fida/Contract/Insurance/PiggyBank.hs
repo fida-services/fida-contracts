@@ -8,11 +8,11 @@ module Fida.Contract.Insurance.PiggyBank
   )
 where
 
-import Fida.Contract.Insurance.Datum (ClaimInfo (..), FidaCardId (..), InsurancePolicyDatum (..), InsurancePolicyState (Cancelled), PiggyBankDatum (..), unlockedPremiumToClaim)
+import Fida.Contract.Insurance.Datum (ClaimInfo (..), FidaCardId (..), InsurancePolicyDatum (..), InsurancePolicyState (Cancelled), PiggyBankDatum (..), unlockedPremiumToClaim, untypedUpdatePiggyBankFidaCardStatus)
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer (..))
 import Fida.Contract.Insurance.Tokens (fidaCardStatusTokenName, fidaCardTokenName, policyInfoTokenName)
-import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, outputDatum, referenceDatums, referenceOutputs, unsafeFromSingleton', wrapValidator)
+import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, untypedOutput, outputDatum, untypedOutputDatum, referenceDatums, referenceOutputs, unsafeFromSingleton', wrapValidator)
 import Plutus.V1.Ledger.Interval (before)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V1.Ledger.Value
@@ -82,18 +82,18 @@ mkPiggyBankValidator ::
   PiggyBankRedeemer ->
   ScriptContext ->
   Bool
-mkPiggyBankValidator (InsuranceId cs) _ (PBankFidaCard {pbfcIsSold = False, pbfcFidaCardValue}) BuyFidaCard sc =
-  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-0" pbfcIsSold
-    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-1" (pbfcFidaCardValue == pbfcFidaCardValue')
+mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankFidaCard {pbfcIsSold = False, pbfcFidaCardValue}) BuyFidaCard sc =
+  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-0" isSold
  where
   inputLovelace = case findOwnInput sc of
     Just (TxInInfo _ (TxOut _ value _ _)) -> lovelaceValueOf value
     Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-2"
 
-  (PBankFidaCard {pbfcIsSold, pbfcFidaCardValue = pbfcFidaCardValue'}) =
-    case outputDatum cs sc fidaCardStatusTokenName of
+  isSold = Just outputDatum' == untypedUpdatePiggyBankFidaCardStatus datum True
+  outputDatum' =
+    case untypedOutput cs sc fidaCardStatusTokenName of
       Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-3"
-      Just (TxOut _ v _ _, d)
+      Just (TxOut _ v (OutputDatum (Datum d)) _)
         | lovelaceValueOf v >= pbfcFidaCardValue + inputLovelace -> d
         | otherwise -> traceError "ERROR-PIGGY-BANK-VALIDATOR-4"
 mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold = True, pbfcFidaCardValue}) SellFidaCard scriptContext =

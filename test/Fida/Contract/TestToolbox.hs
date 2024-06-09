@@ -10,6 +10,7 @@ import Fida.Contract.TestToolbox.Action as X
 import Fida.Contract.TestToolbox.Time as X
 import Fida.Contract.TestToolbox.TypedValidators as X
 import Fida.Contract.TestToolbox.Users as X
+import Fida.Contract.TestToolbox.Utils as X
 import Plutus.Model
   ( Run,
     adaValue,
@@ -26,4 +27,4 @@ bad :: String -> Run a -> TestTree
 bad msg = good msg . mustFail
 
 good :: String -> Run a -> TestTree
-good = testNoErrors (adaValue 1000_000_000_000) defaultBabbage
+good = testNoErrors (adaValue 1_000_000_000_000) defaultBabbage

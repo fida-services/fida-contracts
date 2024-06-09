@@ -11,6 +11,8 @@ module Fida.Contract.Utils
     maybeToList,
     unsafeUntypedOutputDatum,
     untypedOutputDatum,
+    untypedOutput,
+    untypedOutputs,
     referenceDatums,
     unsafeReferenceDatum,
     findOutputDatumByType,
@@ -148,6 +150,22 @@ outputs' cs outs tn =
   , valueOf value cs tn == 1
   , Just datum <- [PlutusTx.fromBuiltinData d]
   ]
+
+{-# INLINEABLE untypedOutputs' #-}
+untypedOutputs' :: CurrencySymbol -> [TxOut] -> TokenName -> [TxOut]
+untypedOutputs' cs outs tn =
+  [ txOut
+  | txOut@(TxOut _ value _ _) <- outs
+  , valueOf value cs tn == 1
+  ]
+
+{-# INLINEABLE untypedOutputs #-}
+untypedOutputs :: CurrencySymbol -> ScriptContext -> TokenName -> [TxOut]
+untypedOutputs cs sc = untypedOutputs' cs (getContinuingOutputs sc)
+
+{-# INLINEABLE untypedOutput #-}
+untypedOutput :: CurrencySymbol -> ScriptContext -> TokenName -> Maybe TxOut
+untypedOutput cs sc = fromSingleton . untypedOutputs cs sc
 
 {-# INLINEABLE outputs #-}
 outputs :: FromData a => CurrencySymbol -> ScriptContext -> TokenName -> [(TxOut, a)]

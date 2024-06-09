@@ -132,6 +132,7 @@ test-suite fida-contracts-test
     Fida.Contract.TestToolbox.Time
     Fida.Contract.TestToolbox.TypedValidators
     Fida.Contract.TestToolbox.Users
+    Fida.Contract.TestToolbox.Utils
     Plutus.Model.Contract.Ext
 
   build-depends:
