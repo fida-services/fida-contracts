@@ -1,17 +1,18 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Fida.Contract.TestToolbox.Action.MakeInsurancePolicy
-  ( InsuranceCreateParams (..)
-  , newSamplePolicy
-  , makePolicy
-  ) where
+  ( InsuranceCreateParams (..),
+    newSamplePolicy,
+    makePolicy,
+  )
+where
 
-import Fida.Contract.TestToolbox.Users (Users(..))
-import Fida.Contract.TestToolbox.TypedValidators
-import Fida.Contract.TestToolbox.Time (days, beginningOfTime)
 import Fida.Contract.Insurance.Authority
 import Fida.Contract.Insurance.Datum
 import Fida.Contract.Insurance.InsuranceId
+import Fida.Contract.TestToolbox.Time (beginningOfTime, days)
+import Fida.Contract.TestToolbox.TypedValidators
+import Fida.Contract.TestToolbox.Users (Users (..))
 import Plutus.Model hiding (days)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V1.Ledger.Value (scale)
@@ -55,29 +56,31 @@ newSamplePolicy :: Users -> Run InsuranceId
 newSamplePolicy Users {..} = do
   let icpPolicyHolder = policyHolder
       icpFidaCardQuantity = 10
-      icpPolicyPrice = icpFidaCardQuantity * 4 * 5 * 1_000_000
+      icpPolicyPrice = icpFidaCardQuantity * 4 * 5 * 1_000_000 -- 200_000_000
       icpFidaCardValue = 1_000 * 1_000_000
       icpPolicyAuthority = AtLeastOneSign [fidaSystem, broker1]
   makePolicy broker1 InsuranceCreateParams {..}
 
 makePolicy :: PubKeyHash -> InsuranceCreateParams -> Run InsuranceId
 makePolicy broker params@InsuranceCreateParams {..} = do
-  utxos <- utxoAt broker
+  --         policy info nft + policy payment nft  -|
+  --                                                |
   sp <- spend broker $ scale (icpFidaCardQuantity + 2) oneAda
-  let [(ref, _)] = utxos
+  let ref = getHeadRef sp
       insuranceIdNFTScript = insuranceIdNFT ref
       iid = InsuranceId $ scriptCurrencySymbol insuranceIdNFTScript
       insuranceScript = insurancePolicy iid
       tx =
         mconcat $
-          [ payToScript insuranceScript (InlineDatum iinfo) (oneAda <> policyInfoNFT iid)
-          , payToScript insuranceScript (InlineDatum $ paymentInfo iid) (oneAda <> policyPaymentNFT iid)
+          [ payToRef insuranceScript (InlineDatum iinfo) (oneAda <> policyInfoNFT iid)
+          , payToRef insuranceScript (InlineDatum $ paymentInfo iid) (oneAda <> policyPaymentNFT iid)
           , spendPubKey ref
           , userSpend sp
           , mintValue insuranceIdNFTScript () (policyInfoNFT iid <> policyPaymentNFT iid)
           ]
             <> payToPgiggyBanks insuranceIdNFTScript iid
   submitTx broker tx
+  runLoadRefScript broker insuranceScript
   return iid
  where
   oneAda = adaValue 1

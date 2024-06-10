@@ -122,19 +122,21 @@ test-suite fida-contracts-test
   main-is:        Main.hs
   other-modules:
     Fida.Contract.FidaPolicyContractTest
-    Fida.Contract.Insurance.PiggyBankTest
-    Fida.Contract.Insurance.Lifecycle.InitiatedTest
     Fida.Contract.Insurance.Lifecycle.FundingTest
+    Fida.Contract.Insurance.Lifecycle.InitiatedTest
     Fida.Contract.Insurance.Lifecycle.OnRiskTest
+    Fida.Contract.Insurance.PiggyBankTest
     Fida.Contract.TestToolbox
-    Fida.Contract.TestToolbox.Users
-    Fida.Contract.TestToolbox.TypedValidators
-    Fida.Contract.TestToolbox.Time
     Fida.Contract.TestToolbox.Action
     Fida.Contract.TestToolbox.Action.MakeInsurancePolicy
+    Fida.Contract.TestToolbox.Time
+    Fida.Contract.TestToolbox.TypedValidators
+    Fida.Contract.TestToolbox.Users
+    Plutus.Model.Contract.Ext
 
   build-depends:
     , bytestring
+    , containers
     , fida-contracts
     , plutus-ledger-api
     , plutus-simple-model

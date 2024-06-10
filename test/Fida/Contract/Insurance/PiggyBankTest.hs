@@ -1,4 +1,4 @@
-module Fida.Contract.Insurance.PiggyBankTest ( tests ) where
+module Fida.Contract.Insurance.PiggyBankTest (tests) where
 
 import Data.List
 import Test.Tasty (TestTree, testGroup)
