@@ -3,6 +3,7 @@ module Fida.Contract.TestToolbox
     bad,
     good,
     Run,
+    assertTrue
   )
 where
 
@@ -17,6 +18,7 @@ import Plutus.Model
     mustFail,
     testNoErrors,
     testNoErrorsTrace,
+    logError
   )
 import Plutus.Model.Contract.Ext as X
 import Test.Tasty (TestTree)
@@ -27,3 +29,7 @@ bad msg = good msg . mustFail
 
 good :: String -> Run a -> TestTree
 good = testNoErrors (adaValue 1000_000_000_000) defaultBabbage
+
+assertTrue :: String -> Bool -> Run ()
+assertTrue msg False = logError msg
+assertTrue _ True = return ()

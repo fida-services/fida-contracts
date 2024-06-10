@@ -13,6 +13,8 @@ module Fida.Contract.TestToolbox.TypedValidators
     iinfoBox,
     ppInfoBox,
     runLoadRefScript,
+    isScriptRef,
+    piggyBankInfoBox
   )
 where
 
@@ -33,6 +35,7 @@ import Plutus.Model
     TxBox (..),
     TypedPolicy (..),
     TypedValidator (..),
+    HasValidatorHash (..),
     adaValue,
     loadRefScript,
     spend,
@@ -42,7 +45,8 @@ import Plutus.Model
     userSpend,
   )
 import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api (Address, PubKeyHash, TxOut (..), TxOutRef (..), Value, singleton)
+import Plutus.V2.Ledger.Api (Address, PubKeyHash, TxOut (..), TxOutRef (..), Value, singleton,
+                             ScriptHash (..), ValidatorHash (..))
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import Prelude
 
@@ -81,6 +85,12 @@ fidaCardFromInt :: Integer -> FidaCardId
 fidaCardFromInt = FidaCardId . stringToBuiltinByteString . show
 
 -- | Helper functions related to tv
+isScriptRef :: HasValidatorHash script => script -> (TxOutRef, TxOut) -> Bool
+isScriptRef script (_, TxOut _ _ _ (Just (ScriptHash hash))) =
+  let ValidatorHash hash' = toValidatorHash script
+   in hash' == hash
+isScriptRef _ _ = False
+
 iinfoBox :: InsuranceId -> TxBox script -> Bool
 iinfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs policyInfoTokenName == 1
@@ -88,6 +98,10 @@ iinfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
 ppInfoBox :: InsuranceId -> TxBox script -> Bool
 ppInfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs policyPaymentTokenName == 1
+
+piggyBankInfoBox :: InsuranceId -> FidaCardId -> TxBox script -> Bool
+piggyBankInfoBox (InsuranceId cs) (FidaCardId fcid) (TxBox _ (TxOut _ value _ _) _) =
+  valueOf value cs (fidaCardTokenName fcid) == 1
 
 runLoadRefScript ::
   (IsValidator script) =>

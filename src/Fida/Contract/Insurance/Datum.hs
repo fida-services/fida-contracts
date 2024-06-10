@@ -27,7 +27,7 @@ import PlutusTx.Prelude
 import qualified Prelude as HPrelude
 
 newtype FidaCardId = FidaCardId BuiltinByteString
-  deriving newtype (ToData, FromData, UnsafeFromData, HPrelude.Show)
+  deriving newtype (ToData, FromData, UnsafeFromData, HPrelude.Show, HPrelude.Eq)
 
 PlutusTx.makeLift ''FidaCardId
 
