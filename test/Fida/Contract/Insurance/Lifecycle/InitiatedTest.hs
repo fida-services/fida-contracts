@@ -2,45 +2,54 @@
 
 module Fida.Contract.Insurance.Lifecycle.InitiatedTest (tests, testPayPremium) where
 
-import Control.Monad (void, forM_)
+import Control.Monad (forM_, void)
+import Data.Maybe (isJust)
 import Fida.Contract.Insurance.Datum
-  ( InsurancePolicyDatum (..),
+  ( FidaCardId (..),
+    InsurancePolicyDatum (..),
     InsurancePolicyState (..),
     PiggyBankDatum (..),
-    FidaCardId (..)
   )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..), PolicyInitiatedRedemeer (..))
-import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName, fidaCardTokenName)
+import Fida.Contract.Insurance.Tokens (fidaCardTokenName, policyInfoTokenName, policyPaymentTokenName)
 import Fida.Contract.TestToolbox
-  ( Run,
+  ( InsurancePolicy,
+    PiggyBank,
+    Run,
     Users (..),
+    assertTrue,
     bad,
+    fidaCardFromInt,
     good,
+    iinfoBox,
     insurancePolicy,
+    isScriptRef,
     newSamplePolicy,
+    payPremium,
+    piggyBank,
+    piggyBankAddr,
+    piggyBankInfoBox,
+    ppInfoBox,
     runUpdatePolicyState,
     setupUsers,
-    InsurancePolicy,
-    PiggyBank,
-    isScriptRef,
-    iinfoBox,
-    ppInfoBox,
     updatePolicyStateTxRef,
-    piggyBankAddr,
-    fidaCardFromInt,
-    piggyBank,
-    piggyBankInfoBox,
-    assertTrue,
-    payPremium
   )
-import Plutus.Model (TxBox (..), adaValue, spend,
-                    withBox, withMay, withRefScript, userSpend, submitTx, logError)
+import Plutus.Model
+  ( TxBox (..),
+    adaValue,
+    logError,
+    spend,
+    submitTx,
+    userSpend,
+    withBox,
+    withMay,
+    withRefScript,
+  )
 import Plutus.V1.Ledger.Value (valueOf)
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
 import Test.Tasty (TestTree, testGroup)
 import Prelude
-import Data.Maybe (isJust)
 
 tests :: TestTree
 tests =
@@ -95,8 +104,6 @@ testRequiredUtxos = do
     withBox @InsurancePolicy (ppInfoBox iid) tv $ \(TxBox _ (TxOut _ ppinfoValue _ _) ppinfo) -> do
       case (iinfo, ppinfo) of
         (InsuranceInfo {..}, PremiumPaymentInfo {..}) -> do
-
-          -- | insurance info checks
           assertTrue "No insurance info token" $ valueOf iinfoValue cs policyInfoTokenName == 1
           assertTrue "No insurance payment info token" $ valueOf ppinfoValue cs policyPaymentTokenName == 1
           assertTrue "Fida card value doesn't match" $ iInfoFidaCardValue == 1_000_000_000
@@ -107,25 +114,21 @@ testRequiredUtxos = do
           assertTrue "Claim must be not set" $ not $ isJust iInfoClaim
           assertTrue "State must be set to Initiated" $ iInfoState == Initiated
 
-          -- | payment info checks
           assertTrue "Premium amount per piggy bank doesn't match" $ ppInfoPremiumAmountPerPiggyBank == 20_000_000
           assertTrue "Piggy banks addresses don't match" $
             ppInfoPiggyBanks == map (piggyBankAddr iid . fidaCardFromInt) [1 .. 10]
 
-          forM_ (map fidaCardFromInt [1..10]) $ \fcid@(FidaCardId tn) ->
+          forM_ (map fidaCardFromInt [1 .. 10]) $ \fcid@(FidaCardId tn) ->
             let ptv = piggyBank iid fcid
-            in  withBox @PiggyBank (piggyBankInfoBox iid fcid) ptv $
+             in withBox @PiggyBank (piggyBankInfoBox iid fcid) ptv $
                   \(TxBox _ (TxOut _ piggyBankInfoValue _ _) piggyBankDatum) -> do
                     let atpp msg = msg <> " @ piggy bank " <> show fcid
                     case piggyBankDatum of
                       PBankFidaCard {..} -> do
-
-                        -- | piggy banks info checks
                         assertTrue "No piggy bank token" $ valueOf piggyBankInfoValue cs (fidaCardTokenName tn) == 1
                         assertTrue (atpp "Fida card id doesn't match") $ pbfcFidaCardId == fcid
                         assertTrue (atpp "Fida card value doesn't match") $ pbfcFidaCardValue == 1_000_000_000
                         assertTrue (atpp "Fida card must be available for selling") $ not pbfcIsSold
                         assertTrue (atpp "There should be no paid claims") $ null pbfcPaidClaims
                       _ -> logError "Datum for piggy bank dosen't match"
-
         _ -> logError "Datum types for insurance policy script don't match"

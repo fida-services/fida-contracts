@@ -1,9 +1,8 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Fida.Contract.Insurance.Lifecycle.FundingTest (tests) where
 
-import Fida.Contract.Insurance.Lifecycle.InitiatedTest (testPayPremium)
 import Control.Monad (void)
 import Fida.Contract.Insurance.Datum
   ( InsurancePolicyDatum (..),
@@ -11,17 +10,18 @@ import Fida.Contract.Insurance.Datum
     PiggyBankDatum (..),
   )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
-import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..), PolicyInitiatedRedemeer (..), PolicyFundingRedeemer (..))
+import Fida.Contract.Insurance.Lifecycle.InitiatedTest (testPayPremium)
+import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..), PolicyFundingRedeemer (..), PolicyInitiatedRedemeer (..))
 import Fida.Contract.TestToolbox
   ( Run,
     Users (..),
     bad,
+    completeFundingTx,
     good,
     insurancePolicy,
     newSamplePolicy,
     runUpdatePolicyState,
     setupUsers,
-    completeFundingTx,
   )
 import Plutus.Model
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
@@ -64,7 +64,6 @@ testCancelPolicyByUnauthorizedUser = do
   iid <- newSamplePolicy users
   cancelPolicy iid investor1
 
-
 testFundingComplete :: Run ()
 testFundingComplete = do
   users@Users {..} <- setupUsers
@@ -82,10 +81,10 @@ testFundingComplete = do
 
   let validRange = from actualStartTime
 
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ _ InsuranceInfo{iInfoFidaCardNumber}) -> do
+  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ _ InsuranceInfo {iInfoFidaCardNumber}) -> do
     let maybeUpdatePolicyStateTx = completeFundingTx tv box onRiskStartDate
     let piggyBanks =
-            map (piggyBank iid . fidaCardFromInt) [1 .. iInfoFidaCardNumber]
+          map (piggyBank iid . fidaCardFromInt) [1 .. iInfoFidaCardNumber]
 
     allBoxes <- mconcat <$> mapM boxAt piggyBanks
 
@@ -94,7 +93,6 @@ testFundingComplete = do
     let refPiggyBanks = mconcat $ map refBoxInline boxes
 
     let maybeTx = (<>) <$> maybeUpdatePolicyStateTx <*> Just refPiggyBanks
-
 
     withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
       tx' <- validateIn validRange tx

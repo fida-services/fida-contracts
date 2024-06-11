@@ -3,7 +3,7 @@ module Fida.Contract.TestToolbox
     bad,
     good,
     Run,
-    assertTrue
+    assertTrue,
   )
 where
 
@@ -15,10 +15,10 @@ import Plutus.Model
   ( Run,
     adaValue,
     defaultBabbage,
+    logError,
     mustFail,
     testNoErrors,
     testNoErrorsTrace,
-    logError
   )
 import Plutus.Model.Contract.Ext as X
 import Test.Tasty (TestTree)

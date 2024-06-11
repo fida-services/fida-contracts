@@ -12,7 +12,7 @@ import Fida.Contract.Insurance.Datum (ClaimInfo (..), FidaCardId (..), Insurance
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer (..))
 import Fida.Contract.Insurance.Tokens (fidaCardStatusTokenName, fidaCardTokenName, policyInfoTokenName)
-import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, untypedOutput, outputDatum, untypedOutputDatum, referenceDatums, referenceOutputs, unsafeFromSingleton', wrapValidator)
+import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, outputDatum, referenceDatums, referenceOutputs, unsafeFromSingleton', untypedOutput, untypedOutputDatum, wrapValidator)
 import Plutus.V1.Ledger.Interval (before)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V1.Ledger.Value
