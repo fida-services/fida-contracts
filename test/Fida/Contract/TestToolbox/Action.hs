@@ -182,14 +182,6 @@ payPremium iid users@Users {..} = do
                   ]
           submitTx policyHolder tx
 
-newtype PiggyBankAddress = PiggyBankAddress Address
-
-instance HasDatum PiggyBankAddress where
-  type DatumType PiggyBankAddress = PiggyBankDatum
-
-instance HasAddress PiggyBankAddress where
-  toAddress (PiggyBankAddress addr) = addr
-
 payPremiumToPiggyBanks ::
   TxOutRef ->
   InsurancePolicy ->
