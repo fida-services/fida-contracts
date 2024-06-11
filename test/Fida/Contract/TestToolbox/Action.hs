@@ -13,36 +13,36 @@ module Fida.Contract.TestToolbox.Action
   )
 where
 
-import Fida.Contract.Insurance.Datum (InsurancePolicyState, FidaCardId(..), completeFunding, updatePiggyBankFidaCardStatus, updatePolicyState, PiggyBankDatum(..), InsurancePolicyState(..), InsurancePolicyDatum(..))
+import Fida.Contract.Insurance.Datum (FidaCardId (..), InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), completeFunding, updatePiggyBankFidaCardStatus, updatePolicyState)
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
-import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer(..), PolicyInitiatedRedemeer(..), PiggyBankRedeemer(..), PolicyFundingRedeemer(..))
+import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..), PiggyBankRedeemer (..), PolicyFundingRedeemer (..), PolicyInitiatedRedemeer (..))
 import Fida.Contract.TestToolbox.Action.MakeInsurancePolicy as X
-import Fida.Contract.TestToolbox.TypedValidators (InsurancePolicy, PiggyBank, fidaCardStatusNFT, piggyBank, fidaCardNFT, fidaCardNegateNFT,fidaCardStatusNegateNFT, fidaCardFromInt, iinfoBox, ppInfoBox, insurancePolicy, piggyBankInfoBox, isScriptRef)
-import Fida.Contract.TestToolbox.Users (Users(..))
+import Fida.Contract.TestToolbox.TypedValidators (InsurancePolicy, PiggyBank, fidaCardFromInt, fidaCardNFT, fidaCardNegateNFT, fidaCardStatusNFT, fidaCardStatusNegateNFT, iinfoBox, insurancePolicy, isScriptRef, piggyBank, piggyBankInfoBox, ppInfoBox)
+import Fida.Contract.TestToolbox.Users (Users (..))
 import Plutus.Model
   ( DatumMode (..),
+    DatumType,
+    HasAddress (..),
     HasDatum (..),
     Run,
-    HasAddress (..),
     Tx,
     TxBox (..),
     UserSpend,
-    DatumType,
-    userSpend,
-    payToRef,
     adaValue,
     logError,
+    payToKey,
+    payToRef,
     payToScript,
+    spend,
     spendBox,
     submitTx,
+    userSpend,
     withBox,
     withMay,
-    payToKey,
-    spend,
-    withRefScript
+    withRefScript,
   )
-import Plutus.Model.Contract.Ext (spendBoxRef, payToAddressDatum)
-import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..), TxOutRef, Address, POSIXTime)
+import Plutus.Model.Contract.Ext (payToAddressDatum, spendBoxRef)
+import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, TxOut (..), TxOutRef)
 import Prelude
 
 runUpdatePolicyState ::
@@ -93,7 +93,7 @@ completeFundingTx ::
   TxBox InsurancePolicy ->
   POSIXTime ->
   Maybe Tx
-completeFundingTx tv box@(TxBox _ (TxOut _ value _ _) iinfo@InsuranceInfo{..}) onRiskStartDate =
+completeFundingTx tv box@(TxBox _ (TxOut _ value _ _) iinfo@InsuranceInfo {..}) onRiskStartDate =
   mkTx <$> completeFunding iinfo onRiskStartDate
  where
   mkTx iinfo =
@@ -108,7 +108,7 @@ buyFidaCardTx ::
   TxBox PiggyBank ->
   PubKeyHash ->
   Maybe Tx
-buyFidaCardTx iid tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard{pbfcFidaCardValue, pbfcFidaCardId}) investor =
+buyFidaCardTx iid tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue, pbfcFidaCardId}) investor =
   mkTx <$> updatePiggyBankFidaCardStatus pbank True
  where
   mkTx pbank' =
@@ -118,13 +118,12 @@ buyFidaCardTx iid tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard{pbfcFi
       , payToKey investor (fidaCardNFT iid pbfcFidaCardId)
       ]
 
-
 buyFidaCardTxRef ::
   TxOutRef ->
   PiggyBank ->
   TxBox PiggyBank ->
   Maybe Tx
-buyFidaCardTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard{pbfcFidaCardValue}) =
+buyFidaCardTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue}) =
   mkTx <$> updatePiggyBankFidaCardStatus pbank True
  where
   mkTx pbank' =
@@ -138,26 +137,26 @@ buyFidaCard ::
   FidaCardId ->
   Users ->
   Run ()
-buyFidaCard iid fcid users@Users{..} = do
+buyFidaCard iid fcid users@Users {..} = do
   let tv = piggyBank iid fcid
   sp <- spend investor1 $ adaValue 1_000_000_000
 
   withBox @PiggyBank (piggyBankInfoBox iid fcid) tv $ \box -> do
-      let maybeTx = buyFidaCardTx iid tv box investor1
-      withMay "Can't buy fida card" (pure maybeTx) $ \buyFidaCardTx -> do
-        let tx =
-              mconcat
-                [ buyFidaCardTx
-                , userSpend sp
-                ]
-        submitTx investor1 tx
+    let maybeTx = buyFidaCardTx iid tv box investor1
+    withMay "Can't buy fida card" (pure maybeTx) $ \buyFidaCardTx -> do
+      let tx =
+            mconcat
+              [ buyFidaCardTx
+              , userSpend sp
+              ]
+      submitTx investor1 tx
 
 buyFidaCards ::
   InsuranceId ->
   Users ->
   Run ()
-buyFidaCards iid users@Users{..} = do
-  withBox @InsurancePolicy (iinfoBox iid) (insurancePolicy iid) $ \(TxBox _ _ InsuranceInfo{iInfoFidaCardNumber}) -> do
+buyFidaCards iid users@Users {..} = do
+  withBox @InsurancePolicy (iinfoBox iid) (insurancePolicy iid) $ \(TxBox _ _ InsuranceInfo {iInfoFidaCardNumber}) -> do
     let fidaCardIds = [1 .. iInfoFidaCardNumber]
     mapM_ (\fcId -> buyFidaCard iid (fidaCardFromInt fcId) users) fidaCardIds
 
@@ -165,7 +164,7 @@ payPremium ::
   InsuranceId ->
   Users ->
   Run ()
-payPremium iid users@Users{..} = do
+payPremium iid users@Users {..} = do
   let tv = insurancePolicy iid
   sp <- spend policyHolder $ adaValue 200_000_000
   withRefScript (isScriptRef tv) tv $ \(scriptRef, _) ->
@@ -183,9 +182,7 @@ payPremium iid users@Users{..} = do
                   ]
           submitTx policyHolder tx
 
-
 newtype PiggyBankAddress = PiggyBankAddress Address
-
 
 instance HasDatum PiggyBankAddress where
   type DatumType PiggyBankAddress = PiggyBankDatum
@@ -214,5 +211,4 @@ payPremiumToPiggyBanks scriptRef tv box@(TxBox _ (TxOut _ value _ _) PremiumPaym
 
   payToPiggyBankTx addr =
     payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
-
 payPremiumToPiggyBanks _ _ _ _ = Nothing

@@ -3,9 +3,6 @@
 module Fida.Contract.Insurance.PiggyBankTest (tests) where
 
 import Data.List
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit
-import Prelude
 import Fida.Contract.TestToolbox
   ( Run,
     Users (..),
@@ -16,9 +13,12 @@ import Fida.Contract.TestToolbox
     runUpdatePolicyState,
     setupUsers,
   )
-import Fida.Contract.TestToolbox.TypedValidators (PiggyBank)
 import Fida.Contract.TestToolbox.Action (buyFidaCards)
+import Fida.Contract.TestToolbox.TypedValidators (PiggyBank)
 import Plutus.Model
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit
+import Prelude
 
 tests :: TestTree
 tests =
@@ -29,7 +29,6 @@ tests =
     ]
 
 simpleTest = testCase "sorting array" $ [1, 2, 3] @?= sort [2, 3, 1]
-
 
 testBuyFidaCard :: Run ()
 testBuyFidaCard = do

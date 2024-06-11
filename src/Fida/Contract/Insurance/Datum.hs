@@ -131,8 +131,6 @@ untypedUpdatePolicyState d = fmap PlutusTx.toBuiltinData . updatePolicyState d
 completeFunding :: InsurancePolicyDatum -> POSIXTime -> Maybe InsurancePolicyDatum
 completeFunding InsuranceInfo {..} startDate = Just $ InsuranceInfo {iInfoState = OnRisk, iInfoStartDate = Just startDate, ..}
 
-
-
 {-# INLINEABLE updateClaim #-}
 updateClaim :: InsurancePolicyDatum -> Maybe ClaimInfo -> Maybe InsurancePolicyDatum
 updateClaim InsuranceInfo {..} claim = Just $ InsuranceInfo {iInfoClaim = claim, ..}
@@ -164,7 +162,6 @@ data PiggyBankDatum
       , pbfcPaidClaims :: [BuiltinByteString]
       }
   deriving (HPrelude.Show)
-
 
 {-# INLINEABLE updatePiggyBankFidaCardStatus #-}
 updatePiggyBankFidaCardStatus :: PiggyBankDatum -> Bool -> Maybe PiggyBankDatum

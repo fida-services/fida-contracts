@@ -19,7 +19,7 @@ module Fida.Contract.TestToolbox.TypedValidators
     ppInfoBox,
     runLoadRefScript,
     isScriptRef,
-    piggyBankInfoBox
+    piggyBankInfoBox,
   )
 where
 
@@ -35,12 +35,12 @@ import Fida.Contract.Insurance.Tokens
     policyPaymentTokenName,
   )
 import Plutus.Model
-  ( IsValidator,
+  ( HasValidatorHash (..),
+    IsValidator,
     Run,
     TxBox (..),
     TypedPolicy (..),
     TypedValidator (..),
-    HasValidatorHash (..),
     adaValue,
     loadRefScript,
     spend,
@@ -50,8 +50,16 @@ import Plutus.Model
     userSpend,
   )
 import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api (Address, PubKeyHash, TxOut (..), TxOutRef (..), Value, singleton,
-                             ScriptHash (..), ValidatorHash (..))
+import Plutus.V2.Ledger.Api
+  ( Address,
+    PubKeyHash,
+    ScriptHash (..),
+    TxOut (..),
+    TxOutRef (..),
+    ValidatorHash (..),
+    Value,
+    singleton,
+  )
 import PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import Prelude
 
@@ -114,12 +122,6 @@ piggyBankInfoBox :: InsuranceId -> FidaCardId -> TxBox PiggyBank -> Bool
 piggyBankInfoBox (InsuranceId cs) fcid (TxBox _ (TxOut _ value _ _) PBankFidaCard {..}) =
   valueOf value cs fidaCardStatusTokenName == 1 && pbfcFidaCardId == fcid
 piggyBankInfoBox _ _ _ = False
-
---pbBox :: InsuranceId -> FidaCardId -> TxBox PiggyBank -> Bool
---pbBox (InsuranceId cs) fcid (TxBox _ (TxOut _ value _ _) PBankFidaCard{pbfcFidaCardId}) =
---  valueOf value cs fidaCardStatusTokenName == 1
---  && pbfcFidaCardId == fcid
---pbBox _ _ _ = False
 
 runLoadRefScript ::
   (IsValidator script) =>
