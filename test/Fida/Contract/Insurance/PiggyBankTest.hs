@@ -2,7 +2,6 @@
 
 module Fida.Contract.Insurance.PiggyBankTest (tests) where
 
-import Data.List
 import Fida.Contract.TestToolbox
   ( Run,
     Users (..),
@@ -24,11 +23,8 @@ tests :: TestTree
 tests =
   testGroup
     "Unit tests for PiggyBank module"
-    [ simpleTest
-    , good "Buying Fida card works" testBuyFidaCard
+    [ good "Buying Fida card works" testBuyFidaCard
     ]
-
-simpleTest = testCase "sorting array" $ [1, 2, 3] @?= sort [2, 3, 1]
 
 testBuyFidaCard :: Run ()
 testBuyFidaCard = do
