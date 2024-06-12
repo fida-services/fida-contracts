@@ -25,6 +25,12 @@ tests =
   testGroup
     "Unit tests for PiggyBank module"
     [ good "Buying Fida card works" testBuyFidaCard
+    , good "Sell Fida card works" testSellFidaCard
+    , good "Claim premium works" testClaimPremium
+    , good "Claim premium on cancel works" testClaimPremiumOnCancel
+    , good "Pay for claim with collaterl works" testPayForClaimWithCollateral
+    , good "Unlock collateral on cancel works" testUnlockCollateralOnCancel
+    , good "Unlock collateral works" testUnlockCollateral
     ]
 
 testBuyFidaCard :: Run ()
@@ -32,3 +38,22 @@ testBuyFidaCard = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
   buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 5]
+
+
+testSellFidaCard :: Run ()
+testSellFidaCard = undefined
+
+testClaimPremium :: Run ()
+testClaimPremium = undefined
+
+testPayForClaimWithCollateral :: Run ()
+testPayForClaimWithCollateral = undefined
+
+testClaimPremiumOnCancel :: Run ()
+testClaimPremiumOnCancel = undefined
+
+testUnlockCollateralOnCancel :: Run ()
+testUnlockCollateralOnCancel = undefined
+
+testUnlockCollateral :: Run ()
+testUnlockCollateral = undefined
