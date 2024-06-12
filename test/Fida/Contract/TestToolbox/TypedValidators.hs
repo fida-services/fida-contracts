@@ -107,7 +107,6 @@ fidaCardFromInt = FidaCardId . stringToBuiltinByteString . show
 fidaCardsFromInts :: [Integer] -> [FidaCardId]
 fidaCardsFromInts = map fidaCardFromInt
 
-
 -- | Helper functions related to tv
 isScriptRef :: HasValidatorHash script => script -> (TxOutRef, TxOut) -> Bool
 isScriptRef script (_, TxOut _ _ _ (Just (ScriptHash hash))) =

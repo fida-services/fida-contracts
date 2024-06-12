@@ -8,16 +8,44 @@ module Fida.Contract.Insurance.PiggyBank
   )
 where
 
-import Fida.Contract.Insurance.Datum (ClaimInfo (..), FidaCardId (..), InsurancePolicyDatum (..), InsurancePolicyState (Cancelled), PiggyBankDatum (..), unlockedPremiumToClaim, untypedUpdatePiggyBankFidaCardStatus)
+import Fida.Contract.Insurance.Datum
+  ( ClaimInfo (..),
+    FidaCardId (..),
+    InsurancePolicyDatum (..),
+    InsurancePolicyState (Cancelled),
+    PiggyBankDatum (..),
+    unlockedPremiumToClaim,
+    untypedSetFidaCardSold,
+  )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer (..))
-import Fida.Contract.Insurance.Tokens (fidaCardStatusTokenName, fidaCardTokenName, policyInfoTokenName)
-import Fida.Contract.Utils (fromSingleton, lovelaceValueOf, output, outputDatum, referenceDatums, referenceOutputs, unsafeFromSingleton', untypedOutput, untypedOutputDatum, wrapValidator)
+import Fida.Contract.Insurance.Tokens
+  ( fidaCardStatusTokenName,
+    fidaCardTokenName,
+    policyInfoTokenName,
+  )
+import Fida.Contract.Utils
+  ( fromSingleton,
+    lovelaceValueOf,
+    output,
+    outputDatum,
+    referenceDatums,
+    referenceOutputs,
+    unsafeFromSingleton',
+    untypedOutput,
+    untypedOutputDatum,
+    wrapValidator,
+  )
 import Plutus.V1.Ledger.Interval (before)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V1.Ledger.Value
 import Plutus.V2.Ledger.Api
-import Plutus.V2.Ledger.Contexts (findOwnInput, getContinuingOutputs, txSignedBy, valueSpent)
+import Plutus.V2.Ledger.Contexts
+  ( findOwnInput,
+    getContinuingOutputs,
+    txSignedBy,
+    valueSpent,
+  )
 import qualified PlutusTx
 import PlutusTx.Prelude
 
@@ -89,7 +117,7 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankFidaCard {pbfcIsSold = False
     Just (TxInInfo _ (TxOut _ value _ _)) -> lovelaceValueOf value
     Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-2"
 
-  isSold = Just outputDatum' == untypedUpdatePiggyBankFidaCardStatus datum True
+  isSold = Just outputDatum' == untypedSetFidaCardSold datum
   outputDatum' =
     case untypedOutput cs sc fidaCardStatusTokenName of
       Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-3"
