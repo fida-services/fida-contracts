@@ -16,15 +16,23 @@ module Fida.Contract.Insurance.Datum
     untypedUnsetClaim,
     untypedUpdateClaim,
     unlockedPremiumToClaim,
-    updatePiggyBankFidaCardStatus,
-    untypedUpdatePiggyBankFidaCardStatus,
+    setFidaCardSold,
+    untypedSetFidaCardSold,
   )
 where
 
 import Fida.Contract.Insurance.Authority (InsuranceAuthority)
 import qualified Plutus.V1.Ledger.Interval as Interval
 import Plutus.V1.Ledger.Time (DiffMilliSeconds, fromMilliSeconds)
-import Plutus.V2.Ledger.Api (Address, FromData, POSIXTime, POSIXTimeRange, PubKeyHash, ToData, UnsafeFromData)
+import Plutus.V2.Ledger.Api
+  ( Address,
+    FromData,
+    POSIXTime,
+    POSIXTimeRange,
+    PubKeyHash,
+    ToData,
+    UnsafeFromData,
+  )
 import qualified PlutusTx
 import PlutusTx.Prelude
 import qualified Prelude as HPrelude
@@ -163,14 +171,18 @@ data PiggyBankDatum
       }
   deriving (HPrelude.Show)
 
-{-# INLINEABLE updatePiggyBankFidaCardStatus #-}
-updatePiggyBankFidaCardStatus :: PiggyBankDatum -> Bool -> Maybe PiggyBankDatum
-updatePiggyBankFidaCardStatus PBankFidaCard {..} status = Just $ PBankFidaCard {pbfcIsSold = status, ..}
-updatePiggyBankFidaCardStatus _ _ = Nothing
+{-# INLINEABLE updatePiggyBankSoldFidaCardStatus #-}
+updatePiggyBankSoldFidaCardStatus :: Bool -> PiggyBankDatum -> Maybe PiggyBankDatum
+updatePiggyBankSoldFidaCardStatus status PBankFidaCard {..} = Just $ PBankFidaCard {pbfcIsSold = status, ..}
+updatePiggyBankSoldFidaCardStatus _ _ = Nothing
 
-{-# INLINEABLE untypedUpdatePiggyBankFidaCardStatus #-}
-untypedUpdatePiggyBankFidaCardStatus :: PiggyBankDatum -> Bool -> Maybe BuiltinData
-untypedUpdatePiggyBankFidaCardStatus d = fmap PlutusTx.toBuiltinData . updatePiggyBankFidaCardStatus d
+{-# INLINEABLE setFidaCardSold #-}
+setFidaCardSold :: PiggyBankDatum -> Maybe PiggyBankDatum
+setFidaCardSold = updatePiggyBankSoldFidaCardStatus True
+
+{-# INLINEABLE untypedSetFidaCardSold #-}
+untypedSetFidaCardSold :: PiggyBankDatum -> Maybe BuiltinData
+untypedSetFidaCardSold = fmap PlutusTx.toBuiltinData . setFidaCardSold
 
 PlutusTx.makeIsDataIndexed
   ''PiggyBankDatum

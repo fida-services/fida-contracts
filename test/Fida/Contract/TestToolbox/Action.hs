@@ -13,11 +13,38 @@ module Fida.Contract.TestToolbox.Action
   )
 where
 
-import Fida.Contract.Insurance.Datum (FidaCardId (..), InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), completeFunding, updatePiggyBankFidaCardStatus, updatePolicyState)
+import Fida.Contract.Insurance.Datum
+  ( FidaCardId (..),
+    InsurancePolicyDatum (..),
+    InsurancePolicyState (..),
+    PiggyBankDatum (..),
+    completeFunding,
+    setFidaCardSold,
+    updatePolicyState,
+  )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
-import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..), PiggyBankRedeemer (..), PolicyFundingRedeemer (..), PolicyInitiatedRedemeer (..))
+import Fida.Contract.Insurance.Redeemer
+  ( InsurancePolicyRedeemer (..),
+    PiggyBankRedeemer (..),
+    PolicyFundingRedeemer (..),
+    PolicyInitiatedRedemeer (..),
+  )
 import Fida.Contract.TestToolbox.Action.MakeInsurancePolicy as X
-import Fida.Contract.TestToolbox.TypedValidators (InsurancePolicy, PiggyBank, fidaCardFromInt, fidaCardNFT, fidaCardNegateNFT, fidaCardStatusNFT, fidaCardStatusNegateNFT, iinfoBox, insurancePolicy, isScriptRef, piggyBank, piggyBankInfoBox, ppInfoBox)
+import Fida.Contract.TestToolbox.TypedValidators
+  ( InsurancePolicy,
+    PiggyBank,
+    fidaCardFromInt,
+    fidaCardNFT,
+    fidaCardNegateNFT,
+    fidaCardStatusNFT,
+    fidaCardStatusNegateNFT,
+    iinfoBox,
+    insurancePolicy,
+    isScriptRef,
+    piggyBank,
+    piggyBankInfoBox,
+    ppInfoBox,
+  )
 import Fida.Contract.TestToolbox.Users (Users (..))
 import Plutus.Model
   ( DatumMode (..),
@@ -109,7 +136,7 @@ buyFidaCardTx ::
   PubKeyHash ->
   Maybe Tx
 buyFidaCardTx iid tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue, pbfcFidaCardId}) investor =
-  mkTx <$> updatePiggyBankFidaCardStatus pbank True
+  mkTx <$> setFidaCardSold pbank
  where
   mkTx pbank' =
     mconcat
@@ -124,7 +151,7 @@ buyFidaCardTxRef ::
   TxBox PiggyBank ->
   Maybe Tx
 buyFidaCardTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue}) =
-  mkTx <$> updatePiggyBankFidaCardStatus pbank True
+  mkTx <$> setFidaCardSold pbank
  where
   mkTx pbank' =
     mconcat
