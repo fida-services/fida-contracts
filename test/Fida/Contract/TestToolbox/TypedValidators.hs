@@ -15,6 +15,7 @@ module Fida.Contract.TestToolbox.TypedValidators
     fidaCardStatusNFT,
     fidaCardStatusNegateNFT,
     fidaCardFromInt,
+    fidaCardsFromInts,
     iinfoBox,
     ppInfoBox,
     runLoadRefScript,
@@ -102,6 +103,10 @@ fidaCardStatusNegateNFT (InsuranceId cs) = singleton cs fidaCardStatusTokenName 
 
 fidaCardFromInt :: Integer -> FidaCardId
 fidaCardFromInt = FidaCardId . stringToBuiltinByteString . show
+
+fidaCardsFromInts :: [Integer] -> [FidaCardId]
+fidaCardsFromInts = map fidaCardFromInt
+
 
 -- | Helper functions related to tv
 isScriptRef :: HasValidatorHash script => script -> (TxOutRef, TxOut) -> Bool
