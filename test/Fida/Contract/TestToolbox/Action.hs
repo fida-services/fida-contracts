@@ -134,31 +134,30 @@ buyFidaCardTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCa
 
 buyFidaCard ::
   InsuranceId ->
+  PubKeyHash ->
   FidaCardId ->
-  Users ->
   Run ()
-buyFidaCard iid fcid users@Users {..} = do
+buyFidaCard iid investor fcid = do
   let tv = piggyBank iid fcid
-  sp <- spend investor1 $ adaValue 1_000_000_000
+  sp <- spend investor $ adaValue 1_000_000_000
 
   withBox @PiggyBank (piggyBankInfoBox iid fcid) tv $ \box -> do
-    let maybeTx = buyFidaCardTx iid tv box investor1
+    let maybeTx = buyFidaCardTx iid tv box investor
     withMay "Can't buy fida card" (pure maybeTx) $ \buyFidaCardTx -> do
       let tx =
             mconcat
               [ buyFidaCardTx
               , userSpend sp
               ]
-      submitTx investor1 tx
+      submitTx investor tx
 
 buyFidaCards ::
   InsuranceId ->
-  Users ->
+  PubKeyHash ->
+  [FidaCardId] ->
   Run ()
-buyFidaCards iid users@Users {..} = do
-  withBox @InsurancePolicy (iinfoBox iid) (insurancePolicy iid) $ \(TxBox _ _ InsuranceInfo {iInfoFidaCardNumber}) -> do
-    let fidaCardIds = [1 .. iInfoFidaCardNumber]
-    mapM_ (\fcId -> buyFidaCard iid (fidaCardFromInt fcId) users) fidaCardIds
+buyFidaCards iid investor fidaCardIds =
+  mapM_ (buyFidaCard iid investor) fidaCardIds
 
 payPremium ::
   InsuranceId ->

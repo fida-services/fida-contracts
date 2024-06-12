@@ -11,6 +11,7 @@ import Fida.Contract.TestToolbox
     newSamplePolicy,
     runUpdatePolicyState,
     setupUsers,
+    fidaCardsFromInts
   )
 import Fida.Contract.TestToolbox.Action (buyFidaCards)
 import Fida.Contract.TestToolbox.TypedValidators (PiggyBank)
@@ -30,4 +31,5 @@ testBuyFidaCard :: Run ()
 testBuyFidaCard = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
-  buyFidaCards iid users
+  buyFidaCards iid investor1 $ fidaCardsFromInts [1..5]
+

@@ -73,7 +73,7 @@ testFundingComplete = do
 
   payPremium iid users
 
-  buyFidaCards iid users
+  buyFidaCards iid investor1 $ fidaCardsFromInts [1..10]
 
   onRiskStartDate <- currentTime
   waitNSlots 5
