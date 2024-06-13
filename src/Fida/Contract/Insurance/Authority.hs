@@ -19,7 +19,7 @@ data InsuranceAuthority
   | AtLeastOneSign [PubKeyHash]
   | AllMustSign [PubKeyHash]
   | MajorityMustSign [PubKeyHash]
-  deriving (HPrelude.Show)
+  deriving (HPrelude.Show,  HPrelude.Eq)
 
 PlutusTx.makeIsDataIndexed
   ''InsuranceAuthority

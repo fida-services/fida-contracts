@@ -69,11 +69,11 @@ testFundingComplete = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
   sp <- spend policyHolder $ adaValue 200_000_000
-  fundingComplete iid policyHolder users
+  fundingComplete iid users
 
 
-fundingComplete :: InsuranceId -> PubKeyHash -> Users -> Run ()
-fundingComplete iid policyHolder users = do
+fundingComplete :: InsuranceId -> Users -> Run ()
+fundingComplete iid users@Users {..} = do
   let tv = insurancePolicy iid
 
   payPremium iid users
