@@ -7,13 +7,15 @@ import Fida.Contract.TestToolbox
     Users (..),
     bad,
     fidaCardsFromInts,
+    fidaCardFromInt,
     good,
     insurancePolicy,
     newSamplePolicy,
     runUpdatePolicyState,
     setupUsers,
   )
-import Fida.Contract.TestToolbox.Action (buyFidaCards)
+import Fida.Contract.TestToolbox.Action (buyFidaCards,
+                                         sellFidaCard)
 import Fida.Contract.TestToolbox.TypedValidators (PiggyBank)
 import Plutus.Model
 import Test.Tasty (TestTree, testGroup)
@@ -26,11 +28,11 @@ tests =
     "Unit tests for PiggyBank module"
     [ good "Buying Fida card works" testBuyFidaCard
     , good "Sell Fida card works" testSellFidaCard
-    , good "Claim premium works" testClaimPremium
-    , good "Claim premium on cancel works" testClaimPremiumOnCancel
-    , good "Pay for claim with collaterl works" testPayForClaimWithCollateral
-    , good "Unlock collateral on cancel works" testUnlockCollateralOnCancel
-    , good "Unlock collateral works" testUnlockCollateral
+--    , good "Claim premium works" testClaimPremium
+--    , good "Claim premium on cancel works" testClaimPremiumOnCancel
+--    , good "Pay for claim with collaterl works" testPayForClaimWithCollateral
+--    , good "Unlock collateral on cancel works" testUnlockCollateralOnCancel
+--    , good "Unlock collateral works" testUnlockCollateral
     ]
 
 testBuyFidaCard :: Run ()
@@ -39,9 +41,13 @@ testBuyFidaCard = do
   iid <- newSamplePolicy users
   buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 5]
 
-
 testSellFidaCard :: Run ()
-testSellFidaCard = undefined
+testSellFidaCard = do
+  users@Users {..} <- setupUsers
+  iid <- newSamplePolicy users
+  buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 3]
+  sellFidaCard iid investor1 $ fidaCardFromInt 1
+  return ()
 
 testClaimPremium :: Run ()
 testClaimPremium = undefined

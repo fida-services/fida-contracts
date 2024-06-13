@@ -17,6 +17,7 @@ module Fida.Contract.Insurance.Datum
     untypedUpdateClaim,
     unlockedPremiumToClaim,
     setFidaCardSold,
+    setFidaCardUnsold,
     untypedSetFidaCardSold,
   )
 where
@@ -179,6 +180,10 @@ updatePiggyBankSoldFidaCardStatus _ _ = Nothing
 {-# INLINEABLE setFidaCardSold #-}
 setFidaCardSold :: PiggyBankDatum -> Maybe PiggyBankDatum
 setFidaCardSold = updatePiggyBankSoldFidaCardStatus True
+
+{-# INLINEABLE setFidaCardUnsold #-}
+setFidaCardUnsold :: PiggyBankDatum -> Maybe PiggyBankDatum
+setFidaCardUnsold = updatePiggyBankSoldFidaCardStatus False
 
 {-# INLINEABLE untypedSetFidaCardSold #-}
 untypedSetFidaCardSold :: PiggyBankDatum -> Maybe BuiltinData

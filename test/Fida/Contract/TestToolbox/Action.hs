@@ -9,6 +9,7 @@ module Fida.Contract.TestToolbox.Action
     buyFidaCards,
     completeFundingTx,
     payPremium,
+    sellFidaCard,
     module X,
   )
 where
@@ -20,6 +21,7 @@ import Fida.Contract.Insurance.Datum
     PiggyBankDatum (..),
     completeFunding,
     setFidaCardSold,
+    setFidaCardUnsold,
     updatePolicyState,
   )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId)
@@ -68,6 +70,7 @@ import Plutus.Model
     withMay,
     withRefScript,
   )
+import Fida.Contract.Utils (negateValue)
 import Plutus.Model.Contract.Ext (payToAddressDatum, spendBoxRef)
 import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, TxOut (..), TxOutRef)
 import Prelude
@@ -158,6 +161,32 @@ buyFidaCardTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCa
       [ spendBoxRef scriptRef tv BuyFidaCard box
       , payToRef tv (InlineDatum pbank') (value <> adaValue pbfcFidaCardValue)
       ]
+
+sellFidaCard ::
+  InsuranceId ->
+  PubKeyHash ->
+  FidaCardId ->
+  Run ()
+sellFidaCard iid investor fcid = do
+  let
+    tv = piggyBank iid fcid
+    fidaCardValue = fidaCardNFT iid fcid
+  sp <- spend investor fidaCardValue
+  withBox @PiggyBank (piggyBankInfoBox iid fcid) tv $
+    \box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue}) ->
+       withMay "Can't buy fida card" (pure $ setFidaCardUnsold pbank) $ \pbank' -> do
+         let
+           sellValue = adaValue pbfcFidaCardValue
+           datum = InlineDatum pbank'
+           value' = value <> negateValue sellValue <> fidaCardValue
+           tx =
+             mconcat
+               [ spendBox tv SellFidaCard box
+               , payToScript tv datum value'
+               , payToKey investor sellValue
+               , userSpend sp
+               ]
+         submitTx investor tx
 
 buyFidaCard ::
   InsuranceId ->
