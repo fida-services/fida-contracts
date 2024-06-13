@@ -30,7 +30,7 @@ import qualified Prelude
 
 -- | Unique Fida Insurance identifier
 newtype InsuranceId = InsuranceId CurrencySymbol
-  deriving newtype (Prelude.Show, ToData, FromData, UnsafeFromData)
+  deriving newtype (Prelude.Show, Prelude.Eq, ToData, FromData, UnsafeFromData)
 
 PlutusTx.makeLift ''InsuranceId
 

@@ -11,6 +11,7 @@ import Fida.Contract.TestToolbox.Action as X
 import Fida.Contract.TestToolbox.Time as X
 import Fida.Contract.TestToolbox.TypedValidators as X
 import Fida.Contract.TestToolbox.Users as X
+import Fida.Contract.TestToolbox.Investor as X
 import Plutus.Model
   ( Run,
     adaValue,
