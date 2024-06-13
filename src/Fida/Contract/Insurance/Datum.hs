@@ -19,6 +19,7 @@ module Fida.Contract.Insurance.Datum
     setFidaCardSold,
     setFidaCardUnsold,
     untypedSetFidaCardSold,
+    addPiggyBankPaidClaim,
   )
 where
 
@@ -76,7 +77,7 @@ data InstallmentsInfo
   = InstallmentsInfo
       [DiffMilliSeconds] -- payment intervals
       PremiumAmount -- how much to pay per installment (for one fida card)
-  deriving (HPrelude.Show)
+  deriving (HPrelude.Show,  HPrelude.Eq)
 
 PlutusTx.makeIsDataIndexed
   ''InstallmentsInfo
@@ -92,7 +93,7 @@ data ClaimInfo = ClaimInfo
   , claimAccepted :: Bool
   , claimId :: BuiltinByteString
   }
-  deriving (HPrelude.Show)
+  deriving (HPrelude.Show, HPrelude.Eq)
 
 PlutusTx.makeIsDataIndexed
   ''ClaimInfo
@@ -125,7 +126,7 @@ data InsurancePolicyDatum
       , ppInfoPiggyBanks :: [Address]
       }
   | PolicyClaimPayment
-  deriving (HPrelude.Show)
+  deriving (HPrelude.Show, HPrelude.Eq)
 
 {-# INLINEABLE updatePolicyState #-}
 updatePolicyState :: InsurancePolicyDatum -> InsurancePolicyState -> Maybe InsurancePolicyDatum
@@ -172,6 +173,11 @@ data PiggyBankDatum
       , pbfcPaidClaims :: [BuiltinByteString]
       }
   deriving (HPrelude.Show)
+
+{-# INLINEABLE addPiggyBankPaidClaim #-}
+addPiggyBankPaidClaim :: BuiltinByteString -> PiggyBankDatum -> Maybe PiggyBankDatum
+addPiggyBankPaidClaim claimId PBankFidaCard {..} = Just $ PBankFidaCard {pbfcPaidClaims = claimId : pbfcPaidClaims, ..}
+addPiggyBankPaidClaim _ _ = Nothing
 
 {-# INLINEABLE updatePiggyBankSoldFidaCardStatus #-}
 updatePiggyBankSoldFidaCardStatus :: Bool -> PiggyBankDatum -> Maybe PiggyBankDatum

@@ -1,10 +1,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Fida.Contract.Insurance.Lifecycle.OnRiskTest (tests) where
+module Fida.Contract.Insurance.Lifecycle.OnRiskTest (tests, createClaim, acceptClaim) where
 
 import Fida.Contract.Insurance.Lifecycle.FundingTest (fundingComplete)
-import Control.Monad (void)
+import Control.Monad (void, forM_)
 import Fida.Contract.Insurance.Datum
   ( InsurancePolicyDatum (..),
     InsurancePolicyState (..),
@@ -43,6 +43,7 @@ tests =
     , good "Fida System can accept claim" testAcceptClaim
     , good "Investor can expire claim" testExpireClaim
     , good "Fida System can fail claim" testFailClaim
+    , good "Policy holder can claim payment" testClaimPayment
     ]
 
 testCreateClaim :: Run ()
@@ -55,7 +56,7 @@ testCreateClaim = do
 createClaim :: InsuranceId -> PubKeyHash -> Users -> Run ()
 createClaim iid policyHolder users = do
 
-  fundingComplete iid policyHolder users
+  fundingComplete iid users
 
   claimDate <- currentTime
   waitNSlots 5
@@ -190,4 +191,41 @@ failClaim iid fidaSystem users = do
                 , payToScript tv (InlineDatum datum) value
                 ]
       submitTx fidaSystem tx
+      return ()
+
+
+testClaimPayment :: Run ()
+testClaimPayment = do
+  users@Users {..} <- setupUsers
+  iid <- newSamplePolicy users
+
+  createClaim iid policyHolder users
+
+  acceptClaim iid fidaSystem users
+
+  payForClaimWithCollateral iid investor1
+
+  claimPayment iid policyHolder
+
+claimPayment :: InsuranceId -> PubKeyHash -> Run ()
+claimPayment iid policyHolder = do
+
+  let redeemer = PolicyOnRisk $ PolicyOnRiskClaimPayment
+
+
+  let tv = insurancePolicy iid
+
+  boxes <- filter (\(TxBox _ _ d) -> d == PolicyClaimPayment) <$> boxAt @ InsurancePolicy tv
+
+
+  withBox @ InsurancePolicy (iinfoBox iid) tv $ \iInfoBox -> do
+
+    forM_ boxes $ \box@(TxBox _ (TxOut _ v _ _) _) -> do
+      let tx = mconcat $
+                [ spendBox tv (PolicyOnRisk PolicyOnRiskClaimPayment) box
+                , payToKey policyHolder v
+                , refBoxInline iInfoBox
+                ]
+
+      submitTx policyHolder tx
       return ()

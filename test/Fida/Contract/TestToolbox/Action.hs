@@ -10,21 +10,25 @@ module Fida.Contract.TestToolbox.Action
     completeFundingTx,
     payPremium,
     sellFidaCard,
+    payForClaimWithCollateral,
     module X,
   )
 where
 
+import Control.Monad (forM_)
 import Fida.Contract.Insurance.Datum
   ( FidaCardId (..),
     InsurancePolicyDatum (..),
     InsurancePolicyState (..),
     PiggyBankDatum (..),
+    ClaimInfo(..),
     completeFunding,
     setFidaCardSold,
     setFidaCardUnsold,
     updatePolicyState,
+    addPiggyBankPaidClaim,
   )
-import Fida.Contract.Insurance.InsuranceId (InsuranceId)
+import Fida.Contract.Insurance.InsuranceId (InsuranceId(..))
 import Fida.Contract.Insurance.Redeemer
   ( InsurancePolicyRedeemer (..),
     PiggyBankRedeemer (..),
@@ -58,6 +62,7 @@ import Plutus.Model
     TxBox (..),
     UserSpend,
     adaValue,
+    refBoxInline,
     logError,
     payToKey,
     payToRef,
@@ -74,7 +79,7 @@ import Plutus.Model
   )
 import Fida.Contract.Utils (negateValue)
 import Plutus.Model.Contract.Ext (payToAddressDatum, spendBoxRef)
-import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, TxOut (..), TxOutRef, from)
+import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, TxOut (..), TxOutRef, from, BuiltinByteString)
 import Prelude
 
 runUpdatePolicyState ::
@@ -265,3 +270,48 @@ payPremiumToPiggyBanks scriptRef tv box@(TxBox _ (TxOut _ value _ _) PremiumPaym
   payToPiggyBankTx addr =
     payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
 payPremiumToPiggyBanks _ _ _ _ = Nothing
+
+
+addPiggyBankPaidClaimTx ::
+  InsuranceId ->
+  BuiltinByteString ->
+  PiggyBank ->
+  TxBox PiggyBank ->
+  Integer ->
+  Maybe Tx
+addPiggyBankPaidClaimTx iid claimId piggyBank box@(TxBox _ (TxOut _ value _ _) pbDatum) payAmount =
+  mkTx <$> addPiggyBankPaidClaim claimId pbDatum
+ where
+  mkTx pbDatum' =
+    mconcat
+      [ spendBox piggyBank PayForClaimWithCollateral box
+      , payToScript piggyBank (InlineDatum pbDatum') (value <> negateValue (adaValue payAmount))
+      , payToScript (insurancePolicy iid) (InlineDatum PolicyClaimPayment) (adaValue payAmount)
+      ]
+
+payForClaimWithCollateral ::
+  InsuranceId ->
+  PubKeyHash ->
+  Run ()
+payForClaimWithCollateral iid@(InsuranceId cs) investor = do
+  let tv = insurancePolicy iid
+  withBox @InsurancePolicy (iinfoBox iid) tv $ \iInfoBox@(TxBox _ _ InsuranceInfo{iInfoFidaCardNumber, iInfoClaim = mClaim}) -> do
+    withMay "Can't get the current claim" (pure mClaim) $ \claim@ClaimInfo{..} -> do
+      forM_ (map fidaCardFromInt [1 .. iInfoFidaCardNumber]) $ \fcid@(FidaCardId fcid') -> do
+              sp <- spend investor $ fidaCardNFT iid fcid
+              withBox @PiggyBank (piggyBankInfoBox iid fcid) (piggyBank iid fcid) $ \pBox@(TxBox _ _ pbDatum@PBankFidaCard{..}) -> do
+                  let payAmount = claimAmount `div` iInfoFidaCardNumber
+
+                  let maybeTx = addPiggyBankPaidClaimTx iid claimId (piggyBank iid fcid) pBox payAmount
+                  withMay "Can't buy fida card" (pure maybeTx) $ \payForClaimWithCollateralTx -> do
+                      let tx =
+                              mconcat
+                                [ payForClaimWithCollateralTx
+                                , refBoxInline iInfoBox
+                                , userSpend sp
+                                , payToKey investor (fidaCardNFT iid fcid)
+                                ]
+                      validRangeStart <- currentTime
+                      tx' <- validateIn (from validRangeStart) tx
+                      submitTx investor tx'
+
