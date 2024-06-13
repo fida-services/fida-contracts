@@ -1,6 +1,7 @@
 module Fida.Contract.TestToolbox.Time
   ( beginningOfTime,
     days,
+    seconds,
   )
 where
 
@@ -14,3 +15,6 @@ beginningOfTime = POSIXTime 1709295132000
 
 days :: Integer -> DiffMilliSeconds
 days n = DiffMilliSeconds $ 1000 * 60 * 60 * 24 * n
+
+seconds :: Integer -> DiffMilliSeconds
+seconds n = DiffMilliSeconds $ 1000 * n

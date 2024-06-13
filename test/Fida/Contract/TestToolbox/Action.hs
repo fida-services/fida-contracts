@@ -69,10 +69,12 @@ import Plutus.Model
     withBox,
     withMay,
     withRefScript,
+    currentTime,
+    validateIn,
   )
 import Fida.Contract.Utils (negateValue)
 import Plutus.Model.Contract.Ext (payToAddressDatum, spendBoxRef)
-import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, TxOut (..), TxOutRef)
+import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, TxOut (..), TxOutRef, from)
 import Prelude
 
 runUpdatePolicyState ::
@@ -85,7 +87,11 @@ runUpdatePolicyState state r iid pkh = do
   let tv = insurancePolicy iid
   withBox @ InsurancePolicy (iinfoBox iid) tv $ \box -> do
     let maybeTx = updatePolicyStateTx tv box state r
-    withMay "Can't update policy state" (pure maybeTx) (submitTx pkh)
+    withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
+      validRangeStart <- currentTime
+      tx' <- validateIn (from validRangeStart) tx
+      submitTx pkh tx'
+
 
 updatePolicyStateTx ::
   InsurancePolicy ->

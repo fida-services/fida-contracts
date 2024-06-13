@@ -10,10 +10,10 @@ where
 import Fida.Contract.Insurance.Authority
 import Fida.Contract.Insurance.Datum
 import Fida.Contract.Insurance.InsuranceId
-import Fida.Contract.TestToolbox.Time (beginningOfTime, days)
+import Fida.Contract.TestToolbox.Time (beginningOfTime, days, seconds)
 import Fida.Contract.TestToolbox.TypedValidators
 import Fida.Contract.TestToolbox.Users (Users (..))
-import Plutus.Model hiding (days)
+import Plutus.Model hiding (days, seconds)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.V1.Ledger.Value (scale)
 import Plutus.V2.Ledger.Api
@@ -46,10 +46,10 @@ iinfoFromParams InsuranceCreateParams {..} =
       iInfoPolicyHolder = icpPolicyHolder
       iInfoPolicyAuthority = icpPolicyAuthority
       iInfoState = Initiated
-      iInfoClaimTimeToLive = days 7
+      iInfoClaimTimeToLive = seconds 100 --days 7
       iInfoFundingDeadline = beginningOfTime + fromMilliSeconds (days 7)
       iInfoTotalClaimsAcceptedAmount = 0
-      iInfoClaimTimeToPay = days 7
+      iInfoClaimTimeToPay = seconds 50 --days 7
    in InsuranceInfo {..}
 
 newSamplePolicy :: Users -> Run InsuranceId
