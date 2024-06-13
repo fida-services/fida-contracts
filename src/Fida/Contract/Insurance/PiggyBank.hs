@@ -12,7 +12,7 @@ import Fida.Contract.Insurance.Datum
   ( ClaimInfo (..),
     FidaCardId (..),
     InsurancePolicyDatum (..),
-    InsurancePolicyState (Cancelled),
+    InsurancePolicyState (..),
     PiggyBankDatum (..),
     unlockedPremiumToClaim,
     untypedSetFidaCardSold,
@@ -95,13 +95,29 @@ import PlutusTx.Prelude
 --
 --  ERROR-PIGGY-BANK-VALIDATOR-20: no output with correct datum
 --
---  ERROR-PIGGY-BANK-VALIDATOR-21:
+--  ERROR-PIGGY-BANK-VALIDATOR-21: policy is not cancelled
 --
---  ERROR-PIGGY-BANK-VALIDATOR-22:
+--  ERROR-PIGGY-BANK-VALIDATOR-22: not signed by the policy holder
 --
---  ERROR-PIGGY-BANK-VALIDATOR-23:
+--  ERROR-PIGGY-BANK-VALIDATOR-23: invalid claimed premium amount
 --
---  ERROR-PIGGY-BANK-VALIDATOR-24:
+--  ERROR-PIGGY-BANK-VALIDATOR-24: no reference input with insurance info
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-25: policy is not cancelled
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-26: not a fida card owner
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-27: policy is not cancelled
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-28: policy is not expired
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-29: not a fida card owner
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-30: claim was not paid
+--
+--  ERROR-PIGGY-BANK-VALIDATOR-31: no reference input with insurance info
+
+
 {-# INLINEABLE mkPiggyBankValidator #-}
 mkPiggyBankValidator ::
   InsuranceId ->
@@ -253,27 +269,38 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
 
   isClaimedPremiumAmountValid = lockedPremium >= premiumLeftForInvestor
 mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCollateralOnCancel sc =
-  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-13" isPolicyCancelled
-    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-14" isFidaCardOwner
+  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-25" isPolicyCancelled
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-26" isFidaCardOwner
  where
   txInfo = scriptContextTxInfo sc
 
   isPolicyCancelled =
     unsafeFromSingleton'
-      "ERROR-PIGGY-BANK-VALIDATOR-15"
+      "ERROR-PIGGY-BANK-VALIDATOR-27"
       [ iInfoState == Cancelled
       | InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName
       ]
 
   isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCollateral sc =
-  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-15" isPolicyExpired
-    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-16" isFidaCardOwner
-    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-17" isClaimPaid
+mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcPaidClaims}) UnlockCollateral sc =
+  traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-28" isPolicyExpired
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-29" isFidaCardOwner
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-30" isClaimPaid
  where
-  isPolicyExpired = False
-  isFidaCardOwner = False
-  isClaimPaid = False
+  txInfo = scriptContextTxInfo sc
+
+  (iInfoState, mClaim) =
+    case
+      [ (iInfoState, iInfoClaim)
+      | iInfo@InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName
+      ] of
+        [x] -> x
+        _ -> traceError "ERROR-PIGGY-BANK-VALIDATOR-31"
+
+  isPolicyExpired = iInfoState == Expired
+  isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
+  isClaimPaid = fromMaybe True (((`elem` pbfcPaidClaims) . claimId) <$> mClaim)
+
 mkPiggyBankValidator _ _ _ _ _ = False
 
 {-# INLINEABLE mkPiggyBankValidatorUntyped #-}
