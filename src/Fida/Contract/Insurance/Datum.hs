@@ -130,6 +130,7 @@ untypedUpdatePolicyState d = fmap PlutusTx.toBuiltinData . updatePolicyState d
 {-# INLINEABLE completeFunding #-}
 completeFunding :: InsurancePolicyDatum -> POSIXTime -> Maybe InsurancePolicyDatum
 completeFunding InsuranceInfo {..} startDate = Just $ InsuranceInfo {iInfoState = OnRisk, iInfoStartDate = Just startDate, ..}
+completeFunding _ _ = Nothing
 
 {-# INLINEABLE updateClaim #-}
 updateClaim :: InsurancePolicyDatum -> Maybe ClaimInfo -> Maybe InsurancePolicyDatum

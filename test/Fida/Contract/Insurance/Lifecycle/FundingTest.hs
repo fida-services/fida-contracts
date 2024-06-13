@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Fida.Contract.Insurance.Lifecycle.FundingTest (tests) where
+module Fida.Contract.Insurance.Lifecycle.FundingTest (tests, fundingComplete) where
 
 import Control.Monad (void)
 import Fida.Contract.Insurance.Datum
@@ -69,6 +69,11 @@ testFundingComplete = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
   sp <- spend policyHolder $ adaValue 200_000_000
+  fundingComplete iid policyHolder users
+
+
+fundingComplete :: InsuranceId -> PubKeyHash -> Users -> Run ()
+fundingComplete iid policyHolder users = do
   let tv = insurancePolicy iid
 
   payPremium iid users
