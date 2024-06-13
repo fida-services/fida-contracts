@@ -23,6 +23,7 @@ module Fida.Contract.Utils
     wrapStakeValidator,
     wrapValidator,
     unsafeFromJust,
+    negateValue,
   )
 where
 
@@ -33,6 +34,7 @@ import Plutus.V1.Ledger.Value
     adaSymbol,
     adaToken,
     valueOf,
+    scale,
   )
 import Plutus.V2.Ledger.Api
   ( Datum (..),
@@ -49,6 +51,10 @@ import qualified PlutusTx
 import PlutusTx.Prelude
 
 -- | common
+{-# INLINEABLE negateValue #-}
+negateValue :: Value -> Value
+negateValue = scale (-1)
+
 {-# INLINEABLE unsafeFromJust #-}
 unsafeFromJust :: Maybe a -> a
 unsafeFromJust (Just a) = a
