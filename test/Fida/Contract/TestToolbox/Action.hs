@@ -17,6 +17,7 @@ module Fida.Contract.TestToolbox.Action
     unlockCollateralsOnExpired,
     triggerPolicyExpiration,
     claimPremium,
+    claimPremiumOnCancel,
     module X,
   )
 where
@@ -428,3 +429,8 @@ claimPremium iid fcid pkh amount = do
              ]
       validRangeStart <- currentTime
       validateIn (from validRangeStart) tx >>= submitTx pkh
+
+
+claimPremiumOnCancel :: InsuranceId -> FidaCardId -> PubKeyHash -> Ada -> Run ()
+claimPremiumOnCancel iid fcid pkh amount = do
+  undefined
