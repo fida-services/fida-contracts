@@ -18,7 +18,8 @@ import Fida.Contract.TestToolbox
     unlockCollateralsOnExpired,
     unlockCollateralOnExpired,
     unlockCollateralOnCancel,
-    payPremium
+    payPremium,
+    claimPremium
   )
 import Fida.Contract.Insurance.Datum (InsurancePolicyState (..))
 import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..),
@@ -30,6 +31,7 @@ import Fida.Contract.TestToolbox.Action (buyFidaCards,
 import Fida.Contract.TestToolbox.TypedValidators (PiggyBank)
 import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.Model
+import Plutus.Model.Ada
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit
 import Prelude
@@ -40,12 +42,13 @@ tests =
     "Unit tests for PiggyBank module"
     [ good "Buying Fida card works" testBuyFidaCard
     , good "Sell Fida card works" testSellFidaCard
---    , good "Claim premium works" testClaimPremium
+    , good "Claim premium works" testClaimPremium
 --    , good "Claim premium on cancel works" testClaimPremiumOnCancel
     , good "Pay for claim with collaterl works" testPayForClaimWithCollateral
     , good "Unlock collateral on cancel works" testUnlockCollateralOnCancel
     , good "Unlock collateral works" testUnlockCollateral
     ]
+
 
 testBuyFidaCard :: Run ()
 testBuyFidaCard = do
@@ -53,16 +56,38 @@ testBuyFidaCard = do
   iid <- newSamplePolicy users
   buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 5]
 
+
 testSellFidaCard :: Run ()
 testSellFidaCard = do
   users@Users {..} <- setupUsers
+  
   iid <- newSamplePolicy users
+  
   buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 3]
+  
   sellFidaCard iid investor1 $ fidaCardFromInt 1
-  return ()
+
 
 testClaimPremium :: Run ()
-testClaimPremium = undefined
+testClaimPremium = do
+  users@Users {..} <- setupUsers
+  
+  iid <- newSamplePolicy users
+
+  payPremium iid policyHolder
+
+  let fidaCards = fidaCardsFromInts [1 .. 10]
+
+  buyFidaCards iid investor1 fidaCards
+  
+  triggerFundingComplete iid users
+
+  time <- currentTime
+
+  waitUntil $ time + days 90
+
+  claimPremium iid (head fidaCards) investor1 (asAda 5)
+
 
 testPayForClaimWithCollateral :: Run ()
 testPayForClaimWithCollateral = do
@@ -75,8 +100,10 @@ testPayForClaimWithCollateral = do
 
   payForClaimWithCollateral iid investor1
 
+
 testClaimPremiumOnCancel :: Run ()
 testClaimPremiumOnCancel = undefined
+
 
 testUnlockCollateralOnCancel :: Run ()
 testUnlockCollateralOnCancel = do
@@ -95,6 +122,7 @@ testUnlockCollateralOnCancel = do
   unlockCollateralOnCancel investor1 iid $ fidaCardFromInt 1
   
   unlockCollateralOnCancel investor2 iid $ fidaCardFromInt 2
+
 
 testUnlockCollateral :: Run ()
 testUnlockCollateral = do

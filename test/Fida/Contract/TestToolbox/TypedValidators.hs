@@ -21,6 +21,7 @@ module Fida.Contract.TestToolbox.TypedValidators
     runLoadRefScript,
     isScriptRef,
     piggyBankInfoBox,
+    pbPremiumBox,
   )
 where
 
@@ -122,10 +123,17 @@ ppInfoBox :: InsuranceId -> TxBox script -> Bool
 ppInfoBox (InsuranceId cs) (TxBox _ (TxOut _ value _ _) _) =
   valueOf value cs policyPaymentTokenName == 1
 
+
 piggyBankInfoBox :: InsuranceId -> FidaCardId -> TxBox PiggyBank -> Bool
 piggyBankInfoBox (InsuranceId cs) fcid (TxBox _ (TxOut _ value _ _) PBankFidaCard {..}) =
   valueOf value cs fidaCardStatusTokenName == 1 && pbfcFidaCardId == fcid
 piggyBankInfoBox _ _ _ = False
+
+
+pbPremiumBox :: TxBox PiggyBank -> Bool
+pbPremiumBox (TxBox _ _ PBankPremium {}) = True
+pbPremiumBox _ = False
+
 
 runLoadRefScript ::
   (IsValidator script) =>

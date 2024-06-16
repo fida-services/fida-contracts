@@ -16,6 +16,7 @@ module Fida.Contract.TestToolbox.Action
     unlockCollateralOnCancel,
     unlockCollateralsOnExpired,
     triggerPolicyExpiration,
+    claimPremium,
     module X,
   )
 where
@@ -56,7 +57,8 @@ import Fida.Contract.TestToolbox.TypedValidators
     piggyBank,
     piggyBankInfoBox,
     ppInfoBox,
-    fidaCardsFromInts
+    fidaCardsFromInts,
+    pbPremiumBox
   )
 import Fida.Contract.TestToolbox.Users (Users (..))
 import Plutus.Model
@@ -85,7 +87,10 @@ import Plutus.Model
     validateIn,
     waitNSlots,
     boxAt,
-    logInfo
+    logInfo,
+    Ada,
+    ada,
+    modifyBox
   )
 import Fida.Contract.Utils (negateValue)
 import Plutus.Model.Contract.Ext (payToAddressDatum, spendBoxRef)
@@ -402,3 +407,24 @@ triggerPolicyExpiration iid pkh = do
       withMay "Can't update policy state" (pure maybeUpdateStateTx) $ \tx -> do
         validRangeStart <- currentTime
         validateIn (from validRangeStart) tx >>= submitTx pkh
+
+
+claimPremium :: InsuranceId -> FidaCardId -> PubKeyHash -> Ada -> Run ()
+claimPremium iid fcid pkh amount = do
+  let
+    ipTv = insurancePolicy iid
+    pbTv = piggyBank iid fcid
+    nft = fidaCardNFT iid fcid
+  withBox @InsurancePolicy (iinfoBox iid) ipTv $ \iiBox -> do
+    withBox @PiggyBank pbPremiumBox pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) d) -> do
+      sp <- spend pkh nft
+      let
+        modifyValue value = value <> (negateValue $ ada amount)
+        tx = mconcat
+             [ refBoxInline iiBox
+             , userSpend sp
+             , payToKey pkh (ada amount <> nft)
+             , modifyBox pbTv pbBox ClaimPremium (const $ InlineDatum d) modifyValue
+             ]
+      validRangeStart <- currentTime
+      validateIn (from validRangeStart) tx >>= submitTx pkh
