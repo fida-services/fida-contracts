@@ -25,6 +25,7 @@ data InsuranceCreateParams = InsuranceCreateParams
   , icpFidaCardQuantity :: Integer
   , icpFidaCardValue :: Integer
   , icpPolicyAuthority :: InsuranceAuthority
+  , icpFundingDeadline :: POSIXTime
   }
 
 iinfoFromParams :: InsuranceCreateParams -> InsurancePolicyDatum
@@ -47,18 +48,20 @@ iinfoFromParams InsuranceCreateParams {..} =
       iInfoPolicyAuthority = icpPolicyAuthority
       iInfoState = Initiated
       iInfoClaimTimeToLive = seconds 100 --days 7
-      iInfoFundingDeadline = beginningOfTime + fromMilliSeconds (days 7)
+      iInfoFundingDeadline = icpFundingDeadline
       iInfoTotalClaimsAcceptedAmount = 0
       iInfoClaimTimeToPay = seconds 50 --days 7
    in InsuranceInfo {..}
 
 newSamplePolicy :: Users -> Run InsuranceId
 newSamplePolicy Users {..} = do
+  now <- currentTime
   let icpPolicyHolder = policyHolder
       icpFidaCardQuantity = 10
       icpPolicyPrice = icpFidaCardQuantity * 4 * 5 * 1_000_000 -- 200_000_000
       icpFidaCardValue = 1_000 * 1_000_000
       icpPolicyAuthority = AtLeastOneSign [fidaSystem, broker1]
+      icpFundingDeadline = now + fromMilliSeconds (days 7)
   makePolicy broker1 InsuranceCreateParams {..}
 
 makePolicy :: PubKeyHash -> InsuranceCreateParams -> Run InsuranceId
