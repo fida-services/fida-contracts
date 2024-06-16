@@ -13,12 +13,17 @@ import Fida.Contract.TestToolbox
     newSamplePolicy,
     runUpdatePolicyState,
     setupUsers,
+    triggerFundingComplete,
+    triggerPolicyExpiration,
+    unlockCollaterals,
+    payPremium
   )
 import Fida.Contract.Insurance.Lifecycle.OnRiskTest (createClaim, acceptClaim)
 import Fida.Contract.TestToolbox.Action (buyFidaCards,
                                          sellFidaCard,
                                          payForClaimWithCollateral)
 import Fida.Contract.TestToolbox.TypedValidators (PiggyBank)
+import Plutus.V1.Ledger.Time (fromMilliSeconds)
 import Plutus.Model
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit
@@ -34,7 +39,7 @@ tests =
 --    , good "Claim premium on cancel works" testClaimPremiumOnCancel
     , good "Pay for claim with collaterl works" testPayForClaimWithCollateral
 --    , good "Unlock collateral on cancel works" testUnlockCollateralOnCancel
---    , good "Unlock collateral works" testUnlockCollateral
+    , good "Unlock collateral works" testUnlockCollateral
     ]
 
 testBuyFidaCard :: Run ()
@@ -72,4 +77,23 @@ testUnlockCollateralOnCancel :: Run ()
 testUnlockCollateralOnCancel = undefined
 
 testUnlockCollateral :: Run ()
-testUnlockCollateral = undefined
+testUnlockCollateral = do
+  users@Users {..} <- setupUsers
+  
+  iid <- newSamplePolicy users
+
+  payPremium iid policyHolder
+
+  let fidaCards = fidaCardsFromInts [1 .. 10]
+
+  buyFidaCards iid investor1 fidaCards
+  
+  triggerFundingComplete iid users
+
+  time <- currentTime
+
+  waitUntil $ time + days 366
+
+  triggerPolicyExpiration iid broker1
+  
+  unlockCollaterals investor1 iid fidaCards 

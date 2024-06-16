@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Fida.Contract.Insurance.Lifecycle.FundingTest (tests, fundingComplete) where
+module Fida.Contract.Insurance.Lifecycle.FundingTest (tests)  where
 
 import Control.Monad (void)
 import Fida.Contract.Insurance.Datum
@@ -22,6 +22,7 @@ import Fida.Contract.TestToolbox
     newSamplePolicy,
     runUpdatePolicyState,
     setupUsers,
+    triggerFundingComplete
   )
 import Plutus.Model
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
@@ -68,39 +69,6 @@ testFundingComplete :: Run ()
 testFundingComplete = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
-  sp <- spend policyHolder $ adaValue 200_000_000
-  fundingComplete iid users
-
-
-fundingComplete :: InsuranceId -> Users -> Run ()
-fundingComplete iid users@Users {..} = do
-  let tv = insurancePolicy iid
-
-  payPremium iid users
-
+  payPremium iid policyHolder
   buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 10]
-
-  onRiskStartDate <- currentTime
-  waitNSlots 5
-  actualStartTime <- currentTime
-
-  let validRange = from actualStartTime
-
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ _ InsuranceInfo {iInfoFidaCardNumber}) -> do
-    let maybeUpdatePolicyStateTx = completeFundingTx tv box onRiskStartDate
-    let piggyBanks =
-          map (piggyBank iid . fidaCardFromInt) [1 .. iInfoFidaCardNumber]
-
-    allBoxes <- mconcat <$> mapM boxAt piggyBanks
-
-    let boxes = [box | box@(TxBox _ _ PBankFidaCard {..}) <- allBoxes]
-
-    let refPiggyBanks = mconcat $ map refBoxInline boxes
-
-    let maybeTx = (<>) <$> maybeUpdatePolicyStateTx <*> Just refPiggyBanks
-
-    withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
-      tx' <- validateIn validRange tx
-      (submitTx policyHolder tx')
-
-  return ()
+  triggerFundingComplete iid users

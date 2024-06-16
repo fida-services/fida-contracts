@@ -3,7 +3,6 @@
 
 module Fida.Contract.Insurance.Lifecycle.OnRiskTest (tests, createClaim, acceptClaim) where
 
-import Fida.Contract.Insurance.Lifecycle.FundingTest (fundingComplete)
 import Control.Monad (void, forM_)
 import Fida.Contract.Insurance.Datum
   ( InsurancePolicyDatum (..),
@@ -25,6 +24,7 @@ import Fida.Contract.TestToolbox
     newSamplePolicy,
     runUpdatePolicyState,
     setupUsers,
+    triggerFundingComplete
   )
 import Plutus.Model
 import Plutus.V2.Ledger.Api (PubKeyHash, TxOut (..))
@@ -54,9 +54,12 @@ testCreateClaim = do
   createClaim iid policyHolder users
 
 createClaim :: InsuranceId -> PubKeyHash -> Users -> Run ()
-createClaim iid policyHolder users = do
+createClaim iid policyHolder users@Users{investor1} = do
+  payPremium iid policyHolder
 
-  fundingComplete iid users
+  buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 10]
+
+  triggerFundingComplete iid users
 
   claimDate <- currentTime
   waitNSlots 5
