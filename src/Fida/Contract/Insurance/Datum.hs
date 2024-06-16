@@ -60,6 +60,7 @@ instance Eq InsurancePolicyState where
   Funding == Funding = True
   OnRisk == OnRisk = True
   Cancelled == Cancelled = True
+  Expired == Expired = True
   _ == _ = False
 
 PlutusTx.makeIsDataIndexed

@@ -93,7 +93,7 @@ testPayPremium :: Run ()
 testPayPremium = do
   users@Users {..} <- setupUsers
   iid <- newSamplePolicy users
-  payPremium iid users
+  payPremium iid policyHolder
 
 testRequiredUtxos :: Run ()
 testRequiredUtxos = do

@@ -11,11 +11,16 @@ module Fida.Contract.TestToolbox.Action
     payPremium,
     sellFidaCard,
     payForClaimWithCollateral,
+    triggerFundingComplete,
+    unlockCollateral,
+    unlockCollaterals,
+    triggerPolicyExpiration,
     module X,
   )
 where
 
 import Control.Monad (forM_)
+import Data.Foldable (traverse_)
 import Fida.Contract.Insurance.Datum
   ( FidaCardId (..),
     InsurancePolicyDatum (..),
@@ -50,6 +55,7 @@ import Fida.Contract.TestToolbox.TypedValidators
     piggyBank,
     piggyBankInfoBox,
     ppInfoBox,
+    fidaCardsFromInts
   )
 import Fida.Contract.TestToolbox.Users (Users (..))
 import Plutus.Model
@@ -76,10 +82,15 @@ import Plutus.Model
     withRefScript,
     currentTime,
     validateIn,
+    waitNSlots,
+    boxAt,
+    logInfo
   )
 import Fida.Contract.Utils (negateValue)
 import Plutus.Model.Contract.Ext (payToAddressDatum, spendBoxRef)
-import Plutus.V2.Ledger.Api (Address, POSIXTime, PubKeyHash, TxOut (..), TxOutRef, from, BuiltinByteString)
+import Plutus.V2.Ledger.Api (Address,
+                             POSIXTime,
+                             PubKeyHash, TxOut (..), TxOutRef, from, BuiltinByteString)
 import Prelude
 
 runUpdatePolicyState ::
@@ -228,17 +239,17 @@ buyFidaCards iid investor fidaCardIds =
 
 payPremium ::
   InsuranceId ->
-  Users ->
+  PubKeyHash ->
   Run ()
-payPremium iid users@Users {..} = do
+payPremium iid pkh = do
   let tv = insurancePolicy iid
-  sp <- spend policyHolder $ adaValue 200_000_000
+  sp <- spend pkh $ adaValue 200_000_000
   withRefScript (isScriptRef tv) tv $ \(scriptRef, _) ->
     withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox ->
       withBox @InsurancePolicy (ppInfoBox iid) tv $ \piBox -> do
         let r = PolicyInitiated PolicyInitiatedPayPremium
             maybeUpdateStTx = updatePolicyStateTxRef scriptRef tv iiBox Funding r
-            maybePayToPiggyBanksTx = payPremiumToPiggyBanks scriptRef tv piBox policyHolder
+            maybePayToPiggyBanksTx = payPremiumToPiggyBanks scriptRef tv piBox pkh
             maybePayPremiumTx = (<>) <$> maybeUpdateStTx <*> maybePayToPiggyBanksTx
         withMay "Can't update policy state" (pure maybePayPremiumTx) $ \payPremiumTx -> do
           let tx =
@@ -246,7 +257,7 @@ payPremium iid users@Users {..} = do
                   [ payPremiumTx
                   , userSpend sp
                   ]
-          submitTx policyHolder tx
+          submitTx pkh tx
 
 payPremiumToPiggyBanks ::
   TxOutRef ->
@@ -315,3 +326,70 @@ payForClaimWithCollateral iid@(InsuranceId cs) investor = do
                       tx' <- validateIn (from validRangeStart) tx
                       submitTx investor tx'
 
+
+triggerFundingComplete :: InsuranceId -> Users -> Run ()
+triggerFundingComplete iid users@Users {..} = do
+  let tv = insurancePolicy iid
+
+  onRiskStartDate <- currentTime
+
+  waitNSlots 5
+
+  actualStartTime <- currentTime
+
+  let validRange = from actualStartTime
+
+  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ _ InsuranceInfo {iInfoFidaCardNumber}) -> do
+    let maybeUpdatePolicyStateTx = completeFundingTx tv box onRiskStartDate
+    let piggyBanks =
+          map (piggyBank iid . fidaCardFromInt) [1 .. iInfoFidaCardNumber]
+
+    allBoxes <- mconcat <$> mapM boxAt piggyBanks
+
+    let boxes = [box | box@(TxBox _ _ PBankFidaCard {..}) <- allBoxes]
+
+    let refPiggyBanks = mconcat $ map refBoxInline boxes
+
+    let maybeTx = (<>) <$> maybeUpdatePolicyStateTx <*> Just refPiggyBanks
+
+    withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
+      tx' <- validateIn validRange tx
+      (submitTx policyHolder tx')
+
+  return ()
+
+
+unlockCollaterals :: PubKeyHash -> InsuranceId -> [FidaCardId] -> Run ()
+unlockCollaterals investor iid = traverse_ (unlockCollateral investor iid)
+
+
+unlockCollateral :: PubKeyHash -> InsuranceId -> FidaCardId -> Run ()
+unlockCollateral investor iid fcid = do
+  let
+    ipTv = insurancePolicy iid
+    pbTv = piggyBank iid fcid
+    nft = fidaCardNFT iid fcid
+  withBox @InsurancePolicy (iinfoBox iid) ipTv $ \iiBox@(TxBox _ _ d) ->
+    withBox @PiggyBank (piggyBankInfoBox iid fcid) pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) _) -> do
+      logInfo $ "policy info: " <> show d
+      sp <- spend investor nft
+      let tx = mconcat
+           [ refBoxInline iiBox
+           , userSpend sp
+           , payToKey investor (value <> nft)
+           , spendBox pbTv UnlockCollateral pbBox
+           ]
+      submitTx investor tx
+
+
+triggerPolicyExpiration :: InsuranceId -> PubKeyHash -> Run ()
+triggerPolicyExpiration iid pkh = do
+  let tv = insurancePolicy iid
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) ->
+    withBox @InsurancePolicy (iinfoBox iid) tv $ \iiBox@(TxBox _ _ d) -> do
+      let
+        r = PolicyExpire
+        maybeUpdateStateTx = updatePolicyStateTxRef scriptRef tv iiBox Expired r
+      withMay "Can't update policy state" (pure maybeUpdateStateTx) $ \tx -> do
+        validRangeStart <- currentTime
+        validateIn (from validRangeStart) tx >>= submitTx pkh
