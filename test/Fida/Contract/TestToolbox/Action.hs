@@ -12,8 +12,9 @@ module Fida.Contract.TestToolbox.Action
     sellFidaCard,
     payForClaimWithCollateral,
     triggerFundingComplete,
-    unlockCollateral,
-    unlockCollaterals,
+    unlockCollateralOnExpired,
+    unlockCollateralOnCancel,
+    unlockCollateralsOnExpired,
     triggerPolicyExpiration,
     module X,
   )
@@ -359,12 +360,20 @@ triggerFundingComplete iid users@Users {..} = do
   return ()
 
 
-unlockCollaterals :: PubKeyHash -> InsuranceId -> [FidaCardId] -> Run ()
-unlockCollaterals investor iid = traverse_ (unlockCollateral investor iid)
+unlockCollateralsOnExpired :: PubKeyHash -> InsuranceId -> [FidaCardId] -> Run ()
+unlockCollateralsOnExpired investor iid = traverse_ (unlockCollateralOnExpired investor iid)
 
 
-unlockCollateral :: PubKeyHash -> InsuranceId -> FidaCardId -> Run ()
-unlockCollateral investor iid fcid = do
+unlockCollateralOnExpired :: PubKeyHash -> InsuranceId -> FidaCardId -> Run ()
+unlockCollateralOnExpired = unlockCollateralOn UnlockCollateral
+
+
+unlockCollateralOnCancel :: PubKeyHash -> InsuranceId -> FidaCardId -> Run ()
+unlockCollateralOnCancel = unlockCollateralOn UnlockCollateralOnCancel
+
+
+unlockCollateralOn :: PiggyBankRedeemer -> PubKeyHash -> InsuranceId -> FidaCardId -> Run ()
+unlockCollateralOn r investor iid fcid = do
   let
     ipTv = insurancePolicy iid
     pbTv = piggyBank iid fcid
@@ -377,7 +386,7 @@ unlockCollateral investor iid fcid = do
            [ refBoxInline iiBox
            , userSpend sp
            , payToKey investor (value <> nft)
-           , spendBox pbTv UnlockCollateral pbBox
+           , spendBox pbTv r pbBox
            ]
       submitTx investor tx
 

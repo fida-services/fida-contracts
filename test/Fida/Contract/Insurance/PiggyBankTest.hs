@@ -15,9 +15,14 @@ import Fida.Contract.TestToolbox
     setupUsers,
     triggerFundingComplete,
     triggerPolicyExpiration,
-    unlockCollaterals,
+    unlockCollateralsOnExpired,
+    unlockCollateralOnExpired,
+    unlockCollateralOnCancel,
     payPremium
   )
+import Fida.Contract.Insurance.Datum (InsurancePolicyState (..))
+import Fida.Contract.Insurance.Redeemer (InsurancePolicyRedeemer (..),
+                                         PolicyOnRiskRedeemer (..))
 import Fida.Contract.Insurance.Lifecycle.OnRiskTest (createClaim, acceptClaim)
 import Fida.Contract.TestToolbox.Action (buyFidaCards,
                                          sellFidaCard,
@@ -38,7 +43,7 @@ tests =
 --    , good "Claim premium works" testClaimPremium
 --    , good "Claim premium on cancel works" testClaimPremiumOnCancel
     , good "Pay for claim with collaterl works" testPayForClaimWithCollateral
---    , good "Unlock collateral on cancel works" testUnlockCollateralOnCancel
+    , good "Unlock collateral on cancel works" testUnlockCollateralOnCancel
     , good "Unlock collateral works" testUnlockCollateral
     ]
 
@@ -74,7 +79,22 @@ testClaimPremiumOnCancel :: Run ()
 testClaimPremiumOnCancel = undefined
 
 testUnlockCollateralOnCancel :: Run ()
-testUnlockCollateralOnCancel = undefined
+testUnlockCollateralOnCancel = do
+  users@Users {..} <- setupUsers
+
+  iid <- newSamplePolicy users
+
+  payPremium iid policyHolder
+
+  buyFidaCards iid investor1 $ [fidaCardFromInt 1]
+  
+  buyFidaCards iid investor2 $ [fidaCardFromInt 2]
+
+  runUpdatePolicyState Cancelled (PolicyOnRisk PolicyOnRiskCancel) iid broker1
+
+  unlockCollateralOnCancel investor1 iid $ fidaCardFromInt 1
+  
+  unlockCollateralOnCancel investor2 iid $ fidaCardFromInt 2
 
 testUnlockCollateral :: Run ()
 testUnlockCollateral = do
@@ -96,4 +116,4 @@ testUnlockCollateral = do
 
   triggerPolicyExpiration iid broker1
   
-  unlockCollaterals investor1 iid fidaCards 
+  unlockCollateralsOnExpired investor1 iid fidaCards 
