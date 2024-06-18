@@ -20,6 +20,8 @@ module Fida.Contract.Insurance.Datum
     setFidaCardUnsold,
     untypedSetFidaCardSold,
     addPiggyBankPaidClaim,
+    updatePiggyBankRefund,
+    untypedUpdatePiggyBankRefund,
   )
 where
 
@@ -166,7 +168,10 @@ PlutusTx.makeIsDataIndexed
 PlutusTx.makeLift ''InsurancePolicyDatum
 
 data PiggyBankDatum
-  = PBankPremium PremiumAmount
+  = PBankPremium
+      { pbankPremium'init :: PremiumAmount
+      , pbankPremium'refund :: PremiumAmount
+      }
   | PBankFidaCard
       { pbfcIsSold :: Bool
       , pbfcFidaCardId :: FidaCardId
@@ -174,6 +179,15 @@ data PiggyBankDatum
       , pbfcPaidClaims :: [BuiltinByteString]
       }
   deriving (HPrelude.Show)
+
+{-# INLINEABLE updatePiggyBankRefund #-}
+updatePiggyBankRefund :: PremiumAmount -> PiggyBankDatum -> Maybe PiggyBankDatum
+updatePiggyBankRefund amount PBankPremium {..} = Just $ PBankPremium {pbankPremium'refund = amount, ..}
+updatePiggyBankRefund _ _ = Nothing
+
+{-# INLINEABLE untypedUpdatePiggyBankRefund #-}
+untypedUpdatePiggyBankRefund :: PremiumAmount -> PiggyBankDatum -> Maybe BuiltinData
+untypedUpdatePiggyBankRefund amount = fmap PlutusTx.toBuiltinData . updatePiggyBankRefund amount
 
 {-# INLINEABLE addPiggyBankPaidClaim #-}
 addPiggyBankPaidClaim :: BuiltinByteString -> PiggyBankDatum -> Maybe PiggyBankDatum

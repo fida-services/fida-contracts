@@ -121,11 +121,19 @@ testClaimPremiumOnCancel = do
   waitUntil $ time + days 90
 
   runUpdatePolicyState Cancelled (PolicyOnRisk PolicyOnRiskCancel) iid broker1
-
-  claimPremium iid (head fidaCards) investor1 (asAda 5)
   
-  claimPremiumOnCancel iid (head fidaCards) policyHolder (asAda 15)
+  claimPremium iid (fidaCards !! 0) investor1 (asAda 5)
+  
+  claimPremiumOnCancel iid (fidaCards !! 0) policyHolder (asAda 15)
 
+  claimPremiumOnCancel iid (fidaCards !! 1) policyHolder (asAda 15)
+  
+  claimPremium iid (fidaCards !! 1) investor1 (asAda 5)
+
+--  claimPremiumOnCancel iid (fidaCards !! 2) policyHolder (asAda 10)
+  
+--  claimPremium iid (fidaCards !! 2) investor1 (asAda 20)
+  
 
 testUnlockCollateralOnCancel :: Run ()
 testUnlockCollateralOnCancel = do

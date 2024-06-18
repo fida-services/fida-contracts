@@ -35,6 +35,7 @@ import Fida.Contract.Insurance.Datum
     setFidaCardUnsold,
     updatePolicyState,
     addPiggyBankPaidClaim,
+    updatePiggyBankRefund,
   )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId(..))
 import Fida.Contract.Insurance.Redeemer
@@ -91,13 +92,15 @@ import Plutus.Model
     logInfo,
     Ada,
     ada,
-    modifyBox
+    modifyBox,
+    getLovelace
   )
 import Fida.Contract.Utils (negateValue)
 import Plutus.Model.Contract.Ext (payToAddressDatum, spendBoxRef)
 import Plutus.V2.Ledger.Api (Address,
                              POSIXTime,
                              PubKeyHash, TxOut (..), TxOutRef, from, BuiltinByteString)
+import Data.Maybe (fromMaybe)
 import Prelude
 
 runUpdatePolicyState ::
@@ -283,7 +286,7 @@ payPremiumToPiggyBanks scriptRef tv box@(TxBox _ (TxOut _ value _ _) PremiumPaym
       , payToKey pkh value
       ]
 
-  datum = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank
+  datum = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank 0
 
   payToPiggyBankTx addr =
     payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
@@ -421,11 +424,15 @@ claimPremium iid fcid pkh amount = do
       sp <- spend pkh nft
       let
         modifyValue value = value <> (negateValue $ ada amount)
+        r = ClaimPremium
+        tx' =
+          if value == ada amount then spendBox pbTv r pbBox
+          else modifyBox pbTv pbBox r (const $ InlineDatum d) modifyValue
         tx = mconcat
              [ refBoxInline iiBox
              , userSpend sp
              , payToKey pkh (ada amount <> nft)
-             , modifyBox pbTv pbBox ClaimPremium (const $ InlineDatum d) modifyValue
+             , tx'
              ]
       validRangeStart <- currentTime
       validateIn (from validRangeStart) tx >>= submitTx pkh
@@ -433,4 +440,25 @@ claimPremium iid fcid pkh amount = do
 
 claimPremiumOnCancel :: InsuranceId -> FidaCardId -> PubKeyHash -> Ada -> Run ()
 claimPremiumOnCancel iid fcid pkh amount = do
-  undefined
+  let
+    ipTv = insurancePolicy iid
+    pbTv = piggyBank iid fcid
+  withBox @InsurancePolicy (iinfoBox iid) ipTv $ \iiBox -> do
+    withBox @PiggyBank pbPremiumBox pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) d) -> do
+      logInfo $ "claim amount: " <> show (ada amount)
+      logInfo $ "piggybank value: " <> show value
+      logInfo $ "datum: " <> show d
+      let
+        modifyValue value = value <> (negateValue $ ada amount)
+        updateDatum d = InlineDatum $ fromMaybe d (updatePiggyBankRefund (getLovelace amount) d)
+        r = ClaimPremiumOnCancel
+        tx' =
+          if value == ada amount then spendBox pbTv r pbBox
+          else modifyBox pbTv pbBox r updateDatum modifyValue
+        tx = mconcat
+             [ refBoxInline iiBox
+             , payToKey pkh (ada amount)
+             , tx'
+             ]
+      validRangeStart <- currentTime
+      validateIn (from validRangeStart) tx >>= submitTx pkh
