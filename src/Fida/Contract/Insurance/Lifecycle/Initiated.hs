@@ -96,8 +96,9 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo {..} Policy
   payments =
     [ address
     | TxOut address value (OutputDatum (Datum datum)) _ <- txInfoOutputs txInfo
-    , Just (PBankPremium amount) <- [PlutusTx.fromBuiltinData datum]
+    , Just (PBankPremium amount refund) <- [PlutusTx.fromBuiltinData datum]
     , elem address ppInfoPiggyBanks
+    , refund == 0
     , let paid = lovelaceValueOf value
        in paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount
     ]

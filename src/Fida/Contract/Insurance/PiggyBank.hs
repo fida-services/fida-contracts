@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -fno-specialise #-}
 
 module Fida.Contract.Insurance.PiggyBank
   ( serialisablePiggyBankValidator,
@@ -16,6 +17,7 @@ import Fida.Contract.Insurance.Datum
     PiggyBankDatum (..),
     unlockedPremiumToClaim,
     untypedSetFidaCardSold,
+    untypedUpdatePiggyBankRefund,
   )
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PiggyBankRedeemer (..))
@@ -156,7 +158,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold 
     case datum of
       Just (PBankFidaCard {pbfcIsSold = isSold, pbfcFidaCardValue = cardValue}) -> (isSold, cardValue)
       _ -> traceError "ERROR-PIGGY-BANK-VALIDATOR-8"
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) datum@(PBankPremium initAmount) ClaimPremium sc =
+mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) datum@(PBankPremium initAmount refund) ClaimPremium sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-7" isFidaCardOwner
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-8" isClaimedPremiumAmountValid
  where
@@ -182,7 +184,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) datum@(PBankPremium initAmo
       Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount paymentIntervals start
       Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-10"
 
-  isClaimedPremiumAmountValid = lockedPremium >= initAmount - availablePremium
+  isClaimedPremiumAmountValid = lockedPremium >= initAmount - refund - availablePremium
 mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold = True, pbfcFidaCardValue, pbfcPaidClaims}) PayForClaimWithCollateral sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-11" isClaimAccepted
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-12" collateralDiffAmountCorrect
@@ -237,10 +239,15 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold 
   isAfterClaimTimeToPay = before (claimDate + fromMilliSeconds iInfoClaimTimeToPay) $ txInfoValidRange txInfo
 
   isFidaCardValueTheSame = pbfcFidaCardValue'' == pbfcFidaCardValue
-mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPremiumOnCancel sc =
+
+--
+-- TODO ClaimPremiumOnCancel rename to RefundPremium
+--
+mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount refund) ClaimPremiumOnCancel sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-21" isPolicyCancelled
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-22" isSignedByPolicyHolder
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-23" isClaimedPremiumAmountValid
+    && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-32" (refund == 0)
  where
   txInfo = scriptContextTxInfo sc
 
@@ -255,11 +262,17 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
 
   isSignedByPolicyHolder = txSignedBy txInfo policyHolder
 
+  spendValue =
+    lovelaceValueOf . mconcat $
+      [ value
+      | Just (TxInInfo _ (TxOut _ value _ _)) <- [findOwnInput sc]
+      ]
+
   lockedPremium =
     lovelaceValueOf . mconcat $
       [ value
       | TxOut _ value (OutputDatum (Datum d)) _ <- getContinuingOutputs sc
-      , d == toBuiltinData datum
+      , Just d == untypedUpdatePiggyBankRefund refundAmount datum
       ]
 
   premiumLeftForInvestor =
@@ -267,7 +280,9 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount) ClaimPre
       Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount paymentIntervals start
       Nothing -> initAmount
 
-  isClaimedPremiumAmountValid = lockedPremium >= premiumLeftForInvestor
+  refundAmount = initAmount - premiumLeftForInvestor
+
+  isClaimedPremiumAmountValid = spendValue - lockedPremium <= refundAmount
 mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCollateralOnCancel sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-25" isPolicyCancelled
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-26" isFidaCardOwner
