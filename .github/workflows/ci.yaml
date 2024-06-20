@@ -2,8 +2,11 @@ name: "Continuous Integration"
 on:
   pull_request:
   push:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true  
 jobs:
-  tests:
+  ci:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
