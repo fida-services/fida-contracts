@@ -19,6 +19,6 @@ jobs:
           auto-optimise-store = true
           cores = 4
           extra-experimental-features = nix-command flakes
-    - run: nix build
-    - run: nix flake check
-    - run: nix test
+    - run: nix --accept-flake-config build
+    - run: nix --accept-flake-config flake check
+    - run: nix --accept-flake-config test
