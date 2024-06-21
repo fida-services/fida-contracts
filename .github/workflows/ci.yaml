@@ -1,0 +1,30 @@
+name: "Continuous Integration"
+on:
+  pull_request:
+  push:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true  
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install nix
+      uses: DeterminateSystems/nix-installer-action@v12
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        extra-conf: |
+          accept-flake-config = true
+          substituters = https://cache.nixos.org https://cache.iog.io https://cache.dhall-lang.org
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= all-hies.cachix.org-1:JjrzAOEUsD9ZMt8fdFbzo3jNAyEWlPAwdVuHw4RD43k= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= cache.dhall-lang.org:I9/H18WHd60olG5GsIjolp7CtepSgJmM2CsO813VTmM=
+    - name: Restore nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@v7
+      with:
+        use-gha-cache: true
+        use-flakehub: false
+    - name: Build
+      run: nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -o ~/now/fida-purs-module/
+    - name: Test
+      run: nix run -L .#fida-contracts:test:fida-contracts-test
