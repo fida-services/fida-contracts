@@ -9,8 +9,16 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v27
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: "Restore nix store"
+      uses: actions/cache@v3.0.8
+      id: nix-cache
+      with:
+        path: /tmp/nixcache
+        key: "ci-${{ github.ref }}"
+    - name: Install nix
+      uses: cachix/install-nix-action@v27
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
         extra_nix_config: |
@@ -20,4 +28,12 @@ jobs:
           auto-optimise-store = true
           cores = 4
           extra-experimental-features = nix-command flakes
-    - run: nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -o ~/now/fida-purs-module/
+    - name: "Import Nix store cache"
+      if: "steps.nix-cache.outputs.cache-hit == 'true'"
+      run: "nix copy --from /tmp/nixcache ./#fida-contracts"
+    - name: Build
+      run: nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -o ~/now/fida-purs-module/
+    - name: Test
+      run: nix run -L .#fida-contracts:test:fida-contracts-test
+    - name: "Save nix store"
+      run: "nix copy --to /tmp/nixcache ./#fida-contracts"
