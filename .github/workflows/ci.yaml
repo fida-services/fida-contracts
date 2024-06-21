@@ -11,29 +11,17 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: "Restore nix store"
-      uses: actions/cache@v3.0.8
-      id: nix-cache
-      with:
-        path: /tmp/nixcache
-        key: "ci-${{ github.ref }}"
     - name: Install nix
-      uses: cachix/install-nix-action@v27
+      uses: DeterminateSystems/nix-installer-action@v12
       with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        extra_nix_config: |
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        extra-conf: |
           accept-flake-config = true
           substituters = https://cache.nixos.org https://cache.iog.io https://cache.dhall-lang.org
           trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= all-hies.cachix.org-1:JjrzAOEUsD9ZMt8fdFbzo3jNAyEWlPAwdVuHw4RD43k= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= cache.dhall-lang.org:I9/H18WHd60olG5GsIjolp7CtepSgJmM2CsO813VTmM=
-          auto-optimise-store = true
-          cores = 4
-          extra-experimental-features = nix-command flakes
-    - name: "Import Nix store cache"
-      if: "steps.nix-cache.outputs.cache-hit == 'true'"
-      run: "nix copy --from /tmp/nixcache ./#fida-contracts"
+    - name: Restore nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@v7          
     - name: Build
       run: nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -o ~/now/fida-purs-module/
     - name: Test
       run: nix run -L .#fida-contracts:test:fida-contracts-test
-    - name: "Save nix store"
-      run: "nix copy --to /tmp/nixcache ./#fida-contracts"
