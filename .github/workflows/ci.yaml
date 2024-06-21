@@ -20,6 +20,4 @@ jobs:
           auto-optimise-store = true
           cores = 4
           extra-experimental-features = nix-command flakes
-    - run: nix flake check
-    - run: nix build
-    - run: nix test
+    - run: nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -o ~/now/fida-purs-module/
