@@ -70,7 +70,7 @@ getInvestorPortfolio pkh = do
 
     isFidaCard :: FidaCard -> Run Bool
     isFidaCard (FidaCard iid fcid) = do
-      boxes <- boxAt $ piggyBank iid fcid
+      boxes <- boxAt $ piggyBank iid
       return $ not $
         null [ ()
              | box <- boxes

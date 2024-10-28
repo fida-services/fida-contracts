@@ -49,7 +49,7 @@ testPolicyExpirationDuringFunding = do
   triggerPolicyExpiration iid broker1
 
 
-testPolicyExpirationDuringOnRisk:: Run ()
+testPolicyExpirationDuringOnRisk :: Run ()
 testPolicyExpirationDuringOnRisk = do
   users@Users {..} <- setupUsers
 

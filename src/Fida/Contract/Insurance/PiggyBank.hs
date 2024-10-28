@@ -123,12 +123,11 @@ import PlutusTx.Prelude
 {-# INLINEABLE mkPiggyBankValidator #-}
 mkPiggyBankValidator ::
   InsuranceId ->
-  FidaCardId ->
   PiggyBankDatum ->
   PiggyBankRedeemer ->
   ScriptContext ->
   Bool
-mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankFidaCard {pbfcIsSold = False, pbfcFidaCardValue}) BuyFidaCard sc =
+mkPiggyBankValidator (InsuranceId cs) datum@(PBankFidaCard {pbfcIsSold = False, pbfcFidaCardValue}) BuyFidaCard sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-0" isSold
  where
   inputLovelace = case findOwnInput sc of
@@ -142,7 +141,7 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankFidaCard {pbfcIsSold = False
       Just (TxOut _ v (OutputDatum (Datum d)) _)
         | lovelaceValueOf v >= pbfcFidaCardValue + inputLovelace -> d
         | otherwise -> traceError "ERROR-PIGGY-BANK-VALIDATOR-4"
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold = True, pbfcFidaCardValue}) SellFidaCard scriptContext =
+mkPiggyBankValidator (InsuranceId cs) (PBankFidaCard {pbfcIsSold = True, pbfcFidaCardValue, pbfcFidaCardId=FidaCardId n}) SellFidaCard scriptContext =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-5" (not pbfcIsSold)
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-6" (pbfcFidaCardValue == pbfcFidaCardValue')
  where
@@ -158,7 +157,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold 
     case datum of
       Just (PBankFidaCard {pbfcIsSold = isSold, pbfcFidaCardValue = cardValue}) -> (isSold, cardValue)
       _ -> traceError "ERROR-PIGGY-BANK-VALIDATOR-8"
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) datum@(PBankPremium initAmount refund) ClaimPremium sc =
+mkPiggyBankValidator (InsuranceId cs) datum@(PBankPremium initAmount refund (FidaCardId n)) ClaimPremium sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-7" isFidaCardOwner
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-8" isClaimedPremiumAmountValid
  where
@@ -185,7 +184,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) datum@(PBankPremium initAmo
       Nothing -> traceError "ERROR-PIGGY-BANK-VALIDATOR-10"
 
   isClaimedPremiumAmountValid = lockedPremium >= initAmount - refund - availablePremium
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold = True, pbfcFidaCardValue, pbfcPaidClaims}) PayForClaimWithCollateral sc =
+mkPiggyBankValidator (InsuranceId cs) (PBankFidaCard {pbfcIsSold = True, pbfcFidaCardValue, pbfcPaidClaims, pbfcFidaCardId=FidaCardId n}) PayForClaimWithCollateral sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-11" isClaimAccepted
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-12" collateralDiffAmountCorrect
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-13" claimNotPaidYet
@@ -243,7 +242,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcIsSold 
 --
 -- TODO ClaimPremiumOnCancel rename to RefundPremium
 --
-mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount refund) ClaimPremiumOnCancel sc =
+mkPiggyBankValidator (InsuranceId cs) datum@(PBankPremium initAmount refund _) ClaimPremiumOnCancel sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-21" isPolicyCancelled
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-22" isSignedByPolicyHolder
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-23" isClaimedPremiumAmountValid
@@ -283,7 +282,7 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount refund) C
   refundAmount = initAmount - premiumLeftForInvestor
 
   isClaimedPremiumAmountValid = spendValue - lockedPremium <= refundAmount
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCollateralOnCancel sc =
+mkPiggyBankValidator (InsuranceId cs) (PBankFidaCard {pbfcFidaCardId=FidaCardId n}) UnlockCollateralOnCancel sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-25" isPolicyCancelled
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-26" isFidaCardOwner
  where
@@ -297,7 +296,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {}) UnlockCo
       ]
 
   isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
-mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcPaidClaims}) UnlockCollateral sc =
+mkPiggyBankValidator (InsuranceId cs) (PBankFidaCard {pbfcPaidClaims, pbfcFidaCardId=FidaCardId n}) UnlockCollateral sc =
   traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-28" isPolicyExpired
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-29" isFidaCardOwner
     && traceIfFalse "ERROR-PIGGY-BANK-VALIDATOR-30" isClaimPaid
@@ -316,7 +315,7 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcPaidCla
   isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
   isClaimPaid = fromMaybe True (((`elem` pbfcPaidClaims) . claimId) <$> mClaim)
 
-mkPiggyBankValidator _ _ _ _ _ = False
+mkPiggyBankValidator _ _ _ _ = False
 
 {-# INLINEABLE mkPiggyBankValidatorUntyped #-}
 mkPiggyBankValidatorUntyped ::
@@ -324,23 +323,20 @@ mkPiggyBankValidatorUntyped ::
   BuiltinData ->
   BuiltinData ->
   BuiltinData ->
-  BuiltinData ->
   ()
-mkPiggyBankValidatorUntyped insuranceId fidaCardId =
+mkPiggyBankValidatorUntyped insuranceId =
   wrapValidator $
     mkPiggyBankValidator
       (unsafeFromBuiltinData insuranceId)
-      (unsafeFromBuiltinData fidaCardId)
 
 serialisablePiggyBankValidator :: Script
 serialisablePiggyBankValidator =
   fromCompiledCode $$(PlutusTx.compile [||mkPiggyBankValidatorUntyped||])
 
-piggyBankValidator :: InsuranceId -> FidaCardId -> Validator
-piggyBankValidator iid fcid =
+piggyBankValidator :: InsuranceId -> Validator
+piggyBankValidator iid =
   mkValidatorScript $
     $$(PlutusTx.compile [||wrappedValidator||])
       `PlutusTx.applyCode` PlutusTx.liftCode iid
-      `PlutusTx.applyCode` PlutusTx.liftCode fcid
  where
-  wrappedValidator iid' = wrapValidator . mkPiggyBankValidator iid'
+  wrappedValidator iid' = wrapValidator $ mkPiggyBankValidator iid'

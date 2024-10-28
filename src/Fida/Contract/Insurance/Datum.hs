@@ -44,6 +44,10 @@ import qualified Prelude as HPrelude
 newtype FidaCardId = FidaCardId BuiltinByteString
   deriving newtype (ToData, FromData, UnsafeFromData, HPrelude.Show, HPrelude.Eq)
 
+instance Eq FidaCardId where
+  {-# INLINEABLE (==) #-}
+  FidaCardId a == FidaCardId b = a == b
+
 PlutusTx.makeLift ''FidaCardId
 
 type PremiumAmount = Integer
@@ -126,7 +130,8 @@ data InsurancePolicyDatum
   | PremiumPaymentInfo
       { -- | in lovelace
         ppInfoPremiumAmountPerPiggyBank :: Integer
-      , ppInfoPiggyBanks :: [Address]
+      , ppInfoPiggyBankAddress :: Address
+      , ppInfoFidaCardIds :: [FidaCardId]
       }
   | PolicyClaimPayment
   deriving (HPrelude.Show, HPrelude.Eq)
@@ -171,6 +176,7 @@ data PiggyBankDatum
   = PBankPremium
       { pbankPremium'init :: PremiumAmount
       , pbankPremium'refund :: PremiumAmount
+      , pbankPremium'FidaCardId :: FidaCardId
       }
   | PBankFidaCard
       { pbfcIsSold :: Bool

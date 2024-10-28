@@ -5,7 +5,7 @@
 module Fida.Contract.Insurance.Lifecycle.Initiated (lifecycleInitiatedStateValidator) where
 
 import Fida.Contract.Insurance.Authority (isSignedByTheAuthority)
-import Fida.Contract.Insurance.Datum (InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), untypedUpdatePolicyState)
+import Fida.Contract.Insurance.Datum (FidaCardId (..), InsurancePolicyDatum (..), InsurancePolicyState (..), PiggyBankDatum (..), untypedUpdatePolicyState)
 import Fida.Contract.Insurance.InsuranceId (InsuranceId (..))
 import Fida.Contract.Insurance.Redeemer (PolicyInitiatedRedemeer (..))
 import Fida.Contract.Insurance.Tokens (policyInfoTokenName, policyPaymentTokenName)
@@ -81,7 +81,7 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo {iInfoSta
 
   hasCorrectOutput = outputDatum == untypedUpdatePolicyState datum Cancelled
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo {..} PolicyInitiatedPayPremium sc =
-  traceIfFalse "ERROR-INITIATED-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
+  traceIfFalse "ERROR-INITIATED-VALIDATOR-3" (length (nub payments) == length ppInfoFidaCardIds)
     && traceIfNotSingleton "ERROR-INITIATED-VALIDATOR-4" isPolicyInfoSpent
  where
   txInfo = scriptContextTxInfo sc
@@ -92,12 +92,13 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo {..} Policy
     , valueOf value cs policyInfoTokenName == 1
     ]
 
-  payments :: [Address]
+  payments :: [FidaCardId]
   payments =
-    [ address
+    [ fidaCardId
     | TxOut address value (OutputDatum (Datum datum)) _ <- txInfoOutputs txInfo
-    , Just (PBankPremium amount refund) <- [PlutusTx.fromBuiltinData datum]
-    , elem address ppInfoPiggyBanks
+    , Just (PBankPremium amount refund fidaCardId) <- [PlutusTx.fromBuiltinData datum]
+    , elem fidaCardId ppInfoFidaCardIds
+    , address == ppInfoPiggyBankAddress
     , refund == 0
     , let paid = lovelaceValueOf value
        in paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount

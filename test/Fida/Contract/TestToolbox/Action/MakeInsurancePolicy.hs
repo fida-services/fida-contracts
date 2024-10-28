@@ -84,6 +84,7 @@ makePolicy broker params@InsuranceCreateParams {..} = do
             <> payToPgiggyBanks insuranceIdNFTScript iid
   submitTx broker tx
   runLoadRefScript broker insuranceScript
+  runLoadRefScript broker $ piggyBank iid
   return iid
  where
   oneAda = adaValue 1
@@ -101,7 +102,7 @@ makePolicy broker params@InsuranceCreateParams {..} = do
      in PBankFidaCard {..}
 
   payToPiggyBank insuranceIdNFTScript iid fcid =
-    let script = piggyBank iid fcid
+    let script = piggyBank iid
         value = fidaCardStatusNFT iid <> fidaCardNFT iid fcid
      in mconcat
           [ payToScript script (InlineDatum $ fidaCardDatum fcid) (oneAda <> value)
@@ -110,5 +111,6 @@ makePolicy broker params@InsuranceCreateParams {..} = do
 
   paymentInfo iid =
     let ppInfoPremiumAmountPerPiggyBank = icpPolicyPrice `div` icpFidaCardQuantity
-        ppInfoPiggyBanks = map (piggyBankAddr iid . fidaCardFromInt) [1 .. icpFidaCardQuantity]
+        ppInfoFidaCardIds = map fidaCardFromInt [1 .. icpFidaCardQuantity]
+        ppInfoPiggyBankAddress = piggyBankAddr iid
      in PremiumPaymentInfo {..}
