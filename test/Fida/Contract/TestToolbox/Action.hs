@@ -3,7 +3,6 @@
 
 module Fida.Contract.TestToolbox.Action
   ( runUpdatePolicyState,
-    updatePolicyStateTx,
     updatePolicyStateTxRef,
     buyFidaCard,
     buyFidaCards,
@@ -111,28 +110,13 @@ runUpdatePolicyState ::
   Run ()
 runUpdatePolicyState state r iid pkh = do
   let tv = insurancePolicy iid
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box -> do
-    let maybeTx = updatePolicyStateTx tv box state r
-    withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
-      validRangeStart <- currentTime
-      tx' <- validateIn (from validRangeStart) tx
-      submitTx pkh tx'
-
-
-updatePolicyStateTx ::
-  InsurancePolicy ->
-  TxBox InsurancePolicy ->
-  InsurancePolicyState ->
-  InsurancePolicyRedeemer ->
-  Maybe Tx
-updatePolicyStateTx tv box@(TxBox _ (TxOut _ value _ _) iinfo) state r =
-  mkTx <$> updatePolicyState iinfo state
- where
-  mkTx iinfoDatum =
-    mconcat
-      [ spendBox tv r box
-      , payToScript tv (InlineDatum iinfoDatum) value
-      ]
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \box -> do
+      let maybeTx = updatePolicyStateTxRef scriptRef tv box state r
+      withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
+        validRangeStart <- currentTime
+        tx' <- validateIn (from validRangeStart) tx
+        submitTx pkh tx'
 
 updatePolicyStateTxRef ::
   TxOutRef ->
@@ -151,47 +135,35 @@ updatePolicyStateTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) iinfo) stat
       ]
 
 completeFundingTx ::
+  TxOutRef ->
   InsurancePolicy ->
   TxBox InsurancePolicy ->
   POSIXTime ->
   Maybe Tx
-completeFundingTx tv box@(TxBox _ (TxOut _ value _ _) iinfo@InsuranceInfo {..}) onRiskStartDate =
+completeFundingTx scriptRef tv box@(TxBox _ (TxOut _ value _ _) iinfo@InsuranceInfo {..}) onRiskStartDate =
   mkTx <$> completeFunding iinfo onRiskStartDate
  where
   mkTx iinfo =
     mconcat
-      [ spendBox tv (PolicyFunding (PolicyFundingFundingComplete onRiskStartDate)) box
+      [ spendBoxRef scriptRef tv (PolicyFunding (PolicyFundingFundingComplete onRiskStartDate)) box
       , payToScript tv (InlineDatum iinfo) value
       ]
 
-buyFidaCardTx ::
+buyFidaCardTxRef ::
+  TxOutRef ->
   InsuranceId ->
   PiggyBank ->
   TxBox PiggyBank ->
   PubKeyHash ->
   Maybe Tx
-buyFidaCardTx iid tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue, pbfcFidaCardId}) investor =
-  mkTx <$> setFidaCardSold pbank
- where
-  mkTx pbank' =
-    mconcat
-      [ spendBox tv BuyFidaCard box
-      , payToScript tv (InlineDatum pbank') (value <> adaValue pbfcFidaCardValue <> (fidaCardNegateNFT iid pbfcFidaCardId))
-      , payToKey investor (fidaCardNFT iid pbfcFidaCardId)
-      ]
-
-buyFidaCardTxRef ::
-  TxOutRef ->
-  PiggyBank ->
-  TxBox PiggyBank ->
-  Maybe Tx
-buyFidaCardTxRef scriptRef tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue}) =
+buyFidaCardTxRef scriptRef iid tv box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue, pbfcFidaCardId}) investor =
   mkTx <$> setFidaCardSold pbank
  where
   mkTx pbank' =
     mconcat
       [ spendBoxRef scriptRef tv BuyFidaCard box
-      , payToRef tv (InlineDatum pbank') (value <> adaValue pbfcFidaCardValue)
+      , payToScript tv (InlineDatum pbank') (value <> adaValue pbfcFidaCardValue <> (fidaCardNegateNFT iid pbfcFidaCardId))
+      , payToKey investor (fidaCardNFT iid pbfcFidaCardId)
       ]
 
 sellFidaCard ::
@@ -201,24 +173,25 @@ sellFidaCard ::
   Run ()
 sellFidaCard iid investor fcid = do
   let
-    tv = piggyBank iid fcid
+    tv = piggyBank iid
     fidaCardValue = fidaCardNFT iid fcid
   sp <- spend investor fidaCardValue
-  withBox @PiggyBank (piggyBankInfoBox iid fcid) tv $
-    \box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue}) ->
-       withMay "Can't buy fida card" (pure $ setFidaCardUnsold pbank) $ \pbank' -> do
-         let
-           sellValue = adaValue pbfcFidaCardValue
-           datum = InlineDatum pbank'
-           value' = value <> negateValue sellValue <> fidaCardValue
-           tx =
-             mconcat
-               [ spendBox tv SellFidaCard box
-               , payToScript tv datum value'
-               , payToKey investor sellValue
-               , userSpend sp
-               ]
-         submitTx investor tx
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @PiggyBank (piggyBankInfoBox iid fcid) tv $
+      \box@(TxBox _ (TxOut _ value _ _) pbank@PBankFidaCard {pbfcFidaCardValue}) ->
+        withMay "Can't buy fida card" (pure $ setFidaCardUnsold pbank) $ \pbank' -> do
+          let
+            sellValue = adaValue pbfcFidaCardValue
+            datum = InlineDatum pbank'
+            value' = value <> negateValue sellValue <> fidaCardValue
+            tx =
+              mconcat
+                [ spendBoxRef scriptRef tv SellFidaCard box
+                , payToScript tv datum value'
+                , payToKey investor sellValue
+                , userSpend sp
+                ]
+          submitTx investor tx
 
 buyFidaCard ::
   InsuranceId ->
@@ -226,18 +199,19 @@ buyFidaCard ::
   FidaCardId ->
   Run ()
 buyFidaCard iid investor fcid = do
-  let tv = piggyBank iid fcid
+  let tv = piggyBank iid
   sp <- spend investor $ adaValue 1_000_000_000
 
-  withBox @PiggyBank (piggyBankInfoBox iid fcid) tv $ \box -> do
-    let maybeTx = buyFidaCardTx iid tv box investor
-    withMay "Can't buy fida card" (pure maybeTx) $ \buyFidaCardTx -> do
-      let tx =
-            mconcat
-              [ buyFidaCardTx
-              , userSpend sp
-              ]
-      submitTx investor tx
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @PiggyBank (piggyBankInfoBox iid fcid) tv $ \box -> do
+      let maybeTx = buyFidaCardTxRef scriptRef iid tv box investor
+      withMay "Can't buy fida card" (pure maybeTx) $ \buyFidaCardTx -> do
+        let tx =
+              mconcat
+                [ buyFidaCardTx
+                , userSpend sp
+                ]
+        submitTx investor tx
 
 buyFidaCards ::
   InsuranceId ->
@@ -276,7 +250,7 @@ payPremiumToPiggyBanks ::
   PubKeyHash ->
   Maybe Tx
 payPremiumToPiggyBanks scriptRef tv box@(TxBox _ (TxOut _ value _ _) PremiumPaymentInfo {..}) pkh =
-  Just $ mconcat (payToPiggyBankTx <$> ppInfoPiggyBanks) <> spendPPaymentInfo
+  Just $ mconcat (payToPiggyBankTx <$> ppInfoFidaCardIds) <> spendPPaymentInfo
  where
   r = PolicyInitiated PolicyInitiatedPayPremium
 
@@ -286,26 +260,27 @@ payPremiumToPiggyBanks scriptRef tv box@(TxBox _ (TxOut _ value _ _) PremiumPaym
       , payToKey pkh value
       ]
 
-  datum = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank 0
+  datum fidaCardId = InlineDatum $ PBankPremium ppInfoPremiumAmountPerPiggyBank 0 fidaCardId
 
-  payToPiggyBankTx addr =
-    payToAddressDatum addr datum (adaValue ppInfoPremiumAmountPerPiggyBank)
+  payToPiggyBankTx fidaCardId =
+    payToAddressDatum ppInfoPiggyBankAddress (datum fidaCardId) (adaValue ppInfoPremiumAmountPerPiggyBank)
 payPremiumToPiggyBanks _ _ _ _ = Nothing
 
 
 addPiggyBankPaidClaimTx ::
+  TxOutRef ->
   InsuranceId ->
   BuiltinByteString ->
   PiggyBank ->
   TxBox PiggyBank ->
   Integer ->
   Maybe Tx
-addPiggyBankPaidClaimTx iid claimId piggyBank box@(TxBox _ (TxOut _ value _ _) pbDatum) payAmount =
+addPiggyBankPaidClaimTx scriptRef iid claimId piggyBank box@(TxBox _ (TxOut _ value _ _) pbDatum) payAmount =
   mkTx <$> addPiggyBankPaidClaim claimId pbDatum
  where
   mkTx pbDatum' =
     mconcat
-      [ spendBox piggyBank PayForClaimWithCollateral box
+      [ spendBoxRef scriptRef piggyBank PayForClaimWithCollateral box
       , payToScript piggyBank (InlineDatum pbDatum') (value <> negateValue (adaValue payAmount))
       , payToScript (insurancePolicy iid) (InlineDatum PolicyClaimPayment) (adaValue payAmount)
       ]
@@ -320,21 +295,22 @@ payForClaimWithCollateral iid@(InsuranceId cs) investor = do
     withMay "Can't get the current claim" (pure mClaim) $ \claim@ClaimInfo{..} -> do
       forM_ (map fidaCardFromInt [1 .. iInfoFidaCardNumber]) $ \fcid@(FidaCardId fcid') -> do
               sp <- spend investor $ fidaCardNFT iid fcid
-              withBox @PiggyBank (piggyBankInfoBox iid fcid) (piggyBank iid fcid) $ \pBox@(TxBox _ _ pbDatum@PBankFidaCard{..}) -> do
-                  let payAmount = claimAmount `div` iInfoFidaCardNumber
+              withRefScript (isScriptRef (piggyBank iid)) (piggyBank iid) $ \(scriptRef, _) -> do
+                withBox @PiggyBank (piggyBankInfoBox iid fcid) (piggyBank iid) $ \pBox@(TxBox _ _ pbDatum@PBankFidaCard{..}) -> do
+                    let payAmount = claimAmount `div` iInfoFidaCardNumber
 
-                  let maybeTx = addPiggyBankPaidClaimTx iid claimId (piggyBank iid fcid) pBox payAmount
-                  withMay "Can't buy fida card" (pure maybeTx) $ \payForClaimWithCollateralTx -> do
-                      let tx =
-                              mconcat
-                                [ payForClaimWithCollateralTx
-                                , refBoxInline iInfoBox
-                                , userSpend sp
-                                , payToKey investor (fidaCardNFT iid fcid)
-                                ]
-                      validRangeStart <- currentTime
-                      tx' <- validateIn (from validRangeStart) tx
-                      submitTx investor tx'
+                    let maybeTx = addPiggyBankPaidClaimTx scriptRef iid claimId (piggyBank iid) pBox payAmount
+                    withMay "Can't buy fida card" (pure maybeTx) $ \payForClaimWithCollateralTx -> do
+                        let tx =
+                                mconcat
+                                  [ payForClaimWithCollateralTx
+                                  , refBoxInline iInfoBox
+                                  , userSpend sp
+                                  , payToKey investor (fidaCardNFT iid fcid)
+                                  ]
+                        validRangeStart <- currentTime
+                        tx' <- validateIn (from validRangeStart) tx
+                        submitTx investor tx'
 
 
 triggerFundingComplete :: InsuranceId -> Users -> Run ()
@@ -349,24 +325,23 @@ triggerFundingComplete iid users@Users {..} = do
 
   let validRange = from actualStartTime
 
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ _ InsuranceInfo {iInfoFidaCardNumber}) -> do
-    let maybeUpdatePolicyStateTx = completeFundingTx tv box onRiskStartDate
-    let piggyBanks =
-          map (piggyBank iid . fidaCardFromInt) [1 .. iInfoFidaCardNumber]
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ _ InsuranceInfo {iInfoFidaCardNumber}) -> do
+      let maybeUpdatePolicyStateTx = completeFundingTx scriptRef tv box onRiskStartDate
 
-    allBoxes <- mconcat <$> mapM boxAt piggyBanks
+      allBoxes <- boxAt $ piggyBank iid
 
-    let boxes = [box | box@(TxBox _ _ PBankFidaCard {..}) <- allBoxes]
+      let boxes = [box | box@(TxBox _ _ PBankFidaCard {..}) <- allBoxes]
 
-    let refPiggyBanks = mconcat $ map refBoxInline boxes
+      let refPiggyBanks = mconcat $ map refBoxInline boxes
 
-    let maybeTx = (<>) <$> maybeUpdatePolicyStateTx <*> Just refPiggyBanks
+      let maybeTx = (<>) <$> maybeUpdatePolicyStateTx <*> Just refPiggyBanks
 
-    withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
-      tx' <- validateIn validRange tx
-      (submitTx policyHolder tx')
+      withMay "Can't update policy state" (pure maybeTx) $ \tx -> do
+        tx' <- validateIn validRange tx
+        (submitTx policyHolder tx')
 
-  return ()
+    return ()
 
 
 unlockCollateralsOnExpired :: PubKeyHash -> InsuranceId -> [FidaCardId] -> Run ()
@@ -385,19 +360,20 @@ unlockCollateralOn :: PiggyBankRedeemer -> PubKeyHash -> InsuranceId -> FidaCard
 unlockCollateralOn r investor iid fcid = do
   let
     ipTv = insurancePolicy iid
-    pbTv = piggyBank iid fcid
+    pbTv = piggyBank iid
     nft = fidaCardNFT iid fcid
   withBox @InsurancePolicy (iinfoBox iid) ipTv $ \iiBox@(TxBox _ _ d) ->
-    withBox @PiggyBank (piggyBankInfoBox iid fcid) pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) _) -> do
-      logInfo $ "policy info: " <> show d
-      sp <- spend investor nft
-      let tx = mconcat
-           [ refBoxInline iiBox
-           , userSpend sp
-           , payToKey investor (value <> nft)
-           , spendBox pbTv r pbBox
-           ]
-      submitTx investor tx
+    withRefScript (isScriptRef pbTv) pbTv $ \(scriptRef, _) -> do
+      withBox @PiggyBank (piggyBankInfoBox iid fcid) pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) _) -> do
+        logInfo $ "policy info: " <> show d
+        sp <- spend investor nft
+        let tx = mconcat
+              [ refBoxInline iiBox
+              , userSpend sp
+              , payToKey investor (value <> nft)
+              , spendBoxRef scriptRef pbTv r pbBox
+              ]
+        submitTx investor tx
 
 
 triggerPolicyExpiration :: InsuranceId -> PubKeyHash -> Run ()
@@ -417,32 +393,36 @@ claimPremium :: InsuranceId -> FidaCardId -> PubKeyHash -> Ada -> Run ()
 claimPremium iid fcid pkh amount = do
   let
     ipTv = insurancePolicy iid
-    pbTv = piggyBank iid fcid
+    pbTv = piggyBank iid
     nft = fidaCardNFT iid fcid
   withBox @InsurancePolicy (iinfoBox iid) ipTv $ \iiBox -> do
-    withBox @PiggyBank pbPremiumBox pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) d) -> do
-      sp <- spend pkh nft
-      let
-        modifyValue value = value <> (negateValue $ ada amount)
-        r = ClaimPremium
-        tx' =
-          if value == ada amount then spendBox pbTv r pbBox
-          else modifyBox pbTv pbBox r (const $ InlineDatum d) modifyValue
-        tx = mconcat
-             [ refBoxInline iiBox
-             , userSpend sp
-             , payToKey pkh (ada amount <> nft)
-             , tx'
-             ]
-      validRangeStart <- currentTime
-      validateIn (from validRangeStart) tx >>= submitTx pkh
+    withRefScript (isScriptRef pbTv) pbTv $ \(scriptRef, _) -> do
+      withBox @PiggyBank pbPremiumBox pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) d) -> do
+        sp <- spend pkh nft
+        let
+          newValue = value <> (negateValue $ ada amount)
+          r = ClaimPremium
+          tx' =
+            if value == ada amount then spendBoxRef scriptRef pbTv r pbBox
+            else mconcat
+              [ spendBoxRef scriptRef pbTv r pbBox
+              , payToScript pbTv (InlineDatum d) newValue
+              ]
+          tx = mconcat
+              [ refBoxInline iiBox
+              , userSpend sp
+              , payToKey pkh (ada amount <> nft)
+              , tx'
+              ]
+        validRangeStart <- currentTime
+        validateIn (from validRangeStart) tx >>= submitTx pkh
 
 
 claimPremiumOnCancel :: InsuranceId -> FidaCardId -> PubKeyHash -> Ada -> Run ()
 claimPremiumOnCancel iid fcid pkh amount = do
   let
     ipTv = insurancePolicy iid
-    pbTv = piggyBank iid fcid
+    pbTv = piggyBank iid
   withBox @InsurancePolicy (iinfoBox iid) ipTv $ \iiBox -> do
     withBox @PiggyBank pbPremiumBox pbTv $ \pbBox@(TxBox _ (TxOut _ value _ _) d) -> do
       logInfo $ "claim amount: " <> show (ada amount)

@@ -61,18 +61,18 @@ testBuyFidaCard = do
 testSellFidaCard :: Run ()
 testSellFidaCard = do
   users@Users {..} <- setupUsers
-  
+
   iid <- newSamplePolicy users
-  
+
   buyFidaCards iid investor1 $ fidaCardsFromInts [1 .. 3]
-  
+
   sellFidaCard iid investor1 $ fidaCardFromInt 1
 
 
 testClaimPremium :: Run ()
 testClaimPremium = do
   users@Users {..} <- setupUsers
-  
+
   iid <- newSamplePolicy users
 
   payPremium iid policyHolder
@@ -80,7 +80,7 @@ testClaimPremium = do
   let fidaCards = fidaCardsFromInts [1 .. 10]
 
   buyFidaCards iid investor1 fidaCards
-  
+
   triggerFundingComplete iid users
 
   time <- currentTime
@@ -105,7 +105,7 @@ testPayForClaimWithCollateral = do
 testClaimPremiumOnCancel :: Run ()
 testClaimPremiumOnCancel = do
   users@Users {..} <- setupUsers
-  
+
   iid <- newSamplePolicy users
 
   payPremium iid policyHolder
@@ -113,7 +113,7 @@ testClaimPremiumOnCancel = do
   let fidaCards = fidaCardsFromInts [1 .. 10]
 
   buyFidaCards iid investor1 fidaCards
-  
+
   triggerFundingComplete iid users
 
   time <- currentTime
@@ -121,19 +121,19 @@ testClaimPremiumOnCancel = do
   waitUntil $ time + days 90
 
   runUpdatePolicyState Cancelled (PolicyOnRisk PolicyOnRiskCancel) iid broker1
-  
+
   claimPremium iid (fidaCards !! 0) investor1 (asAda 5)
-  
+
   claimPremiumOnCancel iid (fidaCards !! 0) policyHolder (asAda 15)
 
   claimPremiumOnCancel iid (fidaCards !! 1) policyHolder (asAda 15)
-  
+
   claimPremium iid (fidaCards !! 1) investor1 (asAda 5)
 
 --  claimPremiumOnCancel iid (fidaCards !! 2) policyHolder (asAda 10)
-  
+
 --  claimPremium iid (fidaCards !! 2) investor1 (asAda 20)
-  
+
 
 testUnlockCollateralOnCancel :: Run ()
 testUnlockCollateralOnCancel = do
@@ -144,20 +144,20 @@ testUnlockCollateralOnCancel = do
   payPremium iid policyHolder
 
   buyFidaCards iid investor1 $ [fidaCardFromInt 1]
-  
+
   buyFidaCards iid investor2 $ [fidaCardFromInt 2]
 
   runUpdatePolicyState Cancelled (PolicyOnRisk PolicyOnRiskCancel) iid broker1
 
   unlockCollateralOnCancel investor1 iid $ fidaCardFromInt 1
-  
+
   unlockCollateralOnCancel investor2 iid $ fidaCardFromInt 2
 
 
 testUnlockCollateral :: Run ()
 testUnlockCollateral = do
   users@Users {..} <- setupUsers
-  
+
   iid <- newSamplePolicy users
 
   payPremium iid policyHolder
@@ -165,7 +165,7 @@ testUnlockCollateral = do
   let fidaCards = fidaCardsFromInts [1 .. 10]
 
   buyFidaCards iid investor1 fidaCards
-  
+
   triggerFundingComplete iid users
 
   time <- currentTime
@@ -173,5 +173,5 @@ testUnlockCollateral = do
   waitUntil $ time + days 366
 
   triggerPolicyExpiration iid broker1
-  
-  unlockCollateralsOnExpired investor1 iid fidaCards 
+
+  unlockCollateralsOnExpired investor1 iid fidaCards

@@ -73,15 +73,15 @@ type PiggyBank = TypedValidator PiggyBankDatum PiggyBankRedeemer
 insurancePolicy :: InsuranceId -> InsurancePolicy
 insurancePolicy = TypedValidator . toV2 . insurancePolicyValidator
 
-piggyBank :: InsuranceId -> FidaCardId -> PiggyBank
-piggyBank iid = TypedValidator . toV2 . piggyBankValidator iid
+piggyBank :: InsuranceId -> PiggyBank
+piggyBank = TypedValidator . toV2 . piggyBankValidator
 
 insuranceIdNFT :: TxOutRef -> TypedPolicy ()
 insuranceIdNFT = TypedPolicy . toV2 . insuranceIdMintingPolicy
 
 -- | Validator addresses
-piggyBankAddr :: InsuranceId -> FidaCardId -> Address
-piggyBankAddr iid = toAddress . piggyBank iid
+piggyBankAddr :: InsuranceId -> Address
+piggyBankAddr = toAddress . piggyBank
 
 -- | Validator NFTs
 policyInfoNFT :: InsuranceId -> Value

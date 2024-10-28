@@ -75,18 +75,19 @@ createClaim iid policyHolder users@Users{investor1} = do
   let redeemer = PolicyOnRisk $ PolicyOnRiskCreateClaim claim
 
   let tv = insurancePolicy iid
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
-    validRangeStart <- currentTime
-    let newDatum = updateClaim iinfoDatum (Just claim)
-    withMay "Can't create claim" (pure newDatum) $ \datum -> do
-      let tx = mconcat
-                [ spendBox tv redeemer box
-                , payToScript tv (InlineDatum datum) value
-                ]
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
+      validRangeStart <- currentTime
+      let newDatum = updateClaim iinfoDatum (Just claim)
+      withMay "Can't create claim" (pure newDatum) $ \datum -> do
+        let tx = mconcat
+                  [ spendBoxRef scriptRef tv redeemer box
+                  , payToScript tv (InlineDatum datum) value
+                  ]
 
-      tx' <- validateIn (from validRangeStart) tx
-      submitTx policyHolder tx'
-      return ()
+        tx' <- validateIn (from validRangeStart) tx
+        submitTx policyHolder tx'
+        return ()
 
 testCloseClaim :: Run ()
 testCloseClaim = do
@@ -103,16 +104,17 @@ closeClaim iid policyHolder users = do
   let redeemer = PolicyOnRisk $ PolicyOnRiskCloseClaim
 
   let tv = insurancePolicy iid
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
-    let newDatum = updateClaim iinfoDatum Nothing
-    withMay "Can't close claim" (pure newDatum) $ \datum -> do
-      let tx = mconcat
-                [ spendBox tv redeemer box
-                , payToScript tv (InlineDatum datum) value
-                ]
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
+      let newDatum = updateClaim iinfoDatum Nothing
+      withMay "Can't close claim" (pure newDatum) $ \datum -> do
+        let tx = mconcat
+                  [ spendBoxRef scriptRef tv redeemer box
+                  , payToScript tv (InlineDatum datum) value
+                  ]
 
-      submitTx policyHolder tx
-      return ()
+        submitTx policyHolder tx
+        return ()
 
 testAcceptClaim :: Run ()
 testAcceptClaim = do
@@ -129,16 +131,17 @@ acceptClaim iid fidaSystem users = do
   let redeemer = PolicyOnRisk $ PolicyOnRiskAcceptClaim
 
   let tv = insurancePolicy iid
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum@InsuranceInfo{iInfoClaim = claim}) -> do
-    let newDatum = updateClaim iinfoDatum $ ((\c -> c{claimAccepted=True}) <$> claim)
-    withMay "Can't accept claim" (pure newDatum) $ \datum -> do
-      let tx = mconcat
-                [ spendBox tv redeemer box
-                , payToScript tv (InlineDatum datum) value
-                ]
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum@InsuranceInfo{iInfoClaim = claim}) -> do
+      let newDatum = updateClaim iinfoDatum $ ((\c -> c{claimAccepted=True}) <$> claim)
+      withMay "Can't accept claim" (pure newDatum) $ \datum -> do
+        let tx = mconcat
+                  [ spendBoxRef scriptRef tv redeemer box
+                  , payToScript tv (InlineDatum datum) value
+                  ]
 
-      submitTx fidaSystem tx
-      return ()
+        submitTx fidaSystem tx
+        return ()
 
 testExpireClaim :: Run ()
 testExpireClaim = do
@@ -157,17 +160,18 @@ expireClaim iid investor1 users = do
   let redeemer = PolicyOnRisk $ PolicyOnRiskExpireClaim
 
   let tv = insurancePolicy iid
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
-    let newDatum = updateClaim iinfoDatum Nothing
-    withMay "Can't expire claim" (pure newDatum) $ \datum -> do
-      let tx = mconcat
-                [ spendBox tv redeemer box
-                , payToScript tv (InlineDatum datum) value
-                ]
-      validRangeStart <- currentTime
-      tx' <- validateIn (from validRangeStart) tx
-      submitTx investor1 tx'
-      return ()
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
+      let newDatum = updateClaim iinfoDatum Nothing
+      withMay "Can't expire claim" (pure newDatum) $ \datum -> do
+        let tx = mconcat
+                  [ spendBoxRef scriptRef tv redeemer box
+                  , payToScript tv (InlineDatum datum) value
+                  ]
+        validRangeStart <- currentTime
+        tx' <- validateIn (from validRangeStart) tx
+        submitTx investor1 tx'
+        return ()
 
 testFailClaim :: Run ()
 testFailClaim = do
@@ -186,15 +190,16 @@ failClaim iid fidaSystem users = do
   let redeemer = PolicyOnRisk $ PolicyOnRiskFailClaim
 
   let tv = insurancePolicy iid
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
-    let newDatum = updateClaim iinfoDatum Nothing
-    withMay "Can't fail claim" (pure newDatum) $ \datum -> do
-      let tx = mconcat
-                [ spendBox tv redeemer box
-                , payToScript tv (InlineDatum datum) value
-                ]
-      submitTx fidaSystem tx
-      return ()
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \box@(TxBox _ (TxOut _ value _ _) iinfoDatum) -> do
+      let newDatum = updateClaim iinfoDatum Nothing
+      withMay "Can't fail claim" (pure newDatum) $ \datum -> do
+        let tx = mconcat
+                  [ spendBoxRef scriptRef tv redeemer box
+                  , payToScript tv (InlineDatum datum) value
+                  ]
+        submitTx fidaSystem tx
+        return ()
 
 
 testClaimPayment :: Run ()
@@ -220,15 +225,15 @@ claimPayment iid policyHolder = do
 
   boxes <- filter (\(TxBox _ _ d) -> d == PolicyClaimPayment) <$> boxAt @ InsurancePolicy tv
 
+  withRefScript (isScriptRef tv) tv $ \(scriptRef, _) -> do
+    withBox @ InsurancePolicy (iinfoBox iid) tv $ \iInfoBox -> do
 
-  withBox @ InsurancePolicy (iinfoBox iid) tv $ \iInfoBox -> do
+      forM_ boxes $ \box@(TxBox _ (TxOut _ v _ _) _) -> do
+        let tx = mconcat $
+                  [ spendBoxRef scriptRef tv (PolicyOnRisk PolicyOnRiskClaimPayment) box
+                  , payToKey policyHolder v
+                  , refBoxInline iInfoBox
+                  ]
 
-    forM_ boxes $ \box@(TxBox _ (TxOut _ v _ _) _) -> do
-      let tx = mconcat $
-                [ spendBox tv (PolicyOnRisk PolicyOnRiskClaimPayment) box
-                , payToKey policyHolder v
-                , refBoxInline iInfoBox
-                ]
-
-      submitTx policyHolder tx
-      return ()
+        submitTx policyHolder tx
+        return ()

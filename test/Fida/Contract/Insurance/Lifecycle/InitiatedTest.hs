@@ -116,10 +116,10 @@ testRequiredUtxos = do
 
           assertTrue "Premium amount per piggy bank doesn't match" $ ppInfoPremiumAmountPerPiggyBank == 20_000_000
           assertTrue "Piggy banks addresses don't match" $
-            ppInfoPiggyBanks == map (piggyBankAddr iid . fidaCardFromInt) [1 .. 10]
+            ppInfoFidaCardIds == map fidaCardFromInt [1 .. 10]
 
           forM_ (map fidaCardFromInt [1 .. 10]) $ \fcid@(FidaCardId tn) ->
-            let ptv = piggyBank iid fcid
+            let ptv = piggyBank iid
              in withBox @PiggyBank (piggyBankInfoBox iid fcid) ptv $
                   \(TxBox _ (TxOut _ piggyBankInfoValue _ _) piggyBankDatum) -> do
                     let atpp msg = msg <> " @ piggy bank " <> show fcid
