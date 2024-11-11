@@ -31,15 +31,15 @@ nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -o ~/now/fida-purs-m
 nix profile install nixpkgs#direnv
 ```
 
-and add following line
+and add the following line
 
-for zsh -> to the `~/.zshrc`
+to the `~/.zshrc` (for `zsh` users)
 
 ```
 eval "$(direnv hook zsh)"
 ```
 
-for bash -> `~/.bashrc`
+or to `~/.bashrc` (for `bash` users)
 
 ```
 eval "$(direnv hook bash)"
@@ -65,6 +65,5 @@ direnv allow
 ```
 
 - Install VS Code extensions
-
-* direnv
-* Haskell
+  * direnv
+  * Haskell
