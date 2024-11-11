@@ -22,10 +22,7 @@
     CHaP.follows = "cardano-transaction-lib/plutip/CHaP";
     plutip.follows = "cardano-transaction-lib/plutip";
 
-    flake-compat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
-    };
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz";
   };
 
   outputs = { self, nixpkgs, haskell-nix, iohk-nix, CHaP, plutip, ... }:

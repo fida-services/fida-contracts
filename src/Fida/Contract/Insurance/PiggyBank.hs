@@ -316,7 +316,8 @@ mkPiggyBankValidator (InsuranceId cs) (FidaCardId n) (PBankFidaCard {pbfcPaidCla
   isFidaCardOwner = valueOf (valueSpent txInfo) cs (fidaCardTokenName n) == 1
   isClaimPaid = fromMaybe True (((`elem` pbfcPaidClaims) . claimId) <$> mClaim)
 
-mkPiggyBankValidator _ _ _ _ _ = False
+mkPiggyBankValidator _ _ _ _ _ =
+  traceError "ERROR-PIGGY-BANK-VALIDATOR-32"
 
 {-# INLINEABLE mkPiggyBankValidatorUntyped #-}
 mkPiggyBankValidatorUntyped ::
