@@ -278,7 +278,7 @@ mkPiggyBankValidator (InsuranceId cs) _ datum@(PBankPremium initAmount refund) C
   premiumLeftForInvestor =
     case maybePolicyStartDate of
       Just start -> unlockedPremiumToClaim (txInfoValidRange txInfo) initAmount paymentIntervals start
-      Nothing -> initAmount
+      Nothing -> 0
 
   refundAmount = initAmount - premiumLeftForInvestor
 
