@@ -126,4 +126,5 @@ lifecycleOnRiskStateValidator (InsuranceId cs) PolicyClaimPayment PolicyOnRiskCl
     | InsuranceInfo {iInfoPolicyHolder} <- referenceDatums cs sc policyInfoTokenName
     , txSignedBy txInfo iInfoPolicyHolder
     ]
-lifecycleOnRiskStateValidator _ _ _ _ = False
+lifecycleOnRiskStateValidator _ _ _ _ =
+  trace "ERROR-ON-RISK-VALIDATOR-13" False
