@@ -212,3 +212,11 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/haskell,visualstudiocode,emacs,vim,jetbrains+all
 
+# Created by https://www.toptal.com/developers/gitignore/api/direnv
+# Edit at https://www.toptal.com/developers/gitignore?templates=direnv
+
+### direnv ###
+.direnv
+
+# End of https://www.toptal.com/developers/gitignore/api/direnv
+
