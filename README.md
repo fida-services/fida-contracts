@@ -4,12 +4,12 @@ fida-contracts
 ### Generate purescript module
 
 ```
-nix run -L git+ssh://git@github.com/fida-services/fida-contracts#fida-contracts:exe:fida-contracts-serialise -- -n 'Fida.RawScript'
+nix run -L git+ssh://git@github.com/fida-services/fida-contracts#fida-contracts:exe:fida-contracts-serialise -- -n 'Fida.RawScripts'
 ```
 
 locally
 ```
-nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -n 'Fida.RawScript'
+nix run -L .#fida-contracts:exe:fida-contracts-serialise -- -n 'Fida.RawScripts'
 ```
 
 ### Generate plutus scripts

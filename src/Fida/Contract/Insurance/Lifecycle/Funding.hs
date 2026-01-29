@@ -51,7 +51,7 @@ import PlutusTx.Prelude
 --
 --    ERROR-FUNDING-VALIDATOR-5: start date must be before valid range
 --
---    ERROR-FUNDING-VALIDATOR-6: tx is not signed by the policy holder
+--    ERROR-FUNDING-VALIDATOR-6: tx is not signed by the policy holder or policy authority
 {-# INLINEABLE lifecycleFundingStateValidator #-}
 lifecycleFundingStateValidator ::
   InsuranceId ->
@@ -68,11 +68,11 @@ lifecycleFundingStateValidator (InsuranceId cs) d@InsuranceInfo {iInfoPolicyAuth
   outputDatum = untypedOutputDatum cs sc policyInfoTokenName
 
   hasCorrectOutput = outputDatum == untypedUpdatePolicyState d Cancelled
-lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState = Funding, iInfoFidaCardNumber, iInfoPolicyHolder}) (PolicyFundingFundingComplete startDate) sc =
+lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState = Funding, iInfoFidaCardNumber, iInfoPolicyHolder, iInfoPolicyAuthority}) (PolicyFundingFundingComplete startDate) sc =
   traceIfFalse "ERROR-FUNDING-VALIDATOR-3" (fidaCardsSold >= iInfoFidaCardNumber)
     && traceIfFalse "ERROR-FUNDING-VALIDATOR-4" hasCorrectOutput
     && traceIfFalse "ERROR-FUNDING-VALIDATOR-5" isStartDateCorrect
-    && traceIfFalse "ERROR-FUNDING-VALIDATOR-6" isSignedByPolicyHolder
+    && traceIfFalse "ERROR-FUNDING-VALIDATOR-6" (isSignedByPolicyHolder || isSignedByAuthority')
  where
   txInfo = scriptContextTxInfo sc
 
@@ -95,4 +95,6 @@ lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState
   isStartDateCorrect = startDate `before` txInfoValidRange txInfo
 
   isSignedByPolicyHolder = txSignedBy txInfo iInfoPolicyHolder
+  
+  isSignedByAuthority' = isSignedByTheAuthority sc iInfoPolicyAuthority
 lifecycleFundingStateValidator _ _ _ _ = trace "ERROR-FUNDING-VALIDATOR-0" False
