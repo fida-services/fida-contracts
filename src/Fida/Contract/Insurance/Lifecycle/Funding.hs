@@ -39,19 +39,19 @@ import PlutusTx.Prelude
 --
 --  On chain errors:
 --
---    ERROR-FUNDING-VALIDATOR-0: Illegal action for Funding state
+--    ERR-FUND-0: Illegal action for Funding state
 --
---    ERROR-FUNDING-VALIDATOR-1: the tx is not signed by the policy authority
+--    ERR-FUND-1: the tx is not signed by the policy authority
 --
---    ERROR-FUNDING-VALIDATOR-2: the output datum is not updated correctly
+--    ERR-FUND-2: the output datum is not updated correctly
 --
---    ERROR-FUNDING-VALIDATOR-3: the number of sold fida cards is smaller than the number of fida cards
+--    ERR-FUND-3: the number of sold fida cards is smaller than the number of fida cards
 --
---    ERROR-FUNDING-VALIDATOR-4: the output datum is not updated correctly
+--    ERR-FUND-4: the output datum is not updated correctly
 --
---    ERROR-FUNDING-VALIDATOR-5: start date must be before valid range
+--    ERR-FUND-5: start date must be before valid range
 --
---    ERROR-FUNDING-VALIDATOR-6: tx is not signed by the policy holder or policy authority
+--    ERR-FUND-6: tx is not signed by the policy holder or policy authority
 {-# INLINEABLE lifecycleFundingStateValidator #-}
 lifecycleFundingStateValidator ::
   InsuranceId ->
@@ -60,8 +60,8 @@ lifecycleFundingStateValidator ::
   ScriptContext ->
   Bool
 lifecycleFundingStateValidator (InsuranceId cs) d@InsuranceInfo {iInfoPolicyAuthority} PolicyFundingCancel sc =
-  traceIfFalse "ERROR-FUNDING-VALIDATOR-1" isSigned
-    && traceIfFalse "ERROR-FUNDING-VALIDATOR-2" hasCorrectOutput
+  traceIfFalse "ERR-FUND-1" isSigned
+    && traceIfFalse "ERR-FUND-2" hasCorrectOutput
  where
   isSigned = isSignedByTheAuthority sc iInfoPolicyAuthority
 
@@ -69,10 +69,10 @@ lifecycleFundingStateValidator (InsuranceId cs) d@InsuranceInfo {iInfoPolicyAuth
 
   hasCorrectOutput = outputDatum == untypedUpdatePolicyState d Cancelled
 lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState = Funding, iInfoFidaCardNumber, iInfoPolicyHolder, iInfoPolicyAuthority}) (PolicyFundingFundingComplete startDate) sc =
-  traceIfFalse "ERROR-FUNDING-VALIDATOR-3" (fidaCardsSold >= iInfoFidaCardNumber)
-    && traceIfFalse "ERROR-FUNDING-VALIDATOR-4" hasCorrectOutput
-    && traceIfFalse "ERROR-FUNDING-VALIDATOR-5" isStartDateCorrect
-    && traceIfFalse "ERROR-FUNDING-VALIDATOR-6" (isSignedByPolicyHolder || isSignedByAuthority')
+  traceIfFalse "ERR-FUND-3" (fidaCardsSold >= iInfoFidaCardNumber)
+    && traceIfFalse "ERR-FUND-4" hasCorrectOutput
+    && traceIfFalse "ERR-FUND-5" isStartDateCorrect
+    && traceIfFalse "ERR-FUND-6" (isSignedByPolicyHolder || isSignedByAuthority')
  where
   txInfo = scriptContextTxInfo sc
 
@@ -97,4 +97,4 @@ lifecycleFundingStateValidator (InsuranceId cs) (iinfo@InsuranceInfo {iInfoState
   isSignedByPolicyHolder = txSignedBy txInfo iInfoPolicyHolder
   
   isSignedByAuthority' = isSignedByTheAuthority sc iInfoPolicyAuthority
-lifecycleFundingStateValidator _ _ _ _ = trace "ERROR-FUNDING-VALIDATOR-0" False
+lifecycleFundingStateValidator _ _ _ _ = trace "ERR-FUND-0" False

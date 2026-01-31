@@ -16,4 +16,4 @@ lifecycleCancelledStateValidator ::
   InsurancePolicyRedeemer ->
   ScriptContext ->
   Bool
-lifecycleCancelledStateValidator _ _ _ _ = trace "ERROR-CANCELLED-VALIDATOR-0" False
+lifecycleCancelledStateValidator _ _ _ _ = trace "ERR-CANC-0" False

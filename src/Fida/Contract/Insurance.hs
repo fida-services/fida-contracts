@@ -36,13 +36,13 @@ import PlutusTx.Prelude
 --
 --  On chain errors:
 --
---    ERROR-INSURANCE-MAIN-VALIDATOR-0: illegal action for main validator
+--    ERR-MAIN-0: illegal action for main validator
 --
---    ERROR-INSURANCE-MAIN-VALIDATOR-1: TODO
+--    ERR-MAIN-1: TODO
 --
---    ERROR-INSURANCE-MAIN-VALIDATOR-2: TODO
+--    ERR-MAIN-2: TODO
 --
---    ERROR-INSURANCE-MAIN-VALIDATOR-3: TODO
+--    ERR-MAIN-3: TODO
 {-# INLINEABLE mkInsurancePolicyValidator #-}
 mkInsurancePolicyValidator ::
   InsuranceId ->
@@ -59,8 +59,8 @@ mkInsurancePolicyValidator iid d (PolicyFunding r) sc =
 mkInsurancePolicyValidator iid d (PolicyOnRisk r) sc =
   lifecycleOnRiskStateValidator iid d r sc
 mkInsurancePolicyValidator (InsuranceId cs) d@(InsuranceInfo {iInfoStartDate, iInfoInsurancePeriod, iInfoState, iInfoFundingDeadline}) PolicyExpire sc =
-  traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-2" hasExpired
-    && traceIfFalse "ERROR-INSURANCE-MAIN-VALIDATOR-3" correctOutputDatum
+  traceIfFalse "ERR-MAIN-2" hasExpired
+    && traceIfFalse "ERR-MAIN-3" correctOutputDatum
  where
   txInfo = scriptContextTxInfo sc
 
@@ -68,7 +68,7 @@ mkInsurancePolicyValidator (InsuranceId cs) d@(InsuranceInfo {iInfoStartDate, iI
     case (iInfoState, iInfoStartDate) of
       (Funding, _) -> iInfoFundingDeadline
       (OnRisk, Just startDate) -> startDate + fromMilliSeconds iInfoInsurancePeriod
-      _ -> traceError "ERROR-INSURANCE-MAIN-VALIDATOR-1"
+      _ -> traceError "ERR-MAIN-1"
 
   hasExpired = expireDate `before` txInfoValidRange txInfo
 
@@ -76,7 +76,7 @@ mkInsurancePolicyValidator (InsuranceId cs) d@(InsuranceInfo {iInfoStartDate, iI
 
   correctOutputDatum = outputDatum == untypedUpdatePolicyState d Expired
 mkInsurancePolicyValidator _ _ _ _ =
-  trace "ERROR-INSURANCE-MAIN-VALIDATOR-0" False
+  trace "ERR-MAIN-0" False
 
 {-# INLINEABLE mkInsurancePolicyValidatorUntyped #-}
 mkInsurancePolicyValidatorUntyped ::

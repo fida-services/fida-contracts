@@ -25,11 +25,11 @@ newtype SystemId = SystemId CurrencySymbol
 {-# INLINEABLE mkSystemIdMintingPolicy #-}
 mkSystemIdMintingPolicy :: SystemGovernance -> SystemMagic -> () -> ScriptContext -> Bool
 mkSystemIdMintingPolicy (SystemGovernance pkh) _ _ (ScriptContext txInfo (Minting _)) =
-  traceIfFalse "ERROR-SYSTEM-ID-MINTING-POLICY-0" isSignedBySystem
+  traceIfFalse "ERR-SID-0" isSignedBySystem
  where
   isSignedBySystem = txSignedBy txInfo pkh
 mkSystemIdMintingPolicy _ _ _ _ =
-  trace "ERROR-SYSTEM_ID-MINTING-POLICY-1" False
+  trace "ERR-SID-1" False
 
 {-# INLINEABLE mkSystemIdMintingPolicyUntyped #-}
 mkSystemIdMintingPolicyUntyped ::

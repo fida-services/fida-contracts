@@ -37,14 +37,14 @@ PlutusTx.makeLift ''InsuranceId
 {-# INLINEABLE mkInsuranceIdMintingPolicy #-}
 mkInsuranceIdMintingPolicy :: TxOutRef -> () -> ScriptContext -> Bool
 mkInsuranceIdMintingPolicy ref _ (ScriptContext txInfo (Minting _)) =
-  traceIfFalse "ERROR-INSURANCE-ID-MINTING-POLICY-0" isTxOutRefUsed
+  traceIfFalse "ERR-IID-0" isTxOutRefUsed
  where
   -- Ensure that the TxOutRef is used by the transaction.
   -- This parameter ensures the uniqueness of the currency symbol.
   isTxOutRefUsed =
     ref `elem` map txInInfoOutRef (txInfoInputs txInfo)
 mkInsuranceIdMintingPolicy _ _ _ =
-  trace "ERROR-INSURANCE-ID-MINTING-POLICY-1" False
+  trace "ERR-IID-1" False
 
 {-# INLINEABLE mkInsuranceIdMintingPolicyUntyped #-}
 mkInsuranceIdMintingPolicyUntyped ::
