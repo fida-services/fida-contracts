@@ -49,21 +49,21 @@ import PlutusTx.Prelude
 --
 -- On chain errors:
 --
---  ERROR-INITIATED-VALIDATOR-0: Illegal action for Initiated state
+--  ERR-INIT-0: Illegal action for Initiated state
 --
---  ERROR-INITIATED-VALIDATOR-1: Transaction not signed by policy authority
+--  ERR-INIT-1: Transaction not signed by policy authority
 --
---  ERROR-INITIATED-VALIDATOR-2: Insurance policy state not changed to Cancelled
+--  ERR-INIT-2: Insurance policy state not changed to Cancelled
 --
---  ERROR-INITIATED-VALIDATOR-3: Payments not properly distributed
+--  ERR-INIT-3: Payments not properly distributed
 --
---  ERROR-INITIATED-VALIDATOR-4: UTxO with policy datum was not spent
+--  ERR-INIT-4: UTxO with policy datum was not spent
 --
---  ERROR-INITIATED-VALIDATOR-5: Payment info not marked by NFT
+--  ERR-INIT-5: Payment info not marked by NFT
 --
---  ERROR-INITIATED-VALIDATOR-6: Insurance policy state not changed to Funding
+--  ERR-INIT-6: Insurance policy state not changed to Funding
 --
---  ERROR-INITIATED-VALIDATOR-7: UTxO with premium payment was not spent
+--  ERR-INIT-7: UTxO with premium payment was not spent
 {-# INLINEABLE lifecycleInitiatedStateValidator #-}
 lifecycleInitiatedStateValidator ::
   InsuranceId ->
@@ -72,8 +72,8 @@ lifecycleInitiatedStateValidator ::
   ScriptContext ->
   Bool
 lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo {iInfoState = Initiated}) PolicyInitiatedCancel sc =
-  traceIfFalse "ERROR-INITIATED-VALIDATOR-1" isSigned
-    && traceIfFalse "ERROR-INITIATED-VALIDATOR-2" hasCorrectOutput
+  traceIfFalse "ERR-INIT-1" isSigned
+    && traceIfFalse "ERR-INIT-2" hasCorrectOutput
  where
   isSigned = isSignedByTheAuthority sc $ iInfoPolicyAuthority datum
 
@@ -81,8 +81,8 @@ lifecycleInitiatedStateValidator (InsuranceId cs) datum@(InsuranceInfo {iInfoSta
 
   hasCorrectOutput = outputDatum == untypedUpdatePolicyState datum Cancelled
 lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo {..} PolicyInitiatedPayPremium sc =
-  traceIfFalse "ERROR-INITIATED-VALIDATOR-3" (length (nub payments) == length ppInfoPiggyBanks)
-    && traceIfNotSingleton "ERROR-INITIATED-VALIDATOR-4" isPolicyInfoSpent
+  traceIfFalse "ERR-INIT-3" (length (nub payments) == length ppInfoPiggyBanks)
+    && traceIfNotSingleton "ERR-INIT-4" isPolicyInfoSpent
  where
   txInfo = scriptContextTxInfo sc
 
@@ -103,8 +103,8 @@ lifecycleInitiatedStateValidator (InsuranceId cs) PremiumPaymentInfo {..} Policy
        in paid >= ppInfoPremiumAmountPerPiggyBank && paid == amount
     ]
 lifecycleInitiatedStateValidator (InsuranceId cs) d@InsuranceInfo {} PolicyInitiatedPayPremium sc =
-  traceIfFalse "ERROR-INITIATED-VALIDATOR-6" hasCorrectOutput
-    && traceIfNotSingleton "ERROR-INITIATED-VALIDATOR-7" isPremiumPaymentSpent
+  traceIfFalse "ERR-INIT-6" hasCorrectOutput
+    && traceIfNotSingleton "ERR-INIT-7" isPremiumPaymentSpent
  where
   txInfo = scriptContextTxInfo sc
 
@@ -119,4 +119,4 @@ lifecycleInitiatedStateValidator (InsuranceId cs) d@InsuranceInfo {} PolicyIniti
     , valueOf value cs policyPaymentTokenName == 1
     ]
 lifecycleInitiatedStateValidator _ _ _ _ =
-  trace "ERROR-INITIATED-VALIDATOR-0" False
+  trace "ERR-INIT-0" False
