@@ -20,7 +20,9 @@ lazy val commonSettings = Seq(
     "org.scalus" %% "scalus-cardano-ledger" % scalusVersion,
     "org.scalus" %% "scalus-testkit" % scalusVersion % Test,
     "org.scalatest" %% "scalatest" % "3.2.20" % Test,
-    "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % Test
+    "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % Test,
+    // the JSON parser Scalus uses, to check the serialise tool's JSON
+    "com.lihaoyi" %% "ujson" % "4.4.3" % Test
   ),
   Test / fork := true,
   Test / javaOptions ++= Seq("-Xss16m", "-Xmx2g")
