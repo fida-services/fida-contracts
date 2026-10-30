@@ -31,6 +31,37 @@ sbt "testOnly fida.contract.DataEncodingSpec"
 
 `make test` runs `sbt test`. Without a local sbt: `nix develop -c sbt test`.
 
+### Coverage and mutation testing
+
+```
+sbt coverage test coverageAggregate
+sbt mutationTest
+```
+
+`coverageAggregate` (`make coverage`) writes the [scoverage](https://github.com/scoverage/sbt-scoverage)
+report to `target/scala-3.3.8/scoverage-report/index.html` and fails below 90% of statements or
+branches. `mutationTest` (`make mutation`) runs
+[stryker4s](https://stryker-mutator.io/docs/stryker4s/getting-started/) on the contracts, writes its
+report to `target/stryker4s-report/<timestamp>/index.html` and fails unless every mutant is killed.
+CI runs both.
+
+The Scalus compiler plugin cannot compile code instrumented for coverage or mutated by stryker4s, so
+both tools work on `jvm`, a second sbt project that compiles the same sources and tests without the
+plugin. There the contracts run as plain Scala, and the tests that need compiled scripts (emulator
+scenarios, serialise tool) are canceled. In the main build, every direct script test runs the script
+both on the JVM and as UPLC and fails unless both runs have the same outcome and trace: the JVM code
+the tools measure behaves like the scripts that run on chain. The coverage report combines the
+off-chain code, measured in the main build, and the on-chain code, measured in `jvm`.
+
+Property tests generate datums and redeemers with ScalaCheck (`testkit/Generators.scala`), and
+`testkit/DataShapes.scala` describes the `Data` encoding of each type to generate data that is valid,
+covers every constructor, or is malformed in exactly one place.
+
+A mutant no test can kill (unreachable code, an equivalent change) is excluded with
+`@SuppressWarnings(Array("stryker4s.mutation.<Mutator>"))` on the smallest enclosing definition, with
+a comment saying why. stryker4s cannot mutate values initialised once, such as the token names; tests
+check them directly.
+
 ### Generate plutus scripts
 
 The serialise tool (`fida.serialise.Main`, the former `fida-contracts-serialise` executable) writes
@@ -121,7 +152,9 @@ Without Nix, install JDK 21 and sbt yourself; Metals finds the JDK through `JAVA
 ### Project layout
 
 ```
-build.sbt, project/            sbt build: Scalus compiler plugin, scalafmt plugin
+build.sbt, project/            sbt build: Scalus compiler plugin, scalafmt, scoverage, stryker4s
+jvm/                           the `jvm` build: the same sources without the Scalus plugin, for
+                               coverage and mutation testing (`jvm/src`: stryker4s helpers)
 src/main/scala/fida/
   contract/
     Scripts.scala              compiled scripts, compiler options, parameter application
@@ -140,7 +173,8 @@ src/main/scala/fida/
   serialise/Main.scala         the serialise tool (`sbt run`)
 src/test/scala/fida/
   contract/                    contract tests: direct script evaluation and emulator tests
-    testkit/                   script evaluation, script-context builders, sample values
+    testkit/                   script evaluation (JVM and UPLC), script-context builders, sample
+                               values, ScalaCheck generators, `Data` shapes
   serialise/                   serialise tool tests
 ```
 

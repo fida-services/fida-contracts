@@ -1,4 +1,4 @@
-.PHONY: test scripts purs format format-check
+.PHONY: test coverage mutation scripts purs format format-check
 
 SBT ?= sbt
 
@@ -12,6 +12,16 @@ PURS_FILE ?= out/purs/Fida/RawScripts.purs
 # Run the test suite
 test:
 	$(SBT) test
+
+# Run the test suite measuring coverage; fails below 90% of statements or branches
+# (report: target/scala-3.3.8/scoverage-report/index.html)
+coverage:
+	$(SBT) clean coverage test coverageAggregate
+
+# Mutation testing of the contracts; fails unless every mutant is killed
+# (report: target/stryker4s-report/<timestamp>/index.html)
+mutation:
+	$(SBT) mutationTest
 
 # Write the unapplied contracts as cardano-api text envelopes to $(SCRIPTS_DIR)
 scripts:

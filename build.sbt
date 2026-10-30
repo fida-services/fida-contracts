@@ -13,6 +13,13 @@ val onChainSources = ".*/src/main/scala/fida/contract/(?!Scripts$).*"
 val offChainSources =
     ".*/src/main/scala/fida/contract/Scripts;.*/src/main/scala/fida/serialise/.*"
 
+/** stryker4s `thresholds.break` cannot require a 100% score: this check can. */
+lazy val mutantsCheck =
+    taskKey[Unit]("Fails unless the latest stryker4s report has no surviving or uncovered mutant")
+
+// `sbt mutationTest`: mutation testing, failing unless every mutant is killed
+addCommandAlias("mutationTest", ";stryker ;jvm/mutantsCheck")
+
 lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked"),
   libraryDependencies ++= Seq(
@@ -40,6 +47,7 @@ lazy val root = (project in file("."))
       // compile the instrumentation calls: the on-chain sources are measured in `jvm` instead.
       coverageExcludedFiles := onChainSources,
       coverageMinimumStmtTotal := 90,
+      coverageMinimumBranchTotal := 90,
       coverageFailOnMinimum := true,
       // mutation testing runs in `jvm`, where the on-chain code can be mutated
       stryker := (jvm / stryker).evaluated,
@@ -74,5 +82,18 @@ lazy val jvm = (project in file("jvm"))
       ),
       strykerStaticTmpDir := true,
       strykerReporters := Seq("console", "html", "json"),
+      mutantsCheck := {
+          val reports =
+              (strykerBaseDir.value / "target" / "stryker4s-report" ** "report.json").get()
+          if (reports.isEmpty) sys.error("No stryker4s report: run `sbt stryker` first")
+          val report = reports.maxBy(_.lastModified)
+          val undetected = """"status"\s*:\s*"(Survived|NoCoverage)"""".r
+              .findAllIn(IO.read(report))
+              .size
+          val html = report.getParentFile / "index.html"
+          if (undetected > 0)
+              sys.error(s"$undetected mutants survived or were not tested: see $html")
+          streams.value.log.info(s"Every mutant was killed: see $html")
+      },
       publish / skip := true
     )
