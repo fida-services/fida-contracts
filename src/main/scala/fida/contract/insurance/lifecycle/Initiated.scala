@@ -1,12 +1,32 @@
 package fida.contract.insurance.lifecycle
 
-import fida.contract.Utils.{getContinuingOutputs, lovelaceValueOf, traceIfFalse, traceIfNotSingleton, untypedOutputDatum, valueOf}
-import fida.contract.insurance.{InsuranceId, InsurancePolicyDatum, PiggyBankDatum, PolicyInitiatedRedeemer, Tokens}
+import fida.contract.Utils.{
+    getContinuingOutputs,
+    lovelaceValueOf,
+    traceIfFalse,
+    traceIfNotSingleton,
+    untypedOutputDatum,
+    valueOf
+}
+import fida.contract.insurance.{
+    InsuranceId,
+    InsurancePolicyDatum,
+    PiggyBankDatum,
+    PolicyInitiatedRedeemer,
+    Tokens
+}
 import fida.contract.insurance.InsuranceAuthority.isSignedByTheAuthority
-import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PremiumPaymentInfo, untypedUpdatePolicyState}
+import fida.contract.insurance.InsurancePolicyDatum.{
+    InsuranceInfo,
+    PremiumPaymentInfo,
+    untypedUpdatePolicyState
+}
 import fida.contract.insurance.InsurancePolicyState.{Cancelled, Funding, Initiated}
 import fida.contract.insurance.PiggyBankDatum.PBankPremium
-import fida.contract.insurance.PolicyInitiatedRedeemer.{PolicyInitiatedCancel, PolicyInitiatedPayPremium}
+import fida.contract.insurance.PolicyInitiatedRedeemer.{
+    PolicyInitiatedCancel,
+    PolicyInitiatedPayPremium
+}
 import scalus.compiler.Compile
 import scalus.uplc.builtin.{Builtins, Data}
 import scalus.uplc.builtin.Data.to
@@ -32,7 +52,8 @@ import scalus.cardano.onchain.plutus.prelude.*
   *   - `ERR-INIT-2`: insurance policy state not changed to Cancelled
   *   - `ERR-INIT-3`: payments not properly distributed
   *   - `ERR-INIT-4`: UTxO with policy datum was not spent
-  *   - `ERR-INIT-5`: documented by the Haskell code (payment info not marked by NFT) but never raised
+  *   - `ERR-INIT-5`: documented by the Haskell code (payment info not marked by NFT) but never
+  *     raised
   *   - `ERR-INIT-6`: insurance policy state not changed to Funding
   *   - `ERR-INIT-7`: UTxO with premium payment was not spent
   */
@@ -117,8 +138,8 @@ object InitiatedLifecycle {
                 else Option.None
             case _ => Option.None
 
-    /** Whether Haskell's `fromBuiltinData d :: Maybe PiggyBankDatum` is a `Just (PBankPremium _ _)`,
-      * i.e. `d` is exactly `Constr 0 [I _, I _]`.
+    /** Whether Haskell's `fromBuiltinData d :: Maybe PiggyBankDatum` is a
+      * `Just (PBankPremium _ _)`, i.e. `d` is exactly `Constr 0 [I _, I _]`.
       */
     private def isPBankPremium(d: Data): Boolean = d match
         case Data.Constr(tag, fields) =>

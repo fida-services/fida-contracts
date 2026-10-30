@@ -19,6 +19,8 @@ jobs:
         cache: sbt
     - name: Set up sbt
       uses: sbt/setup-sbt@v1
+    - name: Check formatting
+      run: sbt scalafmtCheckAll scalafmtSbtCheck
     - name: Test
       run: sbt test
     - name: Generate Plutus scripts and PureScript module

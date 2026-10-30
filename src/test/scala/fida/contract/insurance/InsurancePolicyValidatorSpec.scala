@@ -22,7 +22,11 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
     private val policyRef = outRef(1)
     private val infoNft = (insuranceId.cs, Tokens.policyInfoTokenName, BigInt(1))
 
-    private def run(datum: InsurancePolicyDatum, redeemer: InsurancePolicyRedeemer, ctx: ScriptContext): Result =
+    private def run(
+        datum: InsurancePolicyDatum,
+        redeemer: InsurancePolicyRedeemer,
+        ctx: ScriptContext
+    ): Result =
         ScriptEval.eval(
           Scripts.insurancePolicyValidator.program,
           insuranceId.toData,
@@ -32,7 +36,11 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
         )
 
     /** Spends the policy info UTxO holding `datum` and recreates it with `outDatum`. */
-    private def expireCtx(datum: InsurancePolicyDatum, outDatum: Data, validFrom: PosixTime): ScriptContext =
+    private def expireCtx(
+        datum: InsurancePolicyDatum,
+        outDatum: Data,
+        validFrom: PosixTime
+    ): ScriptContext =
         val in = txIn(policyRef, txOut(policyAddress, value(2_000_000, infoNft), datum.toData))
         spending(
           txInfo(
@@ -58,7 +66,9 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
     test("a funding policy expires after its funding deadline") {
         val datum = sampleInsuranceInfo(state = Funding)
         val expired = sampleInsuranceInfo(state = Expired)
-        assertSucceeds(run(datum, PolicyExpire, expireCtx(datum, expired.toData, datum.iInfoFundingDeadline + 1)))
+        assertSucceeds(
+          run(datum, PolicyExpire, expireCtx(datum, expired.toData, datum.iInfoFundingDeadline + 1))
+        )
     }
 
     test("a funding policy cannot expire at its funding deadline (ERR-MAIN-2)") {
@@ -73,7 +83,9 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
         val start = beginningOfTime + days(3)
         val datum = sampleInsuranceInfo(state = OnRisk, startDate = Option.Some(start))
         val expired = sampleInsuranceInfo(state = Expired, startDate = Option.Some(start))
-        assertSucceeds(run(datum, PolicyExpire, expireCtx(datum, expired.toData, start + days(365) + 1)))
+        assertSucceeds(
+          run(datum, PolicyExpire, expireCtx(datum, expired.toData, start + days(365) + 1))
+        )
         assertFailsWith("ERR-MAIN-2")(
           run(datum, PolicyExpire, expireCtx(datum, expired.toData, start + days(364)))
         )
@@ -94,10 +106,21 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
     // canonically.
 
     private def evalRaw(datum: Data, redeemer: Data, ctx: ScriptContext): Result =
-        ScriptEval.eval(Scripts.insurancePolicyValidator.program, insuranceId.toData, datum, redeemer, ctx.toData)
+        ScriptEval.eval(
+          Scripts.insurancePolicyValidator.program,
+          insuranceId.toData,
+          datum,
+          redeemer,
+          ctx.toData
+        )
 
     /** Spends the policy info UTxO holding raw `input` and recreates it with `output`. */
-    private def rawCtx(input: Data, output: Data, validFrom: PosixTime, signers: Seq[scalus.cardano.onchain.plutus.v1.PubKeyHash] = Seq.empty): ScriptContext =
+    private def rawCtx(
+        input: Data,
+        output: Data,
+        validFrom: PosixTime,
+        signers: Seq[scalus.cardano.onchain.plutus.v1.PubKeyHash] = Seq.empty
+    ): ScriptContext =
         val in = txIn(policyRef, txOut(policyAddress, value(2_000_000, infoNft), input))
         spending(
           txInfo(
@@ -110,8 +133,9 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
         )
 
     private def withField(datum: Data, index: Int, field: Data): Data = datum match
-        case Data.Constr(tag, fields) => Data.Constr(tag, PList.from(fields.toScalaList.updated(index, field)))
-        case other                    => fail(s"not a constructor: $other")
+        case Data.Constr(tag, fields) =>
+            Data.Constr(tag, PList.from(fields.toScalaList.updated(index, field)))
+        case other => fail(s"not a constructor: $other")
 
     private def withExtraField(datum: Data, field: Data): Data = datum match
         case Data.Constr(tag, fields) => Data.Constr(tag, PList.from(fields.toScalaList :+ field))
@@ -147,13 +171,28 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
         val datum = sampleInsuranceInfo(state = OnRisk, startDate = Option.Some(start))
         val claim = sampleClaim.copy(claimDate = start + days(1))
         val claimWithExtra = withExtraField(claim.toData, Data.I(0))
-        val redeemer = Data.Constr(2, PList.from(Seq(Data.Constr(0, PList.from(Seq(claimWithExtra))))))
-        val canonical = sampleInsuranceInfo(state = OnRisk, startDate = Option.Some(start), claim = Option.Some(claim)).toData
+        val redeemer =
+            Data.Constr(2, PList.from(Seq(Data.Constr(0, PList.from(Seq(claimWithExtra))))))
+        val canonical = sampleInsuranceInfo(
+          state = OnRisk,
+          startDate = Option.Some(start),
+          claim = Option.Some(claim)
+        ).toData
         val smuggled = withField(datum.toData, 14, Data.Constr(0, PList.from(Seq(claimWithExtra))))
         val validFrom = start + days(2)
-        assertSucceeds(evalRaw(datum.toData, redeemer, rawCtx(datum.toData, canonical, validFrom, Seq(policyHolder))))
+        assertSucceeds(
+          evalRaw(
+            datum.toData,
+            redeemer,
+            rawCtx(datum.toData, canonical, validFrom, Seq(policyHolder))
+          )
+        )
         assertFailsWith("ERR-ON-RISK-0")(
-          evalRaw(datum.toData, redeemer, rawCtx(datum.toData, smuggled, validFrom, Seq(policyHolder)))
+          evalRaw(
+            datum.toData,
+            redeemer,
+            rawCtx(datum.toData, smuggled, validFrom, Seq(policyHolder))
+          )
         )
     }
 
@@ -164,24 +203,43 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
         val badAmount = withField(claim.toData, 0, Data.B(scalus.uplc.builtin.ByteString.empty))
         val redeemer = Data.Constr(2, PList.from(Seq(Data.Constr(0, PList.from(Seq(badAmount))))))
         val output = withField(datum.toData, 14, Data.Constr(0, PList.from(Seq(badAmount))))
-        val result = evalRaw(datum.toData, redeemer, rawCtx(datum.toData, output, start + days(2), Seq(policyHolder)))
+        val result = evalRaw(
+          datum.toData,
+          redeemer,
+          rawCtx(datum.toData, output, start + days(2), Seq(policyHolder))
+        )
         assert(result.isFailure, s"expected failure, got $result")
-        assert(!result.logs.exists(_.startsWith("ERR-")), s"expected a decoding failure, got ${result.logs}")
+        assert(
+          !result.logs.exists(_.startsWith("ERR-")),
+          s"expected a decoding failure, got ${result.logs}"
+        )
     }
 
     test("a non-canonical Cancelled state is still a cancelled policy (ERR-CANC-0)") {
         val datum = sampleInsuranceInfo(state = Funding)
-        val cancelledWithField = withField(datum.toData, 8, Data.Constr(3, PList.from(Seq(Data.I(0)))))
-        val funding = (PolicyFunding(PolicyFundingRedeemer.PolicyFundingCancel): InsurancePolicyRedeemer).toData
+        val cancelledWithField =
+            withField(datum.toData, 8, Data.Constr(3, PList.from(Seq(Data.I(0)))))
+        val funding = (PolicyFunding(
+          PolicyFundingRedeemer.PolicyFundingCancel
+        ): InsurancePolicyRedeemer).toData
         val output = sampleInsuranceInfo(state = Cancelled).toData
         assertFailsWith("ERR-CANC-0")(
-          evalRaw(cancelledWithField, funding, rawCtx(cancelledWithField, output, beginningOfTime, Seq(broker1)))
+          evalRaw(
+            cancelledWithField,
+            funding,
+            rawCtx(cancelledWithField, output, beginningOfTime, Seq(broker1))
+          )
         )
     }
 
     test("unknown redeemer constructors fail with PT1") {
         val datum = sampleInsuranceInfo(state = Funding)
-        val ctx = rawCtx(datum.toData, sampleInsuranceInfo(state = OnRisk).toData, beginningOfTime, Seq(policyHolder))
+        val ctx = rawCtx(
+          datum.toData,
+          sampleInsuranceInfo(state = OnRisk).toData,
+          beginningOfTime,
+          Seq(policyHolder)
+        )
         val unknown = Seq(
           Data.Constr(4, PList.Nil),
           Data.Constr(0, PList.from(Seq(Data.Constr(2, PList.Nil)))),
@@ -194,18 +252,31 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
     test("unknown datum constructors fail with PT1") {
         val datum = Data.Constr(3, PList.Nil)
         assertFailsWith("PT1")(evalRaw(datum, expire, rawCtx(datum, datum, beginningOfTime)))
-        val unknownState = withField(sampleInsuranceInfo(state = Funding).toData, 8, Data.Constr(5, PList.Nil))
-        assertFailsWith("PT1")(evalRaw(unknownState, expire, rawCtx(unknownState, unknownState, beginningOfTime)))
+        val unknownState =
+            withField(sampleInsuranceInfo(state = Funding).toData, 8, Data.Constr(5, PList.Nil))
+        assertFailsWith("PT1")(
+          evalRaw(unknownState, expire, rawCtx(unknownState, unknownState, beginningOfTime))
+        )
     }
 
-    test("expiry is rejected for Initiated policies and on-risk policies without start date (ERR-MAIN-1)") {
+    test(
+      "expiry is rejected for Initiated policies and on-risk policies without start date (ERR-MAIN-1)"
+    ) {
         val initiated = sampleInsuranceInfo(state = Initiated)
         assertFailsWith("ERR-MAIN-1")(
-          run(initiated, PolicyExpire, expireCtx(initiated, initiated.toData, beginningOfTime + days(999)))
+          run(
+            initiated,
+            PolicyExpire,
+            expireCtx(initiated, initiated.toData, beginningOfTime + days(999))
+          )
         )
         val noStart = sampleInsuranceInfo(state = OnRisk)
         assertFailsWith("ERR-MAIN-1")(
-          run(noStart, PolicyExpire, expireCtx(noStart, noStart.toData, beginningOfTime + days(999)))
+          run(
+            noStart,
+            PolicyExpire,
+            expireCtx(noStart, noStart.toData, beginningOfTime + days(999))
+          )
         )
     }
 }

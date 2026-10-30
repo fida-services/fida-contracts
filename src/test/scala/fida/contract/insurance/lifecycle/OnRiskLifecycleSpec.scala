@@ -31,16 +31,24 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     private val startDate: PosixTime = beginningOfTime
     private val claim: ClaimInfo = sampleClaim
     private val acceptedClaim: ClaimInfo = sampleClaim.copy(claimAccepted = true)
-    private val deadline: PosixTime = claim.claimDate + seconds(100) // claim date + iInfoClaimTimeToLive
+    private val deadline: PosixTime =
+        claim.claimDate + seconds(100) // claim date + iInfoClaimTimeToLive
 
-    private def policy(claim: Option[ClaimInfo] = Option.None, state: InsurancePolicyState = OnRisk): InsuranceInfo =
+    private def policy(
+        claim: Option[ClaimInfo] = Option.None,
+        state: InsurancePolicyState = OnRisk
+    ): InsuranceInfo =
         sampleInsuranceInfo(state = state, startDate = Option.Some(startDate), claim = claim)
 
     private val noClaim = policy()
     private val withClaim = policy(Option.Some(claim))
     private val withAcceptedClaim = policy(Option.Some(acceptedClaim))
 
-    private def run(datum: InsurancePolicyDatum, redeemer: PolicyOnRiskRedeemer, ctx: ScriptContext): Result =
+    private def run(
+        datum: InsurancePolicyDatum,
+        redeemer: PolicyOnRiskRedeemer,
+        ctx: ScriptContext
+    ): Result =
         ScriptEval.eval(
           Scripts.insurancePolicyValidator.program,
           insuranceId.toData,
@@ -49,7 +57,9 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
           ctx.toData
         )
 
-    /** Rejected, and `code` is the only error code in the logs: the one the Haskell validator reports. */
+    /** Rejected, and `code` is the only error code in the logs: the one the Haskell validator
+      * reports.
+      */
     private def assertRejectedWith(code: String)(result: Result): Unit =
         assertFailsWith(code)(result)
         val codes = result.logs.filter(_.startsWith("ERR-"))
@@ -107,7 +117,11 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     }
 
     test("ERR-ON-RISK-0: the claim date must be before the validity range") {
-        val ranges = Seq(Interval.after(claim.claimDate), Interval.after(claim.claimDate - 1), Interval.always)
+        val ranges = Seq(
+          Interval.after(claim.claimDate),
+          Interval.after(claim.claimDate - 1),
+          Interval.always
+        )
         for range <- ranges do
             val c = ctx(noClaim, Some(withClaim.toData), Seq(policyHolder), range)
             assertRejectedWith("ERR-ON-RISK-0")(run(noClaim, PolicyOnRiskCreateClaim(claim), c))
@@ -127,19 +141,40 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     test("ERR-ON-RISK-13: claims can only be created for an InsuranceInfo in state OnRisk") {
         for state <- Seq(Initiated, Funding, Expired) do
             val info = policy(state = state)
-            val c = ctx(info, Some(policy(Option.Some(claim), state).toData), Seq(policyHolder), afterClaimDate)
+            val c = ctx(
+              info,
+              Some(policy(Option.Some(claim), state).toData),
+              Seq(policyHolder),
+              afterClaimDate
+            )
             assertRejectedWith("ERR-ON-RISK-13")(run(info, PolicyOnRiskCreateClaim(claim), c))
         for datum <- Seq(samplePremiumPaymentInfo(), PolicyClaimPayment) do
             assertRejectedWith("ERR-ON-RISK-13")(
-              run(datum, PolicyOnRiskCreateClaim(claim), ctx(datum, Some(withClaim.toData), Seq(policyHolder), afterClaimDate))
+              run(
+                datum,
+                PolicyOnRiskCreateClaim(claim),
+                ctx(datum, Some(withClaim.toData), Seq(policyHolder), afterClaimDate)
+              )
             )
     }
 
     // AcceptClaim
 
     test("the policy authority accepts a claim") {
-        assertSucceeds(run(withClaim, PolicyOnRiskAcceptClaim, ctx(withClaim, Some(withAcceptedClaim.toData), Seq(fidaSystem))))
-        assertSucceeds(run(withClaim, PolicyOnRiskAcceptClaim, ctx(withClaim, Some(withAcceptedClaim.toData), Seq(broker1))))
+        assertSucceeds(
+          run(
+            withClaim,
+            PolicyOnRiskAcceptClaim,
+            ctx(withClaim, Some(withAcceptedClaim.toData), Seq(fidaSystem))
+          )
+        )
+        assertSucceeds(
+          run(
+            withClaim,
+            PolicyOnRiskAcceptClaim,
+            ctx(withClaim, Some(withAcceptedClaim.toData), Seq(broker1))
+          )
+        )
     }
 
     test("a claim is accepted whatever the policy state (Haskell quirk)") {
@@ -156,12 +191,22 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     }
 
     test("ERR-ON-RISK-3: the output must hold the accepted claim") {
-        for output <- Seq(Some(withClaim.toData), Some(noClaim.toData), Some(policy(Option.Some(acceptedClaim), Funding).toData), None) do
-            assertRejectedWith("ERR-ON-RISK-3")(run(withClaim, PolicyOnRiskAcceptClaim, ctx(withClaim, output, Seq(broker1))))
+        for output <- Seq(
+              Some(withClaim.toData),
+              Some(noClaim.toData),
+              Some(policy(Option.Some(acceptedClaim), Funding).toData),
+              None
+            )
+        do
+            assertRejectedWith("ERR-ON-RISK-3")(
+              run(withClaim, PolicyOnRiskAcceptClaim, ctx(withClaim, output, Seq(broker1)))
+            )
     }
 
     test("ERR-ON-RISK-2 is reported before ERR-ON-RISK-3") {
-        assertRejectedWith("ERR-ON-RISK-2")(run(withClaim, PolicyOnRiskAcceptClaim, ctx(withClaim, None, Seq(policyHolder))))
+        assertRejectedWith("ERR-ON-RISK-2")(
+          run(withClaim, PolicyOnRiskAcceptClaim, ctx(withClaim, None, Seq(policyHolder)))
+        )
     }
 
     test("ERR-ON-RISK-13: only an existing claim can be accepted") {
@@ -174,70 +219,122 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
 
     test("the policy holder or the policy authority closes a claim") {
         for signer <- Seq(policyHolder, broker1, fidaSystem) do
-            assertSucceeds(run(withClaim, PolicyOnRiskCloseClaim, ctx(withClaim, Some(noClaim.toData), Seq(signer))))
-        assertSucceeds(run(withAcceptedClaim, PolicyOnRiskCloseClaim, ctx(withAcceptedClaim, Some(noClaim.toData), Seq(policyHolder))))
+            assertSucceeds(
+              run(
+                withClaim,
+                PolicyOnRiskCloseClaim,
+                ctx(withClaim, Some(noClaim.toData), Seq(signer))
+              )
+            )
+        assertSucceeds(
+          run(
+            withAcceptedClaim,
+            PolicyOnRiskCloseClaim,
+            ctx(withAcceptedClaim, Some(noClaim.toData), Seq(policyHolder))
+          )
+        )
     }
 
-    test("ERR-ON-RISK-4: closing a claim must be signed by the policy holder or the policy authority") {
+    test(
+      "ERR-ON-RISK-4: closing a claim must be signed by the policy holder or the policy authority"
+    ) {
         for signers <- Seq(Seq.empty, Seq(investor1), Seq(fidaSystem, broker1)) do
-            assertRejectedWith("ERR-ON-RISK-4")(run(withClaim, PolicyOnRiskCloseClaim, ctx(withClaim, Some(noClaim.toData), signers)))
+            assertRejectedWith("ERR-ON-RISK-4")(
+              run(withClaim, PolicyOnRiskCloseClaim, ctx(withClaim, Some(noClaim.toData), signers))
+            )
     }
 
     test("ERR-ON-RISK-5: closing a claim must unset it") {
         for output <- Seq(Some(withClaim.toData), Some(policy(state = Expired).toData), None) do
-            assertRejectedWith("ERR-ON-RISK-5")(run(withClaim, PolicyOnRiskCloseClaim, ctx(withClaim, output, Seq(policyHolder))))
+            assertRejectedWith("ERR-ON-RISK-5")(
+              run(withClaim, PolicyOnRiskCloseClaim, ctx(withClaim, output, Seq(policyHolder)))
+            )
     }
 
     test("ERR-ON-RISK-4 is reported before ERR-ON-RISK-5") {
-        assertRejectedWith("ERR-ON-RISK-4")(run(withClaim, PolicyOnRiskCloseClaim, ctx(withClaim, None, Seq(investor1))))
+        assertRejectedWith("ERR-ON-RISK-4")(
+          run(withClaim, PolicyOnRiskCloseClaim, ctx(withClaim, None, Seq(investor1)))
+        )
     }
 
     test("ERR-ON-RISK-13: only an existing claim can be closed") {
-        assertRejectedWith("ERR-ON-RISK-13")(run(noClaim, PolicyOnRiskCloseClaim, ctx(noClaim, Some(noClaim.toData), Seq(policyHolder))))
+        assertRejectedWith("ERR-ON-RISK-13")(
+          run(
+            noClaim,
+            PolicyOnRiskCloseClaim,
+            ctx(noClaim, Some(noClaim.toData), Seq(policyHolder))
+          )
+        )
     }
 
     // FailClaim
 
     test("the policy authority fails a claim") {
-        assertSucceeds(run(withClaim, PolicyOnRiskFailClaim, ctx(withClaim, Some(noClaim.toData), Seq(fidaSystem))))
+        assertSucceeds(
+          run(
+            withClaim,
+            PolicyOnRiskFailClaim,
+            ctx(withClaim, Some(noClaim.toData), Seq(fidaSystem))
+          )
+        )
     }
 
     test("FailClaim does not require a claim (Haskell quirk)") {
-        assertSucceeds(run(noClaim, PolicyOnRiskFailClaim, ctx(noClaim, Some(noClaim.toData), Seq(broker1))))
+        assertSucceeds(
+          run(noClaim, PolicyOnRiskFailClaim, ctx(noClaim, Some(noClaim.toData), Seq(broker1)))
+        )
         val funding = policy(state = Funding)
-        assertSucceeds(run(funding, PolicyOnRiskFailClaim, ctx(funding, Some(funding.toData), Seq(broker1))))
+        assertSucceeds(
+          run(funding, PolicyOnRiskFailClaim, ctx(funding, Some(funding.toData), Seq(broker1)))
+        )
     }
 
     test("ERR-ON-RISK-6: failing a claim must be signed by the policy authority") {
         for signers <- Seq(Seq.empty, Seq(policyHolder), Seq(fidaSystem, broker1)) do
-            assertRejectedWith("ERR-ON-RISK-6")(run(withClaim, PolicyOnRiskFailClaim, ctx(withClaim, Some(noClaim.toData), signers)))
+            assertRejectedWith("ERR-ON-RISK-6")(
+              run(withClaim, PolicyOnRiskFailClaim, ctx(withClaim, Some(noClaim.toData), signers))
+            )
     }
 
     test("ERR-ON-RISK-7: failing a claim must unset it") {
         for output <- Seq(Some(withClaim.toData), Some(policy(state = Cancelled).toData), None) do
-            assertRejectedWith("ERR-ON-RISK-7")(run(withClaim, PolicyOnRiskFailClaim, ctx(withClaim, output, Seq(broker1))))
+            assertRejectedWith("ERR-ON-RISK-7")(
+              run(withClaim, PolicyOnRiskFailClaim, ctx(withClaim, output, Seq(broker1)))
+            )
     }
 
     test("ERR-ON-RISK-6 is reported before ERR-ON-RISK-7") {
-        assertRejectedWith("ERR-ON-RISK-6")(run(withClaim, PolicyOnRiskFailClaim, ctx(withClaim, None, Seq(policyHolder))))
+        assertRejectedWith("ERR-ON-RISK-6")(
+          run(withClaim, PolicyOnRiskFailClaim, ctx(withClaim, None, Seq(policyHolder)))
+        )
     }
 
     test("ERR-ON-RISK-13: FailClaim requires an InsuranceInfo datum") {
         for datum <- Seq(samplePremiumPaymentInfo(), PolicyClaimPayment) do
-            assertRejectedWith("ERR-ON-RISK-13")(run(datum, PolicyOnRiskFailClaim, ctx(datum, Some(noClaim.toData), Seq(broker1))))
+            assertRejectedWith("ERR-ON-RISK-13")(
+              run(datum, PolicyOnRiskFailClaim, ctx(datum, Some(noClaim.toData), Seq(broker1)))
+            )
     }
 
     // Cancel
 
     test("the policy authority cancels an OnRisk policy") {
         val cancelled = policy(Option.Some(claim), Cancelled).toData
-        assertSucceeds(run(withClaim, PolicyOnRiskCancel, ctx(withClaim, Some(cancelled), Seq(broker1))))
+        assertSucceeds(
+          run(withClaim, PolicyOnRiskCancel, ctx(withClaim, Some(cancelled), Seq(broker1)))
+        )
     }
 
     test("the OnRisk Cancel action cancels a policy in any state but Cancelled (Haskell quirk)") {
         for state <- Seq(Initiated, Funding, Expired) do
             val info = policy(state = state)
-            assertSucceeds(run(info, PolicyOnRiskCancel, ctx(info, Some(policy(state = Cancelled).toData), Seq(fidaSystem))))
+            assertSucceeds(
+              run(
+                info,
+                PolicyOnRiskCancel,
+                ctx(info, Some(policy(state = Cancelled).toData), Seq(fidaSystem))
+              )
+            )
     }
 
     test("ERR-ON-RISK-8: cancelling must be signed by the policy authority") {
@@ -247,55 +344,108 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     }
 
     test("ERR-ON-RISK-9: cancelling must set the policy state to Cancelled") {
-        for output <- Seq(Some(noClaim.toData), Some(policy(state = Expired).toData), Some(policy(Option.Some(claim), Cancelled).toData), None) do
-            assertRejectedWith("ERR-ON-RISK-9")(run(noClaim, PolicyOnRiskCancel, ctx(noClaim, output, Seq(broker1))))
+        for output <- Seq(
+              Some(noClaim.toData),
+              Some(policy(state = Expired).toData),
+              Some(policy(Option.Some(claim), Cancelled).toData),
+              None
+            )
+        do
+            assertRejectedWith("ERR-ON-RISK-9")(
+              run(noClaim, PolicyOnRiskCancel, ctx(noClaim, output, Seq(broker1)))
+            )
     }
 
     test("ERR-ON-RISK-8 is reported before ERR-ON-RISK-9") {
-        assertRejectedWith("ERR-ON-RISK-8")(run(noClaim, PolicyOnRiskCancel, ctx(noClaim, None, Seq(investor1))))
+        assertRejectedWith("ERR-ON-RISK-8")(
+          run(noClaim, PolicyOnRiskCancel, ctx(noClaim, None, Seq(investor1)))
+        )
     }
 
     test("ERR-ON-RISK-13: Cancel requires an InsuranceInfo datum") {
         for datum <- Seq(samplePremiumPaymentInfo(), PolicyClaimPayment) do
-            assertRejectedWith("ERR-ON-RISK-13")(run(datum, PolicyOnRiskCancel, ctx(datum, Some(noClaim.toData), Seq(broker1))))
+            assertRejectedWith("ERR-ON-RISK-13")(
+              run(datum, PolicyOnRiskCancel, ctx(datum, Some(noClaim.toData), Seq(broker1)))
+            )
     }
 
     // ExpireClaim
 
     test("anyone expires a claim once its time to live has passed") {
         val after = Interval.after(deadline + 1)
-        assertSucceeds(run(withClaim, PolicyOnRiskExpireClaim, ctx(withClaim, Some(noClaim.toData), validRange = after)))
-        assertSucceeds(run(withAcceptedClaim, PolicyOnRiskExpireClaim, ctx(withAcceptedClaim, Some(noClaim.toData), Seq(investor1), after)))
+        assertSucceeds(
+          run(
+            withClaim,
+            PolicyOnRiskExpireClaim,
+            ctx(withClaim, Some(noClaim.toData), validRange = after)
+          )
+        )
+        assertSucceeds(
+          run(
+            withAcceptedClaim,
+            PolicyOnRiskExpireClaim,
+            ctx(withAcceptedClaim, Some(noClaim.toData), Seq(investor1), after)
+          )
+        )
     }
 
     test("ERR-ON-RISK-10: expiring a claim must unset it") {
         val after = Interval.after(deadline + 1)
         for output <- Seq(Some(withClaim.toData), Some(policy(state = Expired).toData), None) do
-            assertRejectedWith("ERR-ON-RISK-10")(run(withClaim, PolicyOnRiskExpireClaim, ctx(withClaim, output, validRange = after)))
+            assertRejectedWith("ERR-ON-RISK-10")(
+              run(withClaim, PolicyOnRiskExpireClaim, ctx(withClaim, output, validRange = after))
+            )
     }
 
     test("ERR-ON-RISK-11: a claim expires only after its date plus its time to live") {
-        for range <- Seq(Interval.after(deadline), Interval.after(claim.claimDate + 1), Interval.always) do
-            assertRejectedWith("ERR-ON-RISK-11")(run(withClaim, PolicyOnRiskExpireClaim, ctx(withClaim, Some(noClaim.toData), validRange = range)))
+        for range <- Seq(
+              Interval.after(deadline),
+              Interval.after(claim.claimDate + 1),
+              Interval.always
+            )
+        do
+            assertRejectedWith("ERR-ON-RISK-11")(
+              run(
+                withClaim,
+                PolicyOnRiskExpireClaim,
+                ctx(withClaim, Some(noClaim.toData), validRange = range)
+              )
+            )
     }
 
     test("ERR-ON-RISK-10 is reported before ERR-ON-RISK-11") {
-        assertRejectedWith("ERR-ON-RISK-10")(run(withClaim, PolicyOnRiskExpireClaim, ctx(withClaim, None)))
+        assertRejectedWith("ERR-ON-RISK-10")(
+          run(withClaim, PolicyOnRiskExpireClaim, ctx(withClaim, None))
+        )
     }
 
     test("ERR-ON-RISK-13: only an existing claim can expire") {
         val after = Interval.after(deadline + 1)
-        assertRejectedWith("ERR-ON-RISK-13")(run(noClaim, PolicyOnRiskExpireClaim, ctx(noClaim, Some(noClaim.toData), validRange = after)))
+        assertRejectedWith("ERR-ON-RISK-13")(
+          run(
+            noClaim,
+            PolicyOnRiskExpireClaim,
+            ctx(noClaim, Some(noClaim.toData), validRange = after)
+          )
+        )
     }
 
     // ClaimPayment
 
-    private val claimPaymentIn = txIn(paymentRef, txOut(policyAddress, value(10_000_000), PolicyClaimPayment.toData))
+    private val claimPaymentIn =
+        txIn(paymentRef, txOut(policyAddress, value(10_000_000), PolicyClaimPayment.toData))
 
-    private def infoReference(datum: Data, n: Int = 1, nft: (ByteString, ByteString, BigInt) = infoNft): TxInInfo =
+    private def infoReference(
+        datum: Data,
+        n: Int = 1,
+        nft: (ByteString, ByteString, BigInt) = infoNft
+    ): TxInInfo =
         txIn(outRef(n), txOut(policyAddress, value(2_000_000, nft), datum))
 
-    private def claimPaymentCtx(references: Seq[TxInInfo], signers: Seq[PubKeyHash] = Seq(policyHolder)): ScriptContext =
+    private def claimPaymentCtx(
+        references: Seq[TxInInfo],
+        signers: Seq[PubKeyHash] = Seq(policyHolder)
+    ): ScriptContext =
         spending(
           txInfo(
             inputs = Seq(claimPaymentIn),
@@ -307,14 +457,30 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         )
 
     test("the policy holder collects a claim payment, referencing the policy info") {
-        assertSucceeds(run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(withAcceptedClaim.toData)))))
-        assertSucceeds(run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(noClaim.toData)))))
+        assertSucceeds(
+          run(
+            PolicyClaimPayment,
+            PolicyOnRiskClaimPayment,
+            claimPaymentCtx(Seq(infoReference(withAcceptedClaim.toData)))
+          )
+        )
+        assertSucceeds(
+          run(
+            PolicyClaimPayment,
+            PolicyOnRiskClaimPayment,
+            claimPaymentCtx(Seq(infoReference(noClaim.toData)))
+          )
+        )
     }
 
     test("ERR-ON-RISK-12: a claim payment must be signed by the policy holder") {
         for signers <- Seq(Seq.empty, Seq(broker1), Seq(investor1)) do
             assertRejectedWith("ERR-ON-RISK-12")(
-              run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(withAcceptedClaim.toData)), signers))
+              run(
+                PolicyClaimPayment,
+                PolicyOnRiskClaimPayment,
+                claimPaymentCtx(Seq(infoReference(withAcceptedClaim.toData)), signers)
+              )
             )
     }
 
@@ -323,16 +489,34 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         val referenceSets = Seq(
           Seq.empty,
           Seq(infoReference(info, nft = (cs, Tokens.policyInfoTokenName, BigInt(2)))),
-          Seq(infoReference(info, nft = (ByteString.fromHex("cd" * 28), Tokens.policyInfoTokenName, BigInt(1)))),
+          Seq(
+            infoReference(
+              info,
+              nft = (ByteString.fromHex("cd" * 28), Tokens.policyInfoTokenName, BigInt(1))
+            )
+          ),
           Seq(infoReference(info, nft = (cs, Tokens.policyPaymentTokenName, BigInt(1)))),
-          Seq(txIn(outRef(1), TxOut(policyAddress, value(2_000_000, infoNft), OutputDatum.OutputDatumHash(ByteString.fromHex("44" * 32))))),
+          Seq(
+            txIn(
+              outRef(1),
+              TxOut(
+                policyAddress,
+                value(2_000_000, infoNft),
+                OutputDatum.OutputDatumHash(ByteString.fromHex("44" * 32))
+              )
+            )
+          ),
           Seq(infoReference(info), infoReference(info, n = 2))
         )
         for references <- referenceSets do
-            assertRejectedWith("ERR-ON-RISK-12")(run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(references)))
+            assertRejectedWith("ERR-ON-RISK-12")(
+              run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(references))
+            )
     }
 
-    test("ERR-ON-RISK-12: the policy info is decoded like fromBuiltinData, so malformed ones do not count") {
+    test(
+      "ERR-ON-RISK-12: the policy info is decoded like fromBuiltinData, so malformed ones do not count"
+    ) {
         val fields = withAcceptedClaim.toData match
             case Data.Constr(_, args) => args.toScalaList
             case other                => fail(s"unexpected encoding $other")
@@ -340,9 +524,21 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         val noFields = Data.Constr(0, List.Nil)
         def claimWith(accepted: Data): Data = Data.Constr(
           0,
-          List(Data.Constr(0, List(Data.I(1), Data.I(2), Data.B(ByteString.empty), accepted, Data.B(ByteString.empty))))
+          List(
+            Data.Constr(
+              0,
+              List(
+                Data.I(1),
+                Data.I(2),
+                Data.B(ByteString.empty),
+                accepted,
+                Data.B(ByteString.empty)
+              )
+            )
+          )
         )
-        val notConstrs = Seq(Data.I(0), Data.B(ByteString.empty), Data.List(List.Nil), Data.Map(List.Nil))
+        val notConstrs =
+            Seq(Data.I(0), Data.B(ByteString.empty), Data.List(List.Nil), Data.Map(List.Nil))
         val structuredFields = Seq(4, 7, 8, 13, 14)
         val notConstrFields =
             for i <- structuredFields; d <- notConstrs yield withField(i, d)
@@ -376,9 +572,54 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
           withField(13, Data.Constr(0, List(Data.B(ByteString.empty)))),
           withField(13, Data.Constr(1, List(Data.I(0)))),
           withField(13, Data.Constr(2, List.Nil)),
-          withField(14, Data.Constr(0, List(Data.Constr(0, List(Data.I(1), Data.I(2), Data.B(ByteString.empty), Data.Constr(2, List.Nil), Data.B(ByteString.empty)))))),
-          withField(14, Data.Constr(0, List(Data.Constr(0, List(Data.I(1), Data.I(2), Data.B(ByteString.empty), Data.Constr(1, List.Nil)))))),
-          withField(14, Data.Constr(0, List(Data.Constr(1, List(Data.I(1), Data.I(2), Data.B(ByteString.empty), Data.Constr(1, List.Nil), Data.B(ByteString.empty)))))),
+          withField(
+            14,
+            Data.Constr(
+              0,
+              List(
+                Data.Constr(
+                  0,
+                  List(
+                    Data.I(1),
+                    Data.I(2),
+                    Data.B(ByteString.empty),
+                    Data.Constr(2, List.Nil),
+                    Data.B(ByteString.empty)
+                  )
+                )
+              )
+            )
+          ),
+          withField(
+            14,
+            Data.Constr(
+              0,
+              List(
+                Data.Constr(
+                  0,
+                  List(Data.I(1), Data.I(2), Data.B(ByteString.empty), Data.Constr(1, List.Nil))
+                )
+              )
+            )
+          ),
+          withField(
+            14,
+            Data.Constr(
+              0,
+              List(
+                Data.Constr(
+                  1,
+                  List(
+                    Data.I(1),
+                    Data.I(2),
+                    Data.B(ByteString.empty),
+                    Data.Constr(1, List.Nil),
+                    Data.B(ByteString.empty)
+                  )
+                )
+              )
+            )
+          ),
           withField(14, Data.I(0)),
           Data.B(policyHolder.hash),
           samplePremiumPaymentInfo().toData,
@@ -387,7 +628,11 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         for (datum, i) <- malformed.zipWithIndex do
             withClue(s"malformed policy info #$i: $datum\n") {
                 assertRejectedWith("ERR-ON-RISK-12")(
-                  run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(datum))))
+                  run(
+                    PolicyClaimPayment,
+                    PolicyOnRiskClaimPayment,
+                    claimPaymentCtx(Seq(infoReference(datum)))
+                  )
                 )
             }
     }
@@ -400,17 +645,46 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
           InsuranceAuthority.MajorityMustSign(List(fidaSystem))
         )
         for authority <- authorities; state <- InsurancePolicyState.values.toSeq do
-            val info = sampleInsuranceInfo(state = state, claim = Option.Some(acceptedClaim), authority = authority)
-            assertSucceeds(run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(info.toData)))))
-        val noInstallments = noClaim.copy(iInfoInstallments = InstallmentsInfo(List.Nil, 0), iInfoStartDate = Option.None)
-        assertSucceeds(run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(noInstallments.toData)))))
+            val info = sampleInsuranceInfo(
+              state = state,
+              claim = Option.Some(acceptedClaim),
+              authority = authority
+            )
+            assertSucceeds(
+              run(
+                PolicyClaimPayment,
+                PolicyOnRiskClaimPayment,
+                claimPaymentCtx(Seq(infoReference(info.toData)))
+              )
+            )
+        val noInstallments = noClaim.copy(
+          iInfoInstallments = InstallmentsInfo(List.Nil, 0),
+          iInfoStartDate = Option.None
+        )
+        assertSucceeds(
+          run(
+            PolicyClaimPayment,
+            PolicyOnRiskClaimPayment,
+            claimPaymentCtx(Seq(infoReference(noInstallments.toData)))
+          )
+        )
     }
 
     test("ERR-ON-RISK-12: a policy info that is not signed by its holder does not count") {
         val otherHolder = noClaim.copy(iInfoPolicyHolder = investor1).toData
-        assertRejectedWith("ERR-ON-RISK-12")(run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(otherHolder)))))
+        assertRejectedWith("ERR-ON-RISK-12")(
+          run(
+            PolicyClaimPayment,
+            PolicyOnRiskClaimPayment,
+            claimPaymentCtx(Seq(infoReference(otherHolder)))
+          )
+        )
         assertSucceeds(
-          run(PolicyClaimPayment, PolicyOnRiskClaimPayment, claimPaymentCtx(Seq(infoReference(otherHolder), infoReference(noClaim.toData, n = 2))))
+          run(
+            PolicyClaimPayment,
+            PolicyOnRiskClaimPayment,
+            claimPaymentCtx(Seq(infoReference(otherHolder), infoReference(noClaim.toData, n = 2)))
+          )
         )
     }
 
@@ -419,9 +693,15 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     test("ERR-ON-RISK-13: FinalizeClaim is never allowed") {
         for info <- Seq(noClaim, withClaim, withAcceptedClaim) do
             val signers = Seq(policyHolder, broker1)
-            assertRejectedWith("ERR-ON-RISK-13")(run(info, PolicyOnRiskFinalizeClaim, ctx(info, Some(noClaim.toData), signers)))
+            assertRejectedWith("ERR-ON-RISK-13")(
+              run(info, PolicyOnRiskFinalizeClaim, ctx(info, Some(noClaim.toData), signers))
+            )
         assertRejectedWith("ERR-ON-RISK-13")(
-          run(PolicyClaimPayment, PolicyOnRiskFinalizeClaim, claimPaymentCtx(Seq(infoReference(noClaim.toData))))
+          run(
+            PolicyClaimPayment,
+            PolicyOnRiskFinalizeClaim,
+            claimPaymentCtx(Seq(infoReference(noClaim.toData)))
+          )
         )
     }
 
@@ -429,16 +709,26 @@ class OnRiskLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         val references = Seq(infoReference(noClaim.toData, n = 2))
         for datum <- Seq(noClaim, withAcceptedClaim, samplePremiumPaymentInfo()) do
             val c = spending(
-              txInfo(inputs = Seq(txIn(infoRef, infoOut(datum.toData))), referenceInputs = references, signatories = Seq(policyHolder)),
+              txInfo(
+                inputs = Seq(txIn(infoRef, infoOut(datum.toData))),
+                referenceInputs = references,
+                signatories = Seq(policyHolder)
+              ),
               infoRef
             )
             assertRejectedWith("ERR-ON-RISK-13")(run(datum, PolicyOnRiskClaimPayment, c))
     }
 
     test("ERR-ON-RISK-13: claim actions are rejected for non-InsuranceInfo datums") {
-        val redeemers = Seq(PolicyOnRiskCloseClaim, PolicyOnRiskAcceptClaim, PolicyOnRiskExpireClaim)
+        val redeemers =
+            Seq(PolicyOnRiskCloseClaim, PolicyOnRiskAcceptClaim, PolicyOnRiskExpireClaim)
         for datum <- Seq(samplePremiumPaymentInfo(), PolicyClaimPayment); redeemer <- redeemers do
-            val c = ctx(datum, Some(noClaim.toData), Seq(policyHolder, broker1), Interval.after(deadline + 1))
+            val c = ctx(
+              datum,
+              Some(noClaim.toData),
+              Seq(policyHolder, broker1),
+              Interval.after(deadline + 1)
+            )
             assertRejectedWith("ERR-ON-RISK-13")(run(datum, redeemer, c))
     }
 }

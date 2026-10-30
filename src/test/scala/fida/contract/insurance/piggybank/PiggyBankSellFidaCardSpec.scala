@@ -21,14 +21,20 @@ class PiggyBankSellFidaCardSpec extends PiggyBankSpecBase {
     private val payout = txOutNoDatum(investorAddress, value(fidaCardValue))
 
     private def sell(outputs: TxOut*) =
-        spendPiggyBank(Seq(piggyBankInput(sold.toData, soldValue), cardOwnerInput), outputs = outputs)
+        spendPiggyBank(
+          Seq(piggyBankInput(sold.toData, soldValue), cardOwnerInput),
+          outputs = outputs
+        )
 
     test("SellFidaCard: succeeds when the card and status NFTs return with the unsold datum") {
-        assertSucceeds(eval(sold, SellFidaCard, sell(piggyBankOutput(unsold.toData, returnedValue), payout)))
+        assertSucceeds(
+          eval(sold, SellFidaCard, sell(piggyBankOutput(unsold.toData, returnedValue), payout))
+        )
     }
 
     test("quirk: SellFidaCard checks no signature, no payout and only two output datum fields") {
-        val rewritten = PBankFidaCard(false, fidaCardId(7), fidaCardValue, List(ByteString.fromString("claim")))
+        val rewritten =
+            PBankFidaCard(false, fidaCardId(7), fidaCardValue, List(ByteString.fromString("claim")))
         val drained = value(1, statusNft, cardNft)
         assertSucceeds(eval(sold, SellFidaCard, sell(piggyBankOutput(rewritten.toData, drained))))
     }
@@ -49,12 +55,16 @@ class PiggyBankSellFidaCardSpec extends PiggyBankSpecBase {
     test("ERR-PBANK-8: no continuing output holds both the card and the status NFT") {
         val statusOnly = piggyBankOutput(unsold.toData, value(minAda, statusNft))
         val cardOnly = piggyBankOutput(unsold.toData, value(minAda, cardNft))
-        assertRejectedWith("ERR-PBANK-8")(eval(sold, SellFidaCard, sell(statusOnly, cardOnly, payout)))
+        assertRejectedWith("ERR-PBANK-8")(
+          eval(sold, SellFidaCard, sell(statusOnly, cardOnly, payout))
+        )
     }
 
     test("ERR-PBANK-8: two continuing outputs hold both NFTs") {
         val returned = piggyBankOutput(unsold.toData, returnedValue)
-        assertRejectedWith("ERR-PBANK-8")(eval(sold, SellFidaCard, sell(returned, returned, payout)))
+        assertRejectedWith("ERR-PBANK-8")(
+          eval(sold, SellFidaCard, sell(returned, returned, payout))
+        )
     }
 
     test("ERR-PBANK-8: the returned datum is a PBankPremium") {
@@ -64,14 +74,18 @@ class PiggyBankSellFidaCardSpec extends PiggyBankSpecBase {
         )
     }
 
-    test("ERR-PBANK-8: a returned datum with an extra field does not decode (exact fromBuiltinData)") {
+    test(
+      "ERR-PBANK-8: a returned datum with an extra field does not decode (exact fromBuiltinData)"
+    ) {
         val extra = withExtraField(unsold.toData)
         assertRejectedWith("ERR-PBANK-8")(
           eval(sold, SellFidaCard, sell(piggyBankOutput(extra, returnedValue), payout))
         )
     }
 
-    test("ERR-PBANK-8: returned outputs with a non-constructor or malformed datum are skipped, not a crash") {
+    test(
+      "ERR-PBANK-8: returned outputs with a non-constructor or malformed datum are skipped, not a crash"
+    ) {
         val malformed = nonConstructorData ++ Seq(
           withField(unsold.toData, 0, Data.I(0)), // pbfcIsSold
           withField(unsold.toData, 0, constrData(0, Data.I(0))), // a Bool with a field
@@ -81,15 +95,30 @@ class PiggyBankSellFidaCardSpec extends PiggyBankSpecBase {
           withTag(unsold.toData, 2) // an unknown constructor
         )
         for d <- malformed do
-            assertRejectedWith("ERR-PBANK-8")(eval(sold, SellFidaCard, sell(piggyBankOutput(d, returnedValue), payout)))
+            assertRejectedWith("ERR-PBANK-8")(
+              eval(sold, SellFidaCard, sell(piggyBankOutput(d, returnedValue), payout))
+            )
             assertSucceeds(
-              eval(sold, SellFidaCard, sell(piggyBankOutput(d, returnedValue), piggyBankOutput(unsold.toData, returnedValue)))
+              eval(
+                sold,
+                SellFidaCard,
+                sell(
+                  piggyBankOutput(d, returnedValue),
+                  piggyBankOutput(unsold.toData, returnedValue)
+                )
+              )
             )
     }
 
     test("SellFidaCard: unrelated outputs with non-constructor datums are ignored") {
         val unrelated = nonConstructorData.map(d => txOut(investorAddress, value(minAda), d))
-        assertSucceeds(eval(sold, SellFidaCard, sell((piggyBankOutput(unsold.toData, returnedValue) +: unrelated)*)))
+        assertSucceeds(
+          eval(
+            sold,
+            SellFidaCard,
+            sell((piggyBankOutput(unsold.toData, returnedValue) +: unrelated)*)
+          )
+        )
     }
 
     test("ERR-PBANK-8: the returned output has no inline datum") {

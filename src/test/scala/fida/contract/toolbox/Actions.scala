@@ -37,15 +37,19 @@ object Actions {
     def insuranceInfo(iid: InsuranceId)(using Run): InsuranceInfo =
         iinfo(iid).datum match
             case info: InsuranceInfo => info
-            case other               => throw new IllegalStateException(s"Unexpected policy datum $other")
+            case other => throw new IllegalStateException(s"Unexpected policy datum $other")
 
     def ppInfo(iid: InsuranceId)(using run: Run): Box[InsurancePolicyDatum] =
         import run.given
-        run.box[InsurancePolicyDatum](insurancePolicyAddress(iid), "premium payment info")(ppInfoBox(iid))
+        run.box[InsurancePolicyDatum](insurancePolicyAddress(iid), "premium payment info")(
+          ppInfoBox(iid)
+        )
 
     def piggyBankInfo(iid: InsuranceId, fcid: FidaCardId)(using run: Run): Box[PiggyBankDatum] =
         import run.given
-        run.box[PiggyBankDatum](piggyBankAddr(iid, fcid), "piggy bank info")(piggyBankInfoBox(iid, fcid))
+        run.box[PiggyBankDatum](piggyBankAddr(iid, fcid), "piggy bank info")(
+          piggyBankInfoBox(iid, fcid)
+        )
 
     def premiumBox(iid: InsuranceId, fcid: FidaCardId)(using run: Run): Box[PiggyBankDatum] =
         import run.given
@@ -61,8 +65,10 @@ object Actions {
 
     /** The user's UTxOs holding the fida card NFT (`spend user (fidaCardNFT iid fcid)`). */
     def fidaCardUtxos(user: User, iid: InsuranceId, fcid: FidaCardId)(using run: Run): Seq[Utxo] =
-        val utxos = run.utxosWithAsset(user, policyId(iid), AssetName(Tokens.fidaCardTokenName(fcid.id)))
-        if utxos.isEmpty then throw new NoSuchElementException(s"$user does not hold fida card $fcid")
+        val utxos =
+            run.utxosWithAsset(user, policyId(iid), AssetName(Tokens.fidaCardTokenName(fcid.id)))
+        if utxos.isEmpty then
+            throw new NoSuchElementException(s"$user does not hold fida card $fcid")
         utxos
 
     /** The ledger form of an on-chain address (no staking part). */
@@ -71,7 +77,8 @@ object Actions {
         val credential = address.credential match
             case v1.Credential.PubKeyCredential(pkh) =>
                 Credential.KeyHash(scalus.cardano.ledger.AddrKeyHash.fromByteString(pkh.hash))
-            case v1.Credential.ScriptCredential(hash) => Credential.ScriptHash(ScriptHash.fromByteString(hash))
+            case v1.Credential.ScriptCredential(hash) =>
+                Credential.ScriptHash(ScriptHash.fromByteString(hash))
         Address(run.env.network, credential)
 
     private def now(using run: Run) = run.instant(run.currentTime)
@@ -88,12 +95,15 @@ object Actions {
         r: InsurancePolicyRedeemer
     )(using run: Run): TxBuilder =
         import run.given
-        val datum = InsurancePolicyDatum.updatePolicyState(box.datum, state).orFail("Can't update policy state")
+        val datum = InsurancePolicyDatum
+            .updatePolicyState(box.datum, state)
+            .orFail("Can't update policy state")
         run.txBuilder
             .spend(box.utxo, r, insurancePolicy(iid))
             .payTo(insurancePolicyAddress(iid), box.value, datum)
 
-    /** Same as [[updatePolicyStateTx]] but using the reference script (`updatePolicyStateTxRef`). */
+    /** Same as [[updatePolicyStateTx]] but using the reference script (`updatePolicyStateTxRef`).
+      */
     def updatePolicyStateTxRef(
         iid: InsuranceId,
         box: Box[InsurancePolicyDatum],
@@ -101,7 +111,9 @@ object Actions {
         r: InsurancePolicyRedeemer
     )(using run: Run): TxBuilder =
         import run.given
-        val datum = InsurancePolicyDatum.updatePolicyState(box.datum, state).orFail("Can't update policy state")
+        val datum = InsurancePolicyDatum
+            .updatePolicyState(box.datum, state)
+            .orFail("Can't update policy state")
         run.txBuilder
             .references(insuranceRefScript(iid))
             .spend(box.utxo, r)
@@ -157,14 +169,20 @@ object Actions {
         run.waitNSlots(5)
         val actualStartTime = run.currentTime
         val box = iinfo(iid)
-        val updated = InsurancePolicyDatum.completeFunding(box.datum, onRiskStartDate).orFail("Can't update policy state")
+        val updated = InsurancePolicyDatum
+            .completeFunding(box.datum, onRiskStartDate)
+            .orFail("Can't update policy state")
         val piggyBanks = (1 to insuranceInfo(iid).iInfoFidaCardNumber.toInt).flatMap(i =>
             run.boxesAt[PiggyBankDatum](piggyBankAddr(iid, fidaCardFromInt(i)))
                 .filter(_.datum.isInstanceOf[PBankFidaCard])
         )
         val tx = piggyBanks.foldLeft(
           run.txBuilder
-              .spend(box.utxo, PolicyFunding(PolicyFundingFundingComplete(onRiskStartDate)), insurancePolicy(iid))
+              .spend(
+                box.utxo,
+                PolicyFunding(PolicyFundingFundingComplete(onRiskStartDate)),
+                insurancePolicy(iid)
+              )
               .payTo(insurancePolicyAddress(iid), box.value, updated)
               .validFrom(run.instant(actualStartTime))
         )((b, pb) => b.references(pb.utxo))
@@ -177,7 +195,7 @@ object Actions {
         val box = piggyBankInfo(iid, fcid)
         val card = box.datum match
             case c: PBankFidaCard => c
-            case other            => throw new IllegalStateException(s"Unexpected piggy bank datum $other")
+            case other => throw new IllegalStateException(s"Unexpected piggy bank datum $other")
         val sold = PiggyBankDatum.setFidaCardSold(box.datum).orFail("Can't buy fida card")
         val tx = run.txBuilder
             .spend(box.utxo, BuyFidaCard, piggyBank(iid, fcid))
@@ -197,7 +215,7 @@ object Actions {
         val box = piggyBankInfo(iid, fcid)
         val card = box.datum match
             case c: PBankFidaCard => c
-            case other            => throw new IllegalStateException(s"Unexpected piggy bank datum $other")
+            case other => throw new IllegalStateException(s"Unexpected piggy bank datum $other")
         val unsold = PiggyBankDatum.setFidaCardUnsold(box.datum).orFail("Can't sell fida card")
         val sellValue = Value.lovelace(card.pbfcFidaCardValue.toLong)
         val tx = spendAll(run.txBuilder, fidaCardUtxos(investor, iid, fcid))
@@ -209,12 +227,20 @@ object Actions {
     // ------------------------------------------------------------------ premium claims
 
     /** An investor (holding the fida card) claims `amount` lovelace of unlocked premium. */
-    def claimPremium(iid: InsuranceId, fcid: FidaCardId, investor: User, amount: BigInt)(using Run): Unit =
+    def claimPremium(iid: InsuranceId, fcid: FidaCardId, investor: User, amount: BigInt)(using
+        Run
+    ): Unit =
         claimPremiumWith(iid, fcid, investor, amount, withCard = true)
 
     /** [[claimPremium]]; with `withCard = false` the claimer does not present the fida card. */
-    def claimPremiumWith(iid: InsuranceId, fcid: FidaCardId, investor: User, amount: BigInt, withCard: Boolean)(
-        using run: Run
+    def claimPremiumWith(
+        iid: InsuranceId,
+        fcid: FidaCardId,
+        investor: User,
+        amount: BigInt,
+        withCard: Boolean
+    )(using
+        run: Run
     ): Unit =
         import run.given
         val pbBox = premiumBox(iid, fcid)
@@ -232,7 +258,12 @@ object Actions {
         run.submitTx(investor, tx.validFrom(now))
 
     /** The policy holder claims back `amount` lovelace of premium after cancellation. */
-    def claimPremiumOnCancel(iid: InsuranceId, fcid: FidaCardId, policyHolder: User, amount: BigInt)(using
+    def claimPremiumOnCancel(
+        iid: InsuranceId,
+        fcid: FidaCardId,
+        policyHolder: User,
+        amount: BigInt
+    )(using
         run: Run
     ): Unit =
         import run.given
@@ -254,7 +285,11 @@ object Actions {
 
     /** The investor pays the accepted claim from the collateral of each piggy bank. */
     def payForClaimWithCollateral(iid: InsuranceId, investor: User)(using Run): Unit =
-        payForClaimWithCollateralOf(iid, investor, fidaCardsFromInts(1 to insuranceInfo(iid).iInfoFidaCardNumber.toInt))
+        payForClaimWithCollateralOf(
+          iid,
+          investor,
+          fidaCardsFromInts(1 to insuranceInfo(iid).iInfoFidaCardNumber.toInt)
+        )
 
     /** [[payForClaimWithCollateral]] for the given cards; each piggy bank pays `share` (by default
       * the claim amount divided by the number of fida cards).
@@ -272,36 +307,58 @@ object Actions {
         for fcid <- fcids do
             val pBox = piggyBankInfo(iid, fcid)
             val payAmount = share.getOrElse(claim.claimAmount / info.iInfoFidaCardNumber)
-            val paid = PiggyBankDatum.addPiggyBankPaidClaim(claim.claimId, pBox.datum).orFail("Can't pay for claim")
+            val paid = PiggyBankDatum
+                .addPiggyBankPaidClaim(claim.claimId, pBox.datum)
+                .orFail("Can't pay for claim")
             val claimPayment: InsurancePolicyDatum = PolicyClaimPayment
             val tx = spendAll(
               run.txBuilder
                   .spend(pBox.utxo, PayForClaimWithCollateral, piggyBank(iid, fcid))
-                  .payTo(piggyBankAddr(iid, fcid), pBox.value - Value.lovelace(payAmount.toLong), paid)
-                  .payTo(insurancePolicyAddress(iid), Value.lovelace(payAmount.toLong), claimPayment)
+                  .payTo(
+                    piggyBankAddr(iid, fcid),
+                    pBox.value - Value.lovelace(payAmount.toLong),
+                    paid
+                  )
+                  .payTo(
+                    insurancePolicyAddress(iid),
+                    Value.lovelace(payAmount.toLong),
+                    claimPayment
+                  )
                   .references(iiBox.utxo),
               fidaCardUtxos(investor, iid, fcid)
             ).payTo(investor.address, fidaCardNFT(iid, fcid))
             run.submitTx(investor, tx.validFrom(now))
 
-    def unlockCollateralOnExpired(investor: User, iid: InsuranceId, fcid: FidaCardId)(using Run): Unit =
+    def unlockCollateralOnExpired(investor: User, iid: InsuranceId, fcid: FidaCardId)(using
+        Run
+    ): Unit =
         unlockCollateralOn(UnlockCollateral, investor, iid, fcid)
 
-    def unlockCollateralsOnExpired(investor: User, iid: InsuranceId, fcids: Seq[FidaCardId])(using Run): Unit =
+    def unlockCollateralsOnExpired(investor: User, iid: InsuranceId, fcids: Seq[FidaCardId])(using
+        Run
+    ): Unit =
         fcids.foreach(unlockCollateralOnExpired(investor, iid, _))
 
-    def unlockCollateralOnCancel(investor: User, iid: InsuranceId, fcid: FidaCardId)(using Run): Unit =
+    def unlockCollateralOnCancel(investor: User, iid: InsuranceId, fcid: FidaCardId)(using
+        Run
+    ): Unit =
         unlockCollateralOn(UnlockCollateralOnCancel, investor, iid, fcid)
 
     /** The card owner takes the whole piggy bank (collateral and status token) back. */
-    def unlockCollateralOn(r: PiggyBankRedeemer, investor: User, iid: InsuranceId, fcid: FidaCardId)(using
+    def unlockCollateralOn(
+        r: PiggyBankRedeemer,
+        investor: User,
+        iid: InsuranceId,
+        fcid: FidaCardId
+    )(using
         run: Run
     ): Unit =
         import run.given
         val pbBox = piggyBankInfo(iid, fcid)
-        val tx = spendAll(run.txBuilder.references(iinfo(iid).utxo), fidaCardUtxos(investor, iid, fcid))
-            .payTo(investor.address, pbBox.value + fidaCardNFT(iid, fcid))
-            .spend(pbBox.utxo, r, piggyBank(iid, fcid))
+        val tx =
+            spendAll(run.txBuilder.references(iinfo(iid).utxo), fidaCardUtxos(investor, iid, fcid))
+                .payTo(investor.address, pbBox.value + fidaCardNFT(iid, fcid))
+                .spend(pbBox.utxo, r, piggyBank(iid, fcid))
         run.submitTx(investor, tx)
 
     // ------------------------------------------------------------------ claims
@@ -330,10 +387,14 @@ object Actions {
           claimAccepted = false,
           claimId = ByteString.fromString("1234")
         )
-        updateClaimTx(iid, signer, PolicyOnRiskCreateClaim(claim), validFrom = true)(_ => POption.Some(claim))
+        updateClaimTx(iid, signer, PolicyOnRiskCreateClaim(claim), validFrom = true)(_ =>
+            POption.Some(claim)
+        )
 
     def closeClaim(iid: InsuranceId, policyHolder: User)(using Run): Unit =
-        updateClaimTx(iid, policyHolder, PolicyOnRiskCloseClaim, validFrom = false)(_ => POption.None)
+        updateClaimTx(iid, policyHolder, PolicyOnRiskCloseClaim, validFrom = false)(_ =>
+            POption.None
+        )
 
     def acceptClaim(iid: InsuranceId, fidaSystem: User)(using Run): Unit =
         updateClaimTx(iid, fidaSystem, PolicyOnRiskAcceptClaim, validFrom = false)(
@@ -349,7 +410,8 @@ object Actions {
     /** The policy holder collects every claim payment locked at the insurance policy script. */
     def claimPayment(iid: InsuranceId, policyHolder: User)(using run: Run): Unit =
         import run.given
-        val payments = run.boxesAt[InsurancePolicyDatum](insurancePolicyAddress(iid))
+        val payments = run
+            .boxesAt[InsurancePolicyDatum](insurancePolicyAddress(iid))
             .filter(_.datum == PolicyClaimPayment)
         val iiBox = iinfo(iid)
         for box <- payments do
@@ -368,7 +430,8 @@ object Actions {
         import run.given
         val box = iinfo(iid)
         val current = insuranceInfo(iid).iInfoClaim
-        val datum = InsurancePolicyDatum.updateClaim(box.datum, claim(current)).orFail("Can't update claim")
+        val datum =
+            InsurancePolicyDatum.updateClaim(box.datum, claim(current)).orFail("Can't update claim")
         val tx = run.txBuilder
             .spend(box.utxo, PolicyOnRisk(r), insurancePolicy(iid))
             .payTo(insurancePolicyAddress(iid), box.value, datum)

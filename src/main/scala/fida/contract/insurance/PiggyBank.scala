@@ -1,9 +1,33 @@
 package fida.contract.insurance
 
-import fida.contract.Utils.{before, check, findOwnInput, fromSingleton, getContinuingOutputs, lovelaceOf, lovelaceValueOf, outputsWithToken, referenceDatums, referenceOutputs, traceError, traceIfFalse, txSignedBy, unsafeFromSingletonOr, untypedOutput, valueOf, valueSpentOf}
+import fida.contract.Utils.{
+    before,
+    check,
+    findOwnInput,
+    fromSingleton,
+    getContinuingOutputs,
+    lovelaceOf,
+    lovelaceValueOf,
+    outputsWithToken,
+    referenceDatums,
+    referenceOutputs,
+    traceError,
+    traceIfFalse,
+    txSignedBy,
+    unsafeFromSingletonOr,
+    untypedOutput,
+    valueOf,
+    valueSpentOf
+}
 import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PolicyClaimPayment}
 import fida.contract.insurance.InsurancePolicyState.{Cancelled, Expired}
-import fida.contract.insurance.PiggyBankDatum.{PBankFidaCard, PBankPremium, unlockedPremiumToClaim, untypedSetFidaCardSold, untypedUpdatePiggyBankRefund}
+import fida.contract.insurance.PiggyBankDatum.{
+    PBankFidaCard,
+    PBankPremium,
+    unlockedPremiumToClaim,
+    untypedSetFidaCardSold,
+    untypedUpdatePiggyBankRefund
+}
 import fida.contract.insurance.PiggyBankRedeemer.*
 import scalus.compiler.Compile
 import scalus.uplc.builtin.{BuiltinList, Builtins, ByteString, Data}
@@ -14,8 +38,8 @@ import scalus.cardano.onchain.plutus.prelude.*
 
 /** Piggy bank validator (port of `Fida.Contract.Insurance.PiggyBank`).
   *
-  * Parameters: the [[InsuranceId]] and the [[FidaCardId]] of the fida card the piggy bank backs.
-  * A piggy bank UTxO holds either the collateral of that fida card (`PBankFidaCard`, marked by the
+  * Parameters: the [[InsuranceId]] and the [[FidaCardId]] of the fida card the piggy bank backs. A
+  * piggy bank UTxO holds either the collateral of that fida card (`PBankFidaCard`, marked by the
   * `CARD-STATUS` token) or a share of the premium paid by the policy holder (`PBankPremium`).
   *
   * Actions, in the order of the Haskell clauses; every other redeemer and datum combination fails
@@ -24,12 +48,12 @@ import scalus.cardano.onchain.plutus.prelude.*
   *     input lovelace and carry the input datum marked sold.
   *   - `SellFidaCard` on a sold card: the continuing output holding the card and status tokens must
   *     carry an unsold datum with the same card value. Neither signatures nor payouts are checked.
-  *   - `ClaimPremium` on a premium: the card owner may take the premium unlocked by the installments
-  *     due (all of it once every installment is due), less refunds.
-  *   - `PayForClaimWithCollateral` on a sold card: pays the card's share of the accepted claim to the
-  *     insurance from the collateral and records the claim as paid.
-  *   - `ClaimPremiumOnCancel` on a premium: refunds the premium not yet unlocked for investors to the
-  *     holder of a cancelled policy, once.
+  *   - `ClaimPremium` on a premium: the card owner may take the premium unlocked by the
+  *     installments due (all of it once every installment is due), less refunds.
+  *   - `PayForClaimWithCollateral` on a sold card: pays the card's share of the accepted claim to
+  *     the insurance from the collateral and records the claim as paid.
+  *   - `ClaimPremiumOnCancel` on a premium: refunds the premium not yet unlocked for investors to
+  *     the holder of a cancelled policy, once.
   *   - `UnlockCollateralOnCancel` / `UnlockCollateral` on any card: the card owner takes the
   *     collateral back once the policy is cancelled / expired (with its claim, if any, paid).
   *
@@ -40,7 +64,8 @@ import scalus.cardano.onchain.plutus.prelude.*
   *
   * On-chain errors (`ERR-PBANK-1` is documented in the Haskell source but never raised):
   *   - `ERR-PBANK-0`: output datum doesn't say that the card is sold
-  *   - `ERR-PBANK-2`: own input not found (unreachable: `getContinuingOutputs` fails first with `Lf`)
+  *   - `ERR-PBANK-2`: own input not found (unreachable: `getContinuingOutputs` fails first with
+  *     `Lf`)
   *   - `ERR-PBANK-3`: correct output datum not found
   *   - `ERR-PBANK-4`: fida card not paid for
   *   - `ERR-PBANK-5`: output datum doesn't say that the card is not sold
@@ -101,8 +126,9 @@ object PiggyBankValidator {
                     case _ => traceError("ERR-PBANK-32")
             case ClaimPremium =>
                 datum match
-                    case PBankPremium(initAmount, refund) => claimPremium(cs, n, initAmount, refund, ctx)
-                    case _                                => traceError("ERR-PBANK-32")
+                    case PBankPremium(initAmount, refund) =>
+                        claimPremium(cs, n, initAmount, refund, ctx)
+                    case _ => traceError("ERR-PBANK-32")
             case PayForClaimWithCollateral =>
                 datum match
                     case PBankFidaCard(isSold, _, cardValue, paidClaims) =>
@@ -120,15 +146,16 @@ object PiggyBankValidator {
                     case _                         => traceError("ERR-PBANK-32")
             case UnlockCollateral =>
                 datum match
-                    case PBankFidaCard(_, _, _, paidClaims) => unlockCollateral(cs, n, paidClaims, ctx)
-                    case _                                  => traceError("ERR-PBANK-32")
+                    case PBankFidaCard(_, _, _, paidClaims) =>
+                        unlockCollateral(cs, n, paidClaims, ctx)
+                    case _ => traceError("ERR-PBANK-32")
 
     /** Entry point, the equivalent of the Haskell `mkPiggyBankValidatorUntyped`.
       *
       * Like PlutusTx `unsafeFromBuiltinData` in the Haskell wrapper, decodes the parameters, then
       * the datum, then the redeemer strictly before validating: malformed data fails the script, an
-      * unknown constructor fails with `PT1`, and extra constructor fields are ignored. The datum and
-      * redeemer are rebuilt from the decoded values, so re-encoding them gives the canonical
+      * unknown constructor fails with `PT1`, and extra constructor fields are ignored. The datum
+      * and redeemer are rebuilt from the decoded values, so re-encoding them gives the canonical
       * encoding, as `toBuiltinData` does in the Haskell code. The script context comes from the
       * ledger and is well-formed. A false result fails with `PT5` (PlutusTx `check`).
       */
@@ -137,15 +164,22 @@ object PiggyBankValidator {
         val fidaCardId = FidaCardId(Builtins.unBData(fcid))
         val decodedDatum = decodePiggyBankDatum(datum)
         val decodedRedeemer = decodePiggyBankRedeemer(redeemer)
-        check(validate(insuranceId, fidaCardId, decodedDatum, decodedRedeemer, ctx.to[ScriptContext]))
+        check(
+          validate(insuranceId, fidaCardId, decodedDatum, decodedRedeemer, ctx.to[ScriptContext])
+        )
 
     // ---------------------------------------------------------------------------------------------
     // Actions
 
     /** `BuyFidaCard` on `PBankFidaCard {pbfcIsSold = False}`. */
-    private def buyFidaCard(cs: PolicyId, datum: PiggyBankDatum, cardValue: BigInt, ctx: ScriptContext): Boolean =
+    private def buyFidaCard(
+        cs: PolicyId,
+        datum: PiggyBankDatum,
+        cardValue: BigInt,
+        ctx: ScriptContext
+    ): Boolean =
         val outputDatum = untypedOutput(cs, ctx, Tokens.fidaCardStatusTokenName) match
-            case Option.None => traceError("ERR-PBANK-3")
+            case Option.None      => traceError("ERR-PBANK-3")
             case Option.Some(out) =>
                 out.datum match
                     case OutputDatum.OutputDatum(d) =>
@@ -160,7 +194,12 @@ object PiggyBankValidator {
         traceIfFalse("ERR-PBANK-0", Option.Some(outputDatum) === untypedSetFidaCardSold(datum))
 
     /** `SellFidaCard` on `PBankFidaCard {pbfcIsSold = True}`. */
-    private def sellFidaCard(cs: PolicyId, n: ByteString, cardValue: BigInt, ctx: ScriptContext): Boolean =
+    private def sellFidaCard(
+        cs: PolicyId,
+        n: ByteString,
+        cardValue: BigInt,
+        ctx: ScriptContext
+    ): Boolean =
         val cardToken = Tokens.fidaCardTokenName(n)
         val returned = fromSingleton(
           getContinuingOutputs(ctx).filterMap { out =>
@@ -192,7 +231,10 @@ object PiggyBankValidator {
         ctx: ScriptContext
     ): Boolean =
         val txInfo = ctx.txInfo
-        traceIfFalse("ERR-PBANK-7", valueSpentOf(txInfo, cs, Tokens.fidaCardTokenName(n)) === BigInt(1))
+        traceIfFalse(
+          "ERR-PBANK-7",
+          valueSpentOf(txInfo, cs, Tokens.fidaCardTokenName(n)) === BigInt(1)
+        )
         && {
             // `toBuiltinData datum`: the re-encoded input datum
             val datumData = PBankPremium(initAmount, refund).toData
@@ -203,13 +245,35 @@ object PiggyBankValidator {
                       case _                          => false
               }
             )
-            val availablePremium = unsafeFromSingletonOr("ERR-PBANK-9", insuranceInfos(cs, ctx)) match
-                case InsuranceInfo(_, _, _, _, installments, _, _, _, _, _, _, _, _, startDate, _) =>
-                    startDate match
-                        case Option.Some(start) =>
-                            unlockedPremiumToClaim(txInfo.validRange, initAmount, installments, start)
-                        case Option.None => traceError("ERR-PBANK-10")
-                case _ => fail()
+            val availablePremium =
+                unsafeFromSingletonOr("ERR-PBANK-9", insuranceInfos(cs, ctx)) match
+                    case InsuranceInfo(
+                          _,
+                          _,
+                          _,
+                          _,
+                          installments,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          startDate,
+                          _
+                        ) =>
+                        startDate match
+                            case Option.Some(start) =>
+                                unlockedPremiumToClaim(
+                                  txInfo.validRange,
+                                  initAmount,
+                                  installments,
+                                  start
+                                )
+                            case Option.None => traceError("ERR-PBANK-10")
+                    case _ => fail()
             // `lockedPremium >= initAmount - refund - availablePremium`, evaluating `lockedPremium`
             // first as the Haskell does (`>=` evaluates its right operand first, and the optimizer
             // inlines both bindings into the comparison)
@@ -231,10 +295,36 @@ object PiggyBankValidator {
         policyInfos match
             case List.Cons(ref, List.Nil) =>
                 ref._2.to[InsurancePolicyDatum] match
-                    case InsuranceInfo(_, _, fidaCardNumber, _, _, _, _, _, _, _, _, _, claimTimeToPay, _, claim) =>
+                    case InsuranceInfo(
+                          _,
+                          _,
+                          fidaCardNumber,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          claimTimeToPay,
+                          _,
+                          claim
+                        ) =>
                         claim match
                             case Option.Some(c) =>
-                                payClaimShare(cs, n, cardValue, paidClaims, ref._1.address, c, fidaCardNumber, claimTimeToPay, ctx)
+                                payClaimShare(
+                                  cs,
+                                  n,
+                                  cardValue,
+                                  paidClaims,
+                                  ref._1.address,
+                                  c,
+                                  fidaCardNumber,
+                                  claimTimeToPay,
+                                  ctx
+                                )
                             case Option.None => traceError("ERR-PBANK-18")
                     case _ => traceError("ERR-PBANK-18")
             case _ => traceError("ERR-PBANK-18")
@@ -258,8 +348,9 @@ object PiggyBankValidator {
                 case Option.Some(input) => lovelaceValueOf(input.resolved.value)
                 case Option.None        => traceError("ERR-PBANK-19")
             // `output cs sc fidaCardStatusTokenName` decoded as a `PiggyBankDatum`
-            val statusOutputs = outputsWithToken(getContinuingOutputs(ctx), cs, Tokens.fidaCardStatusTokenName)
-                .filter(output => isPiggyBankDatumData(output._2))
+            val statusOutputs =
+                outputsWithToken(getContinuingOutputs(ctx), cs, Tokens.fidaCardStatusTokenName)
+                    .filter(output => isPiggyBankDatumData(output._2))
             fromSingleton(statusOutputs) match
                 case Option.Some(output) =>
                     output._2.to[PiggyBankDatum] match
@@ -272,12 +363,22 @@ object PiggyBankValidator {
                               claimAmount >= fidaCardNumber * (inputCollateral - outputCollateral)
                             )
                             && traceIfFalse("ERR-PBANK-13", !paidClaims.contains(claimId))
-                            && traceIfFalse("ERR-PBANK-14", List.Cons(claimId, paidClaims) === outputPaidClaims)
-                            && traceIfFalse("ERR-PBANK-15", fidaCardNumber * paidToInsurance(insuranceAddress, ctx) >= claimAmount)
+                            && traceIfFalse(
+                              "ERR-PBANK-14",
+                              List.Cons(claimId, paidClaims) === outputPaidClaims
+                            )
+                            && traceIfFalse(
+                              "ERR-PBANK-15",
+                              fidaCardNumber * paidToInsurance(insuranceAddress, ctx) >= claimAmount
+                            )
                             && traceIfFalse(
                               "ERR-PBANK-16",
                               before(claim.claimDate + claimTimeToPay, txInfo.validRange)
-                                  || valueSpentOf(txInfo, cs, Tokens.fidaCardTokenName(n)) === BigInt(1)
+                                  || valueSpentOf(
+                                    txInfo,
+                                    cs,
+                                    Tokens.fidaCardTokenName(n)
+                                  ) === BigInt(1)
                             )
                             && traceIfFalse("ERR-PBANK-17", outputCardValue === cardValue)
                         case _ => traceError("ERR-PBANK-20")
@@ -290,8 +391,9 @@ object PiggyBankValidator {
         lovelaceOf(
           ctx.txInfo.outputs.filter { out =>
               out.datum match
-                  case OutputDatum.OutputDatum(d) => insuranceAddress === out.address && d === claimPayment
-                  case _                          => false
+                  case OutputDatum.OutputDatum(d) =>
+                      insuranceAddress === out.address && d === claimPayment
+                  case _ => false
           }
         )
 
@@ -305,7 +407,23 @@ object PiggyBankValidator {
     ): Boolean =
         val txInfo = ctx.txInfo
         unsafeFromSingletonOr("ERR-PBANK-24", insuranceInfos(cs, ctx)) match
-            case InsuranceInfo(_, _, _, _, installments, _, policyHolder, _, state, _, _, _, _, startDate, _) =>
+            case InsuranceInfo(
+                  _,
+                  _,
+                  _,
+                  _,
+                  installments,
+                  _,
+                  policyHolder,
+                  _,
+                  state,
+                  _,
+                  _,
+                  _,
+                  _,
+                  startDate,
+                  _
+                ) =>
                 traceIfFalse("ERR-PBANK-21", state === Cancelled)
                 && traceIfFalse("ERR-PBANK-22", txSignedBy(txInfo, policyHolder))
                 && {
@@ -314,7 +432,12 @@ object PiggyBankValidator {
                         case Option.None        => BigInt(0)
                     val premiumLeftForInvestor = startDate match
                         case Option.Some(start) =>
-                            unlockedPremiumToClaim(txInfo.validRange, initAmount, installments, start)
+                            unlockedPremiumToClaim(
+                              txInfo.validRange,
+                              initAmount,
+                              installments,
+                              start
+                            )
                         case Option.None => BigInt(0)
                     val refundAmount = initAmount - premiumLeftForInvestor
                     val refundedDatum = untypedUpdatePiggyBankRefund(refundAmount, datum)
@@ -333,19 +456,31 @@ object PiggyBankValidator {
     /** `UnlockCollateralOnCancel` on any `PBankFidaCard`. */
     private def unlockCollateralOnCancel(cs: PolicyId, n: ByteString, ctx: ScriptContext): Boolean =
         val isPolicyCancelled = unsafeFromSingletonOr("ERR-PBANK-27", insuranceInfos(cs, ctx)) match
-            case InsuranceInfo(_, _, _, _, _, _, _, _, state, _, _, _, _, _, _) => state === Cancelled
-            case _                                                              => fail()
+            case InsuranceInfo(_, _, _, _, _, _, _, _, state, _, _, _, _, _, _) =>
+                state === Cancelled
+            case _ => fail()
         traceIfFalse("ERR-PBANK-25", isPolicyCancelled)
-        && traceIfFalse("ERR-PBANK-26", valueSpentOf(ctx.txInfo, cs, Tokens.fidaCardTokenName(n)) === BigInt(1))
+        && traceIfFalse(
+          "ERR-PBANK-26",
+          valueSpentOf(ctx.txInfo, cs, Tokens.fidaCardTokenName(n)) === BigInt(1)
+        )
 
     /** `UnlockCollateral` on any `PBankFidaCard`. */
-    private def unlockCollateral(cs: PolicyId, n: ByteString, paidClaims: List[ByteString], ctx: ScriptContext): Boolean =
+    private def unlockCollateral(
+        cs: PolicyId,
+        n: ByteString,
+        paidClaims: List[ByteString],
+        ctx: ScriptContext
+    ): Boolean =
         insuranceInfos(cs, ctx) match
             case List.Cons(policyInfo, List.Nil) =>
                 policyInfo match
                     case InsuranceInfo(_, _, _, _, _, _, _, _, state, _, _, _, _, _, claim) =>
                         traceIfFalse("ERR-PBANK-28", state === Expired)
-                        && traceIfFalse("ERR-PBANK-29", valueSpentOf(ctx.txInfo, cs, Tokens.fidaCardTokenName(n)) === BigInt(1))
+                        && traceIfFalse(
+                          "ERR-PBANK-29",
+                          valueSpentOf(ctx.txInfo, cs, Tokens.fidaCardTokenName(n)) === BigInt(1)
+                        )
                         && traceIfFalse("ERR-PBANK-30", isClaimPaid(claim, paidClaims))
                     case _ => fail()
             case _ => traceError("ERR-PBANK-31")
@@ -356,8 +491,8 @@ object PiggyBankValidator {
             case Option.Some(c) => paidClaims.contains(c.claimId)
             case Option.None    => true
 
-    /** `[info | info@InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName]`: inline datums
-      * of the reference inputs holding exactly one policy info token that decode as an
+    /** `[info | info@InsuranceInfo {..} <- referenceDatums cs sc policyInfoTokenName]`: inline
+      * datums of the reference inputs holding exactly one policy info token that decode as an
       * `InsuranceInfo`.
       */
     private def insuranceInfos(cs: PolicyId, ctx: ScriptContext): List[InsurancePolicyDatum] =
@@ -384,7 +519,9 @@ object PiggyBankValidator {
             val cardId = Builtins.unBData(Builtins.headList(f1))
             val f2 = Builtins.tailList(f1)
             val cardValue = Builtins.unIData(Builtins.headList(f2))
-            val paidClaims = decodeByteStrings(Builtins.unListData(Builtins.headList(Builtins.tailList(f2))))
+            val paidClaims = decodeByteStrings(
+              Builtins.unListData(Builtins.headList(Builtins.tailList(f2)))
+            )
             PBankFidaCard(isSold, FidaCardId(cardId), cardValue, paidClaims)
         else traceError("PT1")
 
@@ -398,7 +535,11 @@ object PiggyBankValidator {
     /** `unsafeFromBuiltinData @[BuiltinByteString]`. */
     private def decodeByteStrings(xs: BuiltinList[Data]): List[ByteString] =
         if Builtins.nullList(xs) then List.Nil
-        else List.Cons(Builtins.unBData(Builtins.headList(xs)), decodeByteStrings(Builtins.tailList(xs)))
+        else
+            List.Cons(
+              Builtins.unBData(Builtins.headList(xs)),
+              decodeByteStrings(Builtins.tailList(xs))
+            )
 
     /** `unsafeFromBuiltinData @PiggyBankRedeemer`: constructors 0 to 6, fields ignored. */
     private def decodePiggyBankRedeemer(d: Data): PiggyBankRedeemer =
@@ -411,11 +552,14 @@ object PiggyBankValidator {
     // Exact decoding: whether PlutusTx `fromBuiltinData`, generated by `makeIsDataIndexed`, succeeds.
     // It requires a known constructor with exactly its fields, each of which decodes.
 
-    private def isConstrData(d: Data): Boolean = Builtins.chooseData(d, true, false, false, false, false)
+    private def isConstrData(d: Data): Boolean =
+        Builtins.chooseData(d, true, false, false, false, false)
 
-    private def isIntData(d: Data): Boolean = Builtins.chooseData(d, false, false, false, true, false)
+    private def isIntData(d: Data): Boolean =
+        Builtins.chooseData(d, false, false, false, true, false)
 
-    private def isBytesData(d: Data): Boolean = Builtins.chooseData(d, false, false, false, false, true)
+    private def isBytesData(d: Data): Boolean =
+        Builtins.chooseData(d, false, false, false, false, true)
 
     /** `[a]`: a list whose elements all decode. */
     private def isListOf(d: Data, isA: Data => Boolean): Boolean =
@@ -469,7 +613,8 @@ object PiggyBankValidator {
                 }
         }
 
-    /** `InsurancePolicyDatum`: `InsuranceInfo` 0, `PremiumPaymentInfo` 1 or `PolicyClaimPayment` 2. */
+    /** `InsurancePolicyDatum`: `InsuranceInfo` 0, `PremiumPaymentInfo` 1 or `PolicyClaimPayment` 2.
+      */
     private def isInsurancePolicyDatumData(d: Data): Boolean =
         isInsuranceInfoData(d) || isPremiumPaymentInfoData(d) || d === PolicyClaimPayment.toData
 
@@ -532,7 +677,11 @@ object PiggyBankValidator {
             hasArity(f0, 1) && {
                 val field = Builtins.headList(f0)
                 if tag === BigInt(0) then isBytesData(field)
-                else (tag === BigInt(1) || tag === BigInt(2) || tag === BigInt(3)) && isListOf(field, isBytesData)
+                else
+                    (tag === BigInt(1) || tag === BigInt(2) || tag === BigInt(3)) && isListOf(
+                      field,
+                      isBytesData
+                    )
             }
         }
 
@@ -588,10 +737,14 @@ object PiggyBankValidator {
             val constr = Builtins.unConstrData(d)
             val tag = constr.fst
             val f0 = constr.snd
-            (tag === BigInt(0) || tag === BigInt(1)) && hasArity(f0, 1) && isBytesData(Builtins.headList(f0))
+            (tag === BigInt(0) || tag === BigInt(1)) && hasArity(f0, 1) && isBytesData(
+              Builtins.headList(f0)
+            )
         }
 
-    /** `StakingCredential`: `StakingHash` 0 `[Credential]` or `StakingPtr` 1 `[Integer, Integer, Integer]`. */
+    /** `StakingCredential`: `StakingHash` 0 `[Credential]` or `StakingPtr` 1
+      * `[Integer, Integer, Integer]`.
+      */
     private def isStakingCredentialData(d: Data): Boolean =
         isConstrData(d) && {
             val constr = Builtins.unConstrData(d)

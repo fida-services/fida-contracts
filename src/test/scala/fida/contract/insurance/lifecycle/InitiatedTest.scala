@@ -66,12 +66,27 @@ class InitiatedTest extends TestToolbox {
         val piBox = ppInfo(iid)
         (iiBox.datum, piBox.datum) match
             case (info: InsuranceInfo, payment: PremiumPaymentInfo) =>
-                assert(quantity(iiBox.value, iid, Tokens.policyInfoTokenName) == 1, "No insurance info token")
-                assert(quantity(piBox.value, iid, Tokens.policyPaymentTokenName) == 1, "No insurance payment info token")
-                assert(info.iInfoFidaCardValue == BigInt(1_000_000_000), "Fida card value doesn't match")
-                assert(info.iInfoCollateralAmount == BigInt(10_000_000_000L), "Collateral amount doesn't match")
+                assert(
+                  quantity(iiBox.value, iid, Tokens.policyInfoTokenName) == 1,
+                  "No insurance info token"
+                )
+                assert(
+                  quantity(piBox.value, iid, Tokens.policyPaymentTokenName) == 1,
+                  "No insurance payment info token"
+                )
+                assert(
+                  info.iInfoFidaCardValue == BigInt(1_000_000_000),
+                  "Fida card value doesn't match"
+                )
+                assert(
+                  info.iInfoCollateralAmount == BigInt(10_000_000_000L),
+                  "Collateral amount doesn't match"
+                )
                 assert(info.iInfoFidaCardNumber == BigInt(10), "Fida card quantity doesn't match")
-                assert(info.iInfoPremiumAmount == BigInt(200_000_000), "Premium amount doesn't match")
+                assert(
+                  info.iInfoPremiumAmount == BigInt(200_000_000),
+                  "Premium amount doesn't match"
+                )
                 assert(info.iInfoStartDate == POption.None, "Start date must be not set")
                 assert(info.iInfoClaim == POption.None, "Claim must be not set")
                 assert(info.iInfoState == Initiated, "State must be set to Initiated")
@@ -81,7 +96,9 @@ class InitiatedTest extends TestToolbox {
                 )
                 assert(
                   payment.ppInfoPiggyBanks.toScalaList ==
-                      fidaCardsFromInts(1 to 10).map(c => plutusAddress(piggyBankAddr(iid, c))).toList,
+                      fidaCardsFromInts(1 to 10)
+                          .map(c => plutusAddress(piggyBankAddr(iid, c)))
+                          .toList,
                   "Piggy banks addresses don't match"
                 )
                 for fcid <- fidaCardsFromInts(1 to 10) do
@@ -92,13 +109,22 @@ class InitiatedTest extends TestToolbox {
                               quantity(pbBox.value, iid, Tokens.fidaCardTokenName(fcid.id)) == 1,
                               s"No piggy bank token @ piggy bank $fcid"
                             )
-                            assert(card.pbfcFidaCardId == fcid, s"Fida card id doesn't match @ piggy bank $fcid")
+                            assert(
+                              card.pbfcFidaCardId == fcid,
+                              s"Fida card id doesn't match @ piggy bank $fcid"
+                            )
                             assert(
                               card.pbfcFidaCardValue == BigInt(1_000_000_000),
                               s"Fida card value doesn't match @ piggy bank $fcid"
                             )
-                            assert(!card.pbfcIsSold, s"Fida card must be available for selling @ piggy bank $fcid")
-                            assert(card.pbfcPaidClaims.isEmpty, s"There should be no paid claims @ piggy bank $fcid")
+                            assert(
+                              !card.pbfcIsSold,
+                              s"Fida card must be available for selling @ piggy bank $fcid"
+                            )
+                            assert(
+                              card.pbfcPaidClaims.isEmpty,
+                              s"There should be no paid claims @ piggy bank $fcid"
+                            )
                         case _ => fail("Datum for piggy bank dosen't match")
             case _ => fail("Datum types for insurance policy script don't match")
     }

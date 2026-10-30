@@ -32,7 +32,8 @@ class PiggyBankDispatchSpec extends PiggyBankSpecBase {
 
     for (redeemer, what, datum) <- notAllowed do
         test(s"ERR-PBANK-32: $redeemer is not allowed on $what") {
-            val ctx = spendPiggyBank(Seq(piggyBankInput(datum.toData, value(minAda)), cardOwnerInput))
+            val ctx =
+                spendPiggyBank(Seq(piggyBankInput(datum.toData, value(minAda)), cardOwnerInput))
             val result = eval(datum, redeemer, ctx)
             assertRejectedWith("ERR-PBANK-32")(result)
             assert(!result.logs.contains("PT5"), "expected traceError, not a false result")

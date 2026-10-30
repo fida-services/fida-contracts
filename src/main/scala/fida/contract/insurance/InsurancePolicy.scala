@@ -1,13 +1,29 @@
 package fida.contract.insurance
 
 import fida.contract.Utils.{before, check, traceError, traceIfFalse, untypedOutputDatum}
-import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PolicyClaimPayment, PremiumPaymentInfo, untypedUpdatePolicyState}
+import fida.contract.insurance.InsurancePolicyDatum.{
+    InsuranceInfo,
+    PolicyClaimPayment,
+    PremiumPaymentInfo,
+    untypedUpdatePolicyState
+}
 import fida.contract.insurance.InsurancePolicyRedeemer.*
 import fida.contract.insurance.InsurancePolicyState.{Cancelled, Expired, Funding, Initiated, OnRisk}
-import fida.contract.insurance.PolicyFundingRedeemer.{PolicyFundingCancel, PolicyFundingFundingComplete}
-import fida.contract.insurance.PolicyInitiatedRedeemer.{PolicyInitiatedCancel, PolicyInitiatedPayPremium}
+import fida.contract.insurance.PolicyFundingRedeemer.{
+    PolicyFundingCancel,
+    PolicyFundingFundingComplete
+}
+import fida.contract.insurance.PolicyInitiatedRedeemer.{
+    PolicyInitiatedCancel,
+    PolicyInitiatedPayPremium
+}
 import fida.contract.insurance.PolicyOnRiskRedeemer.*
-import fida.contract.insurance.lifecycle.{CancelledLifecycle, FundingLifecycle, InitiatedLifecycle, OnRiskLifecycle}
+import fida.contract.insurance.lifecycle.{
+    CancelledLifecycle,
+    FundingLifecycle,
+    InitiatedLifecycle,
+    OnRiskLifecycle
+}
 import scalus.compiler.Compile
 import scalus.uplc.builtin.{BuiltinList, Builtins, Data}
 import scalus.uplc.builtin.Builtins.{headList, tailList, unBData, unConstrData, unIData, unListData}
@@ -44,7 +60,7 @@ object InsurancePolicyValidator {
     ): Boolean =
         redeemer match
             case PolicyInitiated(r) => InitiatedLifecycle.validate(iid, datum, r, ctx)
-            case _ =>
+            case _                  =>
                 if isCancelled(datum) then CancelledLifecycle.validate(iid, datum, redeemer, ctx)
                 else
                     redeemer match
@@ -57,9 +73,29 @@ object InsurancePolicyValidator {
         case InsuranceInfo(_, _, _, _, _, _, _, _, state, _, _, _, _, _, _) => state === Cancelled
         case _                                                              => false
 
-    private def validateExpire(iid: InsuranceId, datum: InsurancePolicyDatum, ctx: ScriptContext): Boolean =
+    private def validateExpire(
+        iid: InsuranceId,
+        datum: InsurancePolicyDatum,
+        ctx: ScriptContext
+    ): Boolean =
         datum match
-            case InsuranceInfo(_, _, _, _, _, insurancePeriod, _, _, state, fundingDeadline, _, _, _, startDate, _) =>
+            case InsuranceInfo(
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  insurancePeriod,
+                  _,
+                  _,
+                  state,
+                  fundingDeadline,
+                  _,
+                  _,
+                  _,
+                  startDate,
+                  _
+                ) =>
                 val expireDate =
                     if state === Funding then fundingDeadline
                     else if state === OnRisk then
@@ -77,10 +113,10 @@ object InsurancePolicyValidator {
 
     /** Entry point, the equivalent of the Haskell `mkInsurancePolicyValidatorUntyped`.
       *
-      * Like PlutusTx `unsafeFromBuiltinData` in the Haskell wrapper, decodes the parameter, then the
-      * datum, then the redeemer strictly before validating: malformed data fails the script, an
-      * unknown constructor fails with `PT1`, and extra constructor fields are ignored. The datum and
-      * redeemer are rebuilt from the decoded values, so re-encoding them (e.g. the expected
+      * Like PlutusTx `unsafeFromBuiltinData` in the Haskell wrapper, decodes the parameter, then
+      * the datum, then the redeemer strictly before validating: malformed data fails the script, an
+      * unknown constructor fails with `PT1`, and extra constructor fields are ignored. The datum
+      * and redeemer are rebuilt from the decoded values, so re-encoding them (e.g. the expected
       * continuing datum) gives the canonical encoding, as `toBuiltinData` does in the Haskell code.
       * The script context comes from the ledger and is well-formed. A false result fails with `PT5`
       * (PlutusTx `check`).
@@ -133,7 +169,10 @@ object InsurancePolicyValidator {
               iInfoClaim = decodeMaybeClaimInfo(headList(f14))
             )
         else if tag === BigInt(1) then
-            PremiumPaymentInfo(unIData(headList(f0)), decodeAddresses(unListData(headList(tailList(f0)))))
+            PremiumPaymentInfo(
+              unIData(headList(f0)),
+              decodeAddresses(unListData(headList(tailList(f0))))
+            )
         else if tag === BigInt(2) then PolicyClaimPayment
         else traceError("PT1")
 
@@ -141,7 +180,10 @@ object InsurancePolicyValidator {
         val constr = unConstrData(d)
         val f0 = constr.snd
         if constr.fst === BigInt(0) then
-            InstallmentsInfo(decodeIntegers(unListData(headList(f0))), unIData(headList(tailList(f0))))
+            InstallmentsInfo(
+              decodeIntegers(unListData(headList(f0))),
+              unIData(headList(tailList(f0)))
+            )
         else traceError("PT1")
 
     private def decodeAuthority(d: Data): InsuranceAuthority =
@@ -149,9 +191,12 @@ object InsurancePolicyValidator {
         val tag = constr.fst
         val field = headList(constr.snd)
         if tag === BigInt(0) then InsuranceAuthority.SingleSign(PubKeyHash(unBData(field)))
-        else if tag === BigInt(1) then InsuranceAuthority.AtLeastOneSign(decodePubKeyHashes(unListData(field)))
-        else if tag === BigInt(2) then InsuranceAuthority.AllMustSign(decodePubKeyHashes(unListData(field)))
-        else if tag === BigInt(3) then InsuranceAuthority.MajorityMustSign(decodePubKeyHashes(unListData(field)))
+        else if tag === BigInt(1) then
+            InsuranceAuthority.AtLeastOneSign(decodePubKeyHashes(unListData(field)))
+        else if tag === BigInt(2) then
+            InsuranceAuthority.AllMustSign(decodePubKeyHashes(unListData(field)))
+        else if tag === BigInt(3) then
+            InsuranceAuthority.MajorityMustSign(decodePubKeyHashes(unListData(field)))
         else traceError("PT1")
 
     private def decodePolicyState(d: Data): InsurancePolicyState =
@@ -216,7 +261,10 @@ object InsurancePolicyValidator {
         val constr = unConstrData(d)
         val f0 = constr.snd
         if constr.fst === BigInt(0) then
-            Address(decodeCredential(headList(f0)), decodeMaybeStakingCredential(headList(tailList(f0))))
+            Address(
+              decodeCredential(headList(f0)),
+              decodeMaybeStakingCredential(headList(tailList(f0)))
+            )
         else traceError("PT1")
 
     private def decodeCredential(d: Data): Credential =
@@ -241,7 +289,11 @@ object InsurancePolicyValidator {
         if tag === BigInt(0) then StakingCredential.StakingHash(decodeCredential(headList(f0)))
         else if tag === BigInt(1) then
             val f1 = tailList(f0)
-            StakingCredential.StakingPtr(unIData(headList(f0)), unIData(headList(f1)), unIData(headList(tailList(f1))))
+            StakingCredential.StakingPtr(
+              unIData(headList(f0)),
+              unIData(headList(f1)),
+              unIData(headList(tailList(f1)))
+            )
         else traceError("PT1")
 
     private def decodeInsurancePolicyRedeemer(d: Data): InsurancePolicyRedeemer =

@@ -35,11 +35,13 @@ class PiggyBankClaimPremiumSpec extends PiggyBankSpecBase {
         owner: Seq[TxInInfo] = Seq(cardOwnerInput),
         validRange: Interval = afterFirstInstallment
     ): ScriptContext =
-        val lockedOutput = if locked > 0 then Seq(piggyBankOutput(lockedDatum, value(locked))) else Seq.empty
+        val lockedOutput =
+            if locked > 0 then Seq(piggyBankOutput(lockedDatum, value(locked))) else Seq.empty
         spendPiggyBank(
           Seq(piggyBankInput(input, value(inputLovelace))) ++ owner,
           refs = refs,
-          outputs = lockedOutput :+ txOutNoDatum(investorAddress, value(inputLovelace - locked, cardNft)),
+          outputs =
+              lockedOutput :+ txOutNoDatum(investorAddress, value(inputLovelace - locked, cardNft)),
           validRange = validRange
         )
 
@@ -49,7 +51,9 @@ class PiggyBankClaimPremiumSpec extends PiggyBankSpecBase {
 
     test("ClaimPremium: the whole premium unlocks once every installment is due") {
         val afterLastInstallment = Interval.after(start + days(270) + 1)
-        assertSucceeds(eval(premium, ClaimPremium, claim(locked = 0, validRange = afterLastInstallment)))
+        assertSucceeds(
+          eval(premium, ClaimPremium, claim(locked = 0, validRange = afterLastInstallment))
+        )
     }
 
     test("ClaimPremium: an installment is due only strictly after its date (Interval.before)") {
@@ -59,43 +63,73 @@ class PiggyBankClaimPremiumSpec extends PiggyBankSpecBase {
         assertRejectedWith("ERR-PBANK-8")(
           eval(premium, ClaimPremium, claim(locked = share - installment, validRange = fromDueDate))
         )
-        assertSucceeds(eval(premium, ClaimPremium, claim(locked = share - installment, validRange = afterDueDate)))
+        assertSucceeds(
+          eval(
+            premium,
+            ClaimPremium,
+            claim(locked = share - installment, validRange = afterDueDate)
+          )
+        )
     }
 
     test("ClaimPremium: a refund lowers the premium that must stay locked") {
         val refunded = PBankPremium(share, share - installment)
         assertSucceeds(
-          eval(refunded, ClaimPremium, claim(locked = 0, input = refunded.toData, inputLovelace = installment))
+          eval(
+            refunded,
+            ClaimPremium,
+            claim(locked = 0, input = refunded.toData, inputLovelace = installment)
+          )
         )
     }
 
     test("ERR-PBANK-7: the fida card NFT is not spent") {
-        assertRejectedWith("ERR-PBANK-7")(eval(premium, ClaimPremium, claim(locked = share, owner = Seq.empty)))
+        assertRejectedWith("ERR-PBANK-7")(
+          eval(premium, ClaimPremium, claim(locked = share, owner = Seq.empty))
+        )
     }
 
     test("ERR-PBANK-7: the fida card NFT is spent twice") {
         val secondCard = txIn(outRef(202), txOutNoDatum(investorAddress, value(minAda, cardNft)))
         assertRejectedWith("ERR-PBANK-7")(
-          eval(premium, ClaimPremium, claim(locked = share, owner = Seq(cardOwnerInput, secondCard)))
+          eval(
+            premium,
+            ClaimPremium,
+            claim(locked = share, owner = Seq(cardOwnerInput, secondCard))
+          )
         )
     }
 
     test("ERR-PBANK-8: claiming more than the unlocked premium") {
-        assertRejectedWith("ERR-PBANK-8")(eval(premium, ClaimPremium, claim(locked = share - installment - 1)))
+        assertRejectedWith("ERR-PBANK-8")(
+          eval(premium, ClaimPremium, claim(locked = share - installment - 1))
+        )
     }
 
     test("ERR-PBANK-8: a continuing output with another datum does not count as locked") {
         val other = PBankPremium(share, 1)
         assertRejectedWith("ERR-PBANK-8")(
-          eval(premium, ClaimPremium, claim(locked = share - installment, lockedDatum = other.toData))
+          eval(
+            premium,
+            ClaimPremium,
+            claim(locked = share - installment, lockedDatum = other.toData)
+          )
         )
     }
 
-    test("ERR-PBANK-8: locked premium counts the canonical re-encoding of a datum with an extra field") {
+    test(
+      "ERR-PBANK-8: locked premium counts the canonical re-encoding of a datum with an extra field"
+    ) {
         val extra = withExtraField(premium.toData)
-        assertSucceeds(evalRaw(extra, ClaimPremium.toData, claim(locked = share - installment, input = extra)))
+        assertSucceeds(
+          evalRaw(extra, ClaimPremium.toData, claim(locked = share - installment, input = extra))
+        )
         assertRejectedWith("ERR-PBANK-8")(
-          evalRaw(extra, ClaimPremium.toData, claim(locked = share - installment, input = extra, lockedDatum = extra))
+          evalRaw(
+            extra,
+            ClaimPremium.toData,
+            claim(locked = share - installment, input = extra, lockedDatum = extra)
+          )
         )
     }
 
@@ -115,27 +149,38 @@ class PiggyBankClaimPremiumSpec extends PiggyBankSpecBase {
               eval(
                 premium,
                 ClaimPremium,
-                claim(locked = share - installment, refs = Seq(policyInfoRef(d, 1), policyInfoRef(onRisk.toData, 2)))
+                claim(
+                  locked = share - installment,
+                  refs = Seq(policyInfoRef(d, 1), policyInfoRef(onRisk.toData, 2))
+                )
               )
             )
     }
 
     test("ERR-PBANK-9.1: no policy info reference input") {
-        assertRejectedWith("ERR-PBANK-9.1")(eval(premium, ClaimPremium, claim(locked = share, refs = Seq.empty)))
+        assertRejectedWith("ERR-PBANK-9.1")(
+          eval(premium, ClaimPremium, claim(locked = share, refs = Seq.empty))
+        )
     }
 
     test("ERR-PBANK-9.1: a policy info datum that does not decode exactly is ignored") {
         val refs = Seq(policyInfoRef(withExtraField(onRisk.toData)))
-        assertRejectedWith("ERR-PBANK-9.1")(eval(premium, ClaimPremium, claim(locked = share, refs = refs)))
+        assertRejectedWith("ERR-PBANK-9.1")(
+          eval(premium, ClaimPremium, claim(locked = share, refs = refs))
+        )
     }
 
     test("ERR-PBANK-9.2: two policy info reference inputs") {
         val refs = Seq(policyInfoRef(onRisk.toData, 1), policyInfoRef(onRisk.toData, 2))
-        assertRejectedWith("ERR-PBANK-9.2")(eval(premium, ClaimPremium, claim(locked = share, refs = refs)))
+        assertRejectedWith("ERR-PBANK-9.2")(
+          eval(premium, ClaimPremium, claim(locked = share, refs = refs))
+        )
     }
 
     test("ERR-PBANK-10: the policy has not started (no start date)") {
         val refs = Seq(policyInfoRef(sampleInsuranceInfo(state = Funding).toData))
-        assertRejectedWith("ERR-PBANK-10")(eval(premium, ClaimPremium, claim(locked = share, refs = refs)))
+        assertRejectedWith("ERR-PBANK-10")(
+          eval(premium, ClaimPremium, claim(locked = share, refs = refs))
+        )
     }
 }

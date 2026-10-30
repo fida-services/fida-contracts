@@ -2,7 +2,16 @@ package fida.contract
 
 import scalus.compiler.Compile
 import scalus.uplc.builtin.{Builtins, ByteString, Data}
-import scalus.cardano.onchain.plutus.v1.{Interval, IntervalBoundType, PolicyId, PosixTime, PubKeyHash, ScriptPurpose, TokenName, Value}
+import scalus.cardano.onchain.plutus.v1.{
+    Interval,
+    IntervalBoundType,
+    PolicyId,
+    PosixTime,
+    PubKeyHash,
+    ScriptPurpose,
+    TokenName,
+    Value
+}
 import scalus.cardano.onchain.plutus.v2.{OutputDatum, ScriptContext, TxInInfo, TxInfo, TxOut}
 import scalus.cardano.onchain.plutus.prelude.*
 
@@ -22,8 +31,8 @@ object Utils {
     /** `traceError msg`: logs `msg` and fails the script. */
     inline def traceError(msg: String): Nothing = fail(msg)
 
-    /** PlutusTx `check`: turns a validation result into success, or failure with PlutusTx's
-      * `PT5` ("check input is False") code.
+    /** PlutusTx `check`: turns a validation result into success, or failure with PlutusTx's `PT5`
+      * ("check input is False") code.
       */
     inline def check(cond: Boolean): Unit = if cond then () else fail("PT5")
 
@@ -99,8 +108,8 @@ object Utils {
                 case _ => Option.None
         }
 
-    /** Outputs together with their inline datum, for outputs holding exactly one `(cs, tn)`
-      * token (Haskell `outputs'` before decoding).
+    /** Outputs together with their inline datum, for outputs holding exactly one `(cs, tn)` token
+      * (Haskell `outputs'` before decoding).
       */
     def outputsWithToken(
         outputs: List[TxOut],
@@ -121,8 +130,8 @@ object Utils {
     def untypedOutputDatum(cs: PolicyId, ctx: ScriptContext, tn: TokenName): Option[Data] =
         fromSingleton(inlineDatumsWithToken(getContinuingOutputs(ctx), cs, tn))
 
-    /** `untypedOutput cs sc tn`: the single continuing output holding the `(cs, tn)` token
-      * (datum not required).
+    /** `untypedOutput cs sc tn`: the single continuing output holding the `(cs, tn)` token (datum
+      * not required).
       */
     def untypedOutput(cs: PolicyId, ctx: ScriptContext, tn: TokenName): Option[TxOut] =
         fromSingleton(

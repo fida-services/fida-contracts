@@ -6,7 +6,10 @@ import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PolicyClaimP
 import fida.contract.insurance.InsurancePolicyRedeemer.PolicyInitiated
 import fida.contract.insurance.InsurancePolicyState.*
 import fida.contract.insurance.PiggyBankDatum.{PBankFidaCard, PBankPremium}
-import fida.contract.insurance.PolicyInitiatedRedeemer.{PolicyInitiatedCancel, PolicyInitiatedPayPremium}
+import fida.contract.insurance.PolicyInitiatedRedeemer.{
+    PolicyInitiatedCancel,
+    PolicyInitiatedPayPremium
+}
 import fida.contract.testkit.{ScriptAssertions, ScriptEval}
 import fida.contract.testkit.ContextBuilder.*
 import fida.contract.testkit.Fixtures.*
@@ -14,7 +17,13 @@ import org.scalatest.funsuite.AnyFunSuite
 import scalus.uplc.builtin.{ByteString, Data}
 import scalus.uplc.builtin.Data.toData
 import scalus.uplc.eval.Result
-import scalus.cardano.onchain.plutus.v1.{Address, Credential, PubKeyHash, StakingCredential, TxOutRef}
+import scalus.cardano.onchain.plutus.v1.{
+    Address,
+    Credential,
+    PubKeyHash,
+    StakingCredential,
+    TxOutRef
+}
 import scalus.cardano.onchain.plutus.v2.{OutputDatum, ScriptContext, TxInInfo, TxOut}
 import scalus.cardano.onchain.plutus.prelude.{List, Option}
 
@@ -39,7 +48,11 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     private val cancel = PolicyInitiated(PolicyInitiatedCancel)
     private val payPremium = PolicyInitiated(PolicyInitiatedPayPremium)
 
-    private def run(datum: InsurancePolicyDatum, redeemer: InsurancePolicyRedeemer, ctx: ScriptContext): Result =
+    private def run(
+        datum: InsurancePolicyDatum,
+        redeemer: InsurancePolicyRedeemer,
+        ctx: ScriptContext
+    ): Result =
         ScriptEval.eval(
           Scripts.insurancePolicyValidator.program,
           insuranceId.toData,
@@ -48,7 +61,9 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
           ctx.toData
         )
 
-    /** Rejected, and `code` is the only error code in the logs: the one the Haskell validator reports. */
+    /** Rejected, and `code` is the only error code in the logs: the one the Haskell validator
+      * reports.
+      */
     private def assertRejectedWith(code: String)(result: Result): Unit =
         assertFailsWith(code)(result)
         val codes = result.logs.filter(_.startsWith("ERR-"))
@@ -60,9 +75,12 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     private def infoOut(datum: Data): TxOut = txOut(policyAddress, value(2_000_000, infoNft), datum)
     private def infoIn(datum: InsurancePolicyDatum): TxInInfo = txIn(infoRef, infoOut(datum.toData))
 
-    private val paymentIn = txIn(paymentRef, txOut(policyAddress, value(2_000_000, paymentNft), premiumInfo.toData))
-    private val holderFunds = txIn(outRef(3), txOutNoDatum(pubKeyAddress(policyHolder), value(500_000_000)))
-    private val paymentInfoToHolder = txOutNoDatum(pubKeyAddress(policyHolder), value(2_000_000, paymentNft))
+    private val paymentIn =
+        txIn(paymentRef, txOut(policyAddress, value(2_000_000, paymentNft), premiumInfo.toData))
+    private val holderFunds =
+        txIn(outRef(3), txOutNoDatum(pubKeyAddress(policyHolder), value(500_000_000)))
+    private val paymentInfoToHolder =
+        txOutNoDatum(pubKeyAddress(policyHolder), value(2_000_000, paymentNft))
 
     private def premiumPayment(
         to: Address,
@@ -79,7 +97,10 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         signers: Seq[PubKeyHash] = Seq(broker1),
         info: InsurancePolicyDatum = initiated
     ): ScriptContext =
-        spending(txInfo(inputs = Seq(infoIn(info)), outputs = output, signatories = signers), infoRef)
+        spending(
+          txInfo(inputs = Seq(infoIn(info)), outputs = output, signatories = signers),
+          infoRef
+        )
 
     /** The Haskell toolbox `payPremium` transaction: spends the policy info and the premium payment
       * info, moves the policy to Funding, pays every piggy bank and hands the payment info value to
@@ -103,7 +124,8 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         )
 
     /** `allPayments` with the payment to the first piggy bank replaced by `replacement`. */
-    private def firstPaymentReplacedBy(replacement: TxOut*): Seq[TxOut] = replacement ++ allPayments.tail
+    private def firstPaymentReplacedBy(replacement: TxOut*): Seq[TxOut] =
+        replacement ++ allPayments.tail
 
     // Cancel
 
@@ -117,12 +139,19 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
             assertRejectedWith("ERR-INIT-1")(run(initiated, cancel, cancelCtx(signers = signers)))
     }
 
-    test("ERR-INIT-1: AtLeastOneSign is not satisfied when two authority keys sign (Haskell quirk)") {
-        assertRejectedWith("ERR-INIT-1")(run(initiated, cancel, cancelCtx(signers = Seq(fidaSystem, broker1))))
+    test(
+      "ERR-INIT-1: AtLeastOneSign is not satisfied when two authority keys sign (Haskell quirk)"
+    ) {
+        assertRejectedWith("ERR-INIT-1")(
+          run(initiated, cancel, cancelCtx(signers = Seq(fidaSystem, broker1)))
+        )
     }
 
     test("ERR-INIT-1 is reported before ERR-INIT-2") {
-        val ctx = cancelCtx(output = Seq(infoOut(withState(initiated, Funding))), signers = Seq(investor1))
+        val ctx = cancelCtx(
+          output = Seq(infoOut(withState(initiated, Funding))),
+          signers = Seq(investor1)
+        )
         assertRejectedWith("ERR-INIT-1")(run(initiated, cancel, ctx))
     }
 
@@ -132,17 +161,33 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
               run(initiated, cancel, cancelCtx(output = Seq(infoOut(withState(initiated, state)))))
             )
         val otherChange = initiated.copy(iInfoState = Cancelled, iInfoFidaCardNumber = 11).toData
-        assertRejectedWith("ERR-INIT-2")(run(initiated, cancel, cancelCtx(output = Seq(infoOut(otherChange)))))
+        assertRejectedWith("ERR-INIT-2")(
+          run(initiated, cancel, cancelCtx(output = Seq(infoOut(otherChange))))
+        )
     }
 
-    test("ERR-INIT-2: the cancelled policy info must be the single continuing output with the NFT and an inline datum") {
+    test(
+      "ERR-INIT-2: the cancelled policy info must be the single continuing output with the NFT and an inline datum"
+    ) {
         val cancelled = withState(initiated, Cancelled)
         val outputs = Seq(
           Seq.empty,
           Seq(txOut(policyAddress, value(2_000_000), cancelled)),
-          Seq(txOut(policyAddress, value(2_000_000, (cs, Tokens.policyInfoTokenName, BigInt(2))), cancelled)),
+          Seq(
+            txOut(
+              policyAddress,
+              value(2_000_000, (cs, Tokens.policyInfoTokenName, BigInt(2))),
+              cancelled
+            )
+          ),
           Seq(txOutNoDatum(policyAddress, value(2_000_000, infoNft))),
-          Seq(TxOut(policyAddress, value(2_000_000, infoNft), OutputDatum.OutputDatumHash(ByteString.fromHex("11" * 32)))),
+          Seq(
+            TxOut(
+              policyAddress,
+              value(2_000_000, infoNft),
+              OutputDatum.OutputDatumHash(ByteString.fromHex("11" * 32))
+            )
+          ),
           Seq(txOut(pubKeyAddress(broker1), value(2_000_000, infoNft), cancelled)),
           Seq(infoOut(cancelled), infoOut(cancelled))
         )
@@ -155,13 +200,21 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
             val info = initiated.copy(iInfoState = state)
             assertRejectedWith("ERR-INIT-0")(run(info, cancel, cancelCtx(info = info)))
         assertRejectedWith("ERR-INIT-0")(
-          run(premiumInfo, cancel, spending(txInfo(inputs = Seq(paymentIn), signatories = Seq(broker1)), paymentRef))
+          run(
+            premiumInfo,
+            cancel,
+            spending(txInfo(inputs = Seq(paymentIn), signatories = Seq(broker1)), paymentRef)
+          )
         )
-        assertRejectedWith("ERR-INIT-0")(run(PolicyClaimPayment, cancel, cancelCtx(info = PolicyClaimPayment)))
+        assertRejectedWith("ERR-INIT-0")(
+          run(PolicyClaimPayment, cancel, cancelCtx(info = PolicyClaimPayment))
+        )
     }
 
     test("ERR-INIT-0: PayPremium is not allowed for a PolicyClaimPayment datum") {
-        assertRejectedWith("ERR-INIT-0")(run(PolicyClaimPayment, payPremium, payPremiumCtx(infoRef, info = PolicyClaimPayment)))
+        assertRejectedWith("ERR-INIT-0")(
+          run(PolicyClaimPayment, payPremium, payPremiumCtx(infoRef, info = PolicyClaimPayment))
+        )
     }
 
     // PayPremium, policy info input
@@ -174,15 +227,43 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         for state <- Seq(Initiated, OnRisk, Cancelled, Expired) do
             val ctx = payPremiumCtx(infoRef, infoOutput = Seq(infoOut(withState(initiated, state))))
             assertRejectedWith("ERR-INIT-6")(run(initiated, payPremium, ctx))
-        assertRejectedWith("ERR-INIT-6")(run(initiated, payPremium, payPremiumCtx(infoRef, infoOutput = Seq.empty)))
+        assertRejectedWith("ERR-INIT-6")(
+          run(initiated, payPremium, payPremiumCtx(infoRef, infoOutput = Seq.empty))
+        )
     }
 
     test("ERR-INIT-7: exactly one input must hold exactly one POLICY-PAYMENT token") {
-        val twoTokens = txIn(paymentRef, txOut(policyAddress, value(2_000_000, (cs, Tokens.policyPaymentTokenName, BigInt(2))), premiumInfo.toData))
-        val walletToken = txIn(outRef(4), txOutNoDatum(pubKeyAddress(policyHolder), value(2_000_000, paymentNft)))
-        val otherPolicyToken = txIn(paymentRef, txOut(policyAddress, value(2_000_000, (ByteString.fromHex("cd" * 28), Tokens.policyPaymentTokenName, BigInt(1))), premiumInfo.toData))
-        for otherInputs <- Seq(Seq(holderFunds), Seq(twoTokens, holderFunds), Seq(otherPolicyToken), Seq(paymentIn, walletToken)) do
-            assertRejectedWith("ERR-INIT-7")(run(initiated, payPremium, payPremiumCtx(infoRef, otherInputs = otherInputs)))
+        val twoTokens = txIn(
+          paymentRef,
+          txOut(
+            policyAddress,
+            value(2_000_000, (cs, Tokens.policyPaymentTokenName, BigInt(2))),
+            premiumInfo.toData
+          )
+        )
+        val walletToken =
+            txIn(outRef(4), txOutNoDatum(pubKeyAddress(policyHolder), value(2_000_000, paymentNft)))
+        val otherPolicyToken = txIn(
+          paymentRef,
+          txOut(
+            policyAddress,
+            value(
+              2_000_000,
+              (ByteString.fromHex("cd" * 28), Tokens.policyPaymentTokenName, BigInt(1))
+            ),
+            premiumInfo.toData
+          )
+        )
+        for otherInputs <- Seq(
+              Seq(holderFunds),
+              Seq(twoTokens, holderFunds),
+              Seq(otherPolicyToken),
+              Seq(paymentIn, walletToken)
+            )
+        do
+            assertRejectedWith("ERR-INIT-7")(
+              run(initiated, payPremium, payPremiumCtx(infoRef, otherInputs = otherInputs))
+            )
     }
 
     test("ERR-INIT-6 is reported before ERR-INIT-7") {
@@ -190,10 +271,14 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         assertRejectedWith("ERR-INIT-6")(run(initiated, payPremium, ctx))
     }
 
-    test("a policy in any state returns to Funding when a POLICY-PAYMENT token is spent (Haskell quirk)") {
-        val walletToken = txIn(outRef(4), txOutNoDatum(pubKeyAddress(policyHolder), value(2_000_000, paymentNft)))
+    test(
+      "a policy in any state returns to Funding when a POLICY-PAYMENT token is spent (Haskell quirk)"
+    ) {
+        val walletToken =
+            txIn(outRef(4), txOutNoDatum(pubKeyAddress(policyHolder), value(2_000_000, paymentNft)))
         for state <- Seq(Funding, OnRisk, Cancelled, Expired) do
-            val info = initiated.copy(iInfoState = state, iInfoStartDate = Option.Some(beginningOfTime))
+            val info =
+                initiated.copy(iInfoState = state, iInfoStartDate = Option.Some(beginningOfTime))
             val ctx = payPremiumCtx(
               infoRef,
               info = info,
@@ -211,8 +296,13 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     }
 
     test("overpayments, duplicate payments and unrelated outputs are accepted") {
-        val stakedPiggyBank = Address(piggyBanks.head.credential, Option.Some(StakingCredential.StakingHash(Credential.PubKeyCredential(pkh(9)))))
-        val payments = firstPaymentReplacedBy(premiumPayment(piggyBanks.head, paid = perPiggyBank + 5, amount = perPiggyBank + 5))
+        val stakedPiggyBank = Address(
+          piggyBanks.head.credential,
+          Option.Some(StakingCredential.StakingHash(Credential.PubKeyCredential(pkh(9))))
+        )
+        val payments = firstPaymentReplacedBy(
+          premiumPayment(piggyBanks.head, paid = perPiggyBank + 5, amount = perPiggyBank + 5)
+        )
         val extra = Seq(
           premiumPayment(piggyBanks(1)),
           premiumPayment(piggyBanks(2), paid = 1, amount = 1),
@@ -220,17 +310,42 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
           premiumPayment(pubKeyAddress(investor1)),
           txOut(piggyBanks(3), value(perPiggyBank), Data.I(42)),
           txOut(piggyBanks(3), value(perPiggyBank), Data.B(ByteString.fromHex("abcd"))),
-          txOut(piggyBanks(3), value(perPiggyBank), Data.List(List(Data.I(perPiggyBank), Data.I(0)))),
-          txOut(piggyBanks(3), value(perPiggyBank), Data.Map(List((Data.I(perPiggyBank), Data.I(0))))),
-          txOut(piggyBanks(3), value(perPiggyBank), Data.Constr(0, List(Data.B(ByteString.empty), Data.I(0)))),
-          txOut(piggyBanks(3), value(perPiggyBank), PBankFidaCard(true, fidaCardId(1), fidaCardValue, List.Nil).toData)
+          txOut(
+            piggyBanks(3),
+            value(perPiggyBank),
+            Data.List(List(Data.I(perPiggyBank), Data.I(0)))
+          ),
+          txOut(
+            piggyBanks(3),
+            value(perPiggyBank),
+            Data.Map(List((Data.I(perPiggyBank), Data.I(0))))
+          ),
+          txOut(
+            piggyBanks(3),
+            value(perPiggyBank),
+            Data.Constr(0, List(Data.B(ByteString.empty), Data.I(0)))
+          ),
+          txOut(
+            piggyBanks(3),
+            value(perPiggyBank),
+            PBankFidaCard(true, fidaCardId(1), fidaCardValue, List.Nil).toData
+          )
         )
-        assertSucceeds(run(premiumInfo, payPremium, payPremiumCtx(paymentRef, payments = payments, extraOutputs = extra)))
+        assertSucceeds(
+          run(
+            premiumInfo,
+            payPremium,
+            payPremiumCtx(paymentRef, payments = payments, extraOutputs = extra)
+          )
+        )
     }
 
     test("ERR-INIT-3: every piggy bank must receive a valid premium payment") {
         val first = piggyBanks.head
-        val stakedFirst = Address(first.credential, Option.Some(StakingCredential.StakingHash(Credential.PubKeyCredential(pkh(9)))))
+        val stakedFirst = Address(
+          first.credential,
+          Option.Some(StakingCredential.StakingHash(Credential.PubKeyCredential(pkh(9))))
+        )
         val brokenPayments = Seq(
           Seq.empty,
           Seq(premiumPayment(first, paid = perPiggyBank - 1, amount = perPiggyBank - 1)),
@@ -239,14 +354,22 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
           Seq(premiumPayment(first, refund = 1)),
           Seq(premiumPayment(stakedFirst)),
           Seq(txOutNoDatum(first, value(perPiggyBank))),
-          Seq(TxOut(first, value(perPiggyBank), OutputDatum.OutputDatumHash(ByteString.fromHex("22" * 32))))
+          Seq(
+            TxOut(
+              first,
+              value(perPiggyBank),
+              OutputDatum.OutputDatumHash(ByteString.fromHex("22" * 32))
+            )
+          )
         )
         for payment <- brokenPayments do
             val ctx = payPremiumCtx(paymentRef, payments = firstPaymentReplacedBy(payment*))
             assertRejectedWith("ERR-INIT-3")(run(premiumInfo, payPremium, ctx))
     }
 
-    test("ERR-INIT-3: payment datums are decoded like fromBuiltinData, so malformed ones are not payments") {
+    test(
+      "ERR-INIT-3: payment datums are decoded like fromBuiltinData, so malformed ones are not payments"
+    ) {
         val first = piggyBanks.head
         val amount = Data.I(perPiggyBank)
         val malformedDatums = Seq(
@@ -265,14 +388,22 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         )
         for (datum, i) <- malformedDatums.zipWithIndex do
             withClue(s"malformed payment #$i: $datum\n") {
-                val ctx = payPremiumCtx(paymentRef, payments = firstPaymentReplacedBy(txOut(first, value(perPiggyBank), datum)))
+                val ctx = payPremiumCtx(
+                  paymentRef,
+                  payments = firstPaymentReplacedBy(txOut(first, value(perPiggyBank), datum))
+                )
                 assertRejectedWith("ERR-INIT-3")(run(premiumInfo, payPremium, ctx))
             }
     }
 
-    test("ERR-INIT-3: a premium payment info listing a piggy bank twice can never be paid (Haskell quirk)") {
-        val duplicated = premiumInfo.copy(ppInfoPiggyBanks = List.Cons(piggyBanks.head, premiumInfo.ppInfoPiggyBanks))
-        val in = txIn(paymentRef, txOut(policyAddress, value(2_000_000, paymentNft), duplicated.toData))
+    test(
+      "ERR-INIT-3: a premium payment info listing a piggy bank twice can never be paid (Haskell quirk)"
+    ) {
+        val duplicated = premiumInfo.copy(ppInfoPiggyBanks =
+            List.Cons(piggyBanks.head, premiumInfo.ppInfoPiggyBanks)
+        )
+        val in =
+            txIn(paymentRef, txOut(policyAddress, value(2_000_000, paymentNft), duplicated.toData))
         val ctx = payPremiumCtx(paymentRef, otherInputs = Seq(in, holderFunds))
         assertRejectedWith("ERR-INIT-3")(run(duplicated, payPremium, ctx))
     }
@@ -282,16 +413,32 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         val infoOutputs = Seq(
           Seq.empty,
           Seq(txOut(pubKeyAddress(policyHolder), value(2_000_000, infoNft), funding)),
-          Seq(txOut(policyAddress, value(2_000_000, (cs, Tokens.policyInfoTokenName, BigInt(2))), funding)),
+          Seq(
+            txOut(
+              policyAddress,
+              value(2_000_000, (cs, Tokens.policyInfoTokenName, BigInt(2))),
+              funding
+            )
+          ),
           Seq(infoOut(funding), infoOut(funding))
         )
         for infoOutput <- infoOutputs do
-            assertRejectedWith("ERR-INIT-4")(run(premiumInfo, payPremium, payPremiumCtx(paymentRef, infoOutput = infoOutput)))
+            assertRejectedWith("ERR-INIT-4")(
+              run(premiumInfo, payPremium, payPremiumCtx(paymentRef, infoOutput = infoOutput))
+            )
     }
 
-    test("ERR-INIT-4 only looks at the POLICY-INFO token, not at the datum of the recreated policy info") {
-        for infoOutput <- Seq(infoOut(withState(initiated, Initiated)), txOutNoDatum(policyAddress, value(2_000_000, infoNft))) do
-            assertSucceeds(run(premiumInfo, payPremium, payPremiumCtx(paymentRef, infoOutput = Seq(infoOutput))))
+    test(
+      "ERR-INIT-4 only looks at the POLICY-INFO token, not at the datum of the recreated policy info"
+    ) {
+        for infoOutput <- Seq(
+              infoOut(withState(initiated, Initiated)),
+              txOutNoDatum(policyAddress, value(2_000_000, infoNft))
+            )
+        do
+            assertSucceeds(
+              run(premiumInfo, payPremium, payPremiumCtx(paymentRef, infoOutput = Seq(infoOutput)))
+            )
     }
 
     test("ERR-INIT-3 is reported before ERR-INIT-4") {

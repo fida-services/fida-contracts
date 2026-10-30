@@ -24,7 +24,8 @@ class KnownIssuesTest extends TestToolbox {
     private val card1 = fidaCardFromInt(1)
     private val card2 = fidaCardFromInt(2)
 
-    /** `scenario` prepares the ledger and returns the attack; only the attack is expected to fail. */
+    /** `scenario` prepares the ledger and returns the attack; only the attack is expected to fail.
+      */
     private def attack(name: String)(scenario: Run ?=> (() => Unit)): Unit =
         test(s"Known issue: $name") {
             given Run = new Run
@@ -45,7 +46,11 @@ class KnownIssuesTest extends TestToolbox {
         val users = setupUsers
         val iid = newSamplePolicy(users)
         startCoverage(iid, users)
-        val paymentNft = run.utxosWithAsset(users.policyHolder, policyId(iid), AssetName(Tokens.policyPaymentTokenName))
+        val paymentNft = run.utxosWithAsset(
+          users.policyHolder,
+          policyId(iid),
+          AssetName(Tokens.policyPaymentTokenName)
+        )
         val tx = paymentNft.foldLeft(
           updatePolicyStateTx(iid, iinfo(iid), Funding, PolicyInitiated(PolicyInitiatedPayPremium))
         )(_.spend(_))
@@ -83,7 +88,8 @@ class KnownIssuesTest extends TestToolbox {
               .validFrom(run.instant(run.currentTime))
         ) { (b, fcid) =>
             val box = piggyBankInfo(iid, fcid)
-            val paid = PiggyBankDatum.addPiggyBankPaidClaim(claim.claimId, box.datum).orFail("not a card")
+            val paid =
+                PiggyBankDatum.addPiggyBankPaidClaim(claim.claimId, box.datum).orFail("not a card")
             fidaCardUtxos(users.investor1, iid, fcid)
                 .foldLeft(b)(_.spend(_))
                 .payTo(users.investor1.address, fidaCardNFT(iid, fcid))

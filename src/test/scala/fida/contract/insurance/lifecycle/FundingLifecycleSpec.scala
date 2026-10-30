@@ -6,7 +6,10 @@ import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PolicyClaimP
 import fida.contract.insurance.InsurancePolicyRedeemer.PolicyFunding
 import fida.contract.insurance.InsurancePolicyState.*
 import fida.contract.insurance.PiggyBankDatum.{PBankFidaCard, PBankPremium}
-import fida.contract.insurance.PolicyFundingRedeemer.{PolicyFundingCancel, PolicyFundingFundingComplete}
+import fida.contract.insurance.PolicyFundingRedeemer.{
+    PolicyFundingCancel,
+    PolicyFundingFundingComplete
+}
 import fida.contract.testkit.{ScriptAssertions, ScriptEval}
 import fida.contract.testkit.ContextBuilder.*
 import fida.contract.testkit.Fixtures.*
@@ -14,7 +17,15 @@ import org.scalatest.funsuite.AnyFunSuite
 import scalus.uplc.builtin.{ByteString, Data}
 import scalus.uplc.builtin.Data.toData
 import scalus.uplc.eval.Result
-import scalus.cardano.onchain.plutus.v1.{Interval, IntervalBound, IntervalBoundType, PolicyId, PosixTime, PubKeyHash, TokenName}
+import scalus.cardano.onchain.plutus.v1.{
+    Interval,
+    IntervalBound,
+    IntervalBoundType,
+    PolicyId,
+    PosixTime,
+    PubKeyHash,
+    TokenName
+}
 import scalus.cardano.onchain.plutus.v2.{OutputDatum, ScriptContext, TxInInfo, TxOut}
 import scalus.cardano.onchain.plutus.prelude.{List, Option}
 
@@ -32,13 +43,20 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
 
     private val funding: InsuranceInfo = sampleInsuranceInfo(state = Funding)
     private val startDate: PosixTime = beginningOfTime + days(2)
-    private val onRisk: Data = funding.copy(iInfoState = OnRisk, iInfoStartDate = Option.Some(startDate)).toData
+    private val onRisk: Data =
+        funding.copy(iInfoState = OnRisk, iInfoStartDate = Option.Some(startDate)).toData
     private val afterStart: Interval = Interval.after(startDate + seconds(100))
 
     private val cancel = PolicyFunding(PolicyFundingCancel)
-    private def complete(start: PosixTime = startDate) = PolicyFunding(PolicyFundingFundingComplete(start))
+    private def complete(start: PosixTime = startDate) = PolicyFunding(
+      PolicyFundingFundingComplete(start)
+    )
 
-    private def run(datum: InsurancePolicyDatum, redeemer: InsurancePolicyRedeemer, ctx: ScriptContext): Result =
+    private def run(
+        datum: InsurancePolicyDatum,
+        redeemer: InsurancePolicyRedeemer,
+        ctx: ScriptContext
+    ): Result =
         ScriptEval.eval(
           Scripts.insurancePolicyValidator.program,
           insuranceId.toData,
@@ -47,7 +65,9 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
           ctx.toData
         )
 
-    /** Rejected, and `code` is the only error code in the logs: the one the Haskell validator reports. */
+    /** Rejected, and `code` is the only error code in the logs: the one the Haskell validator
+      * reports.
+      */
     private def assertRejectedWith(code: String)(result: Result): Unit =
         assertFailsWith(code)(result)
         val codes = result.logs.filter(_.startsWith("ERR-"))
@@ -58,7 +78,8 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
 
     private def infoOut(datum: Data): TxOut = txOut(policyAddress, value(2_000_000, infoNft), datum)
 
-    private def soldCard(n: Int): Data = PBankFidaCard(true, fidaCardId(n), fidaCardValue, List.Nil).toData
+    private def soldCard(n: Int): Data =
+        PBankFidaCard(true, fidaCardId(n), fidaCardValue, List.Nil).toData
 
     /** A piggy bank fida card UTxO, as created by `makePolicy` and updated by `BuyFidaCard`. */
     private def card(
@@ -68,12 +89,16 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         ref: Int = 0
     ): TxInInfo =
         val d = scala.Option(datum).getOrElse(soldCard(n))
-        txIn(outRef(100 + n, ref), txOut(scriptAddress(scriptHash(1000 + n)), value(fidaCardValue + 1_000_000, status), d))
+        txIn(
+          outRef(100 + n, ref),
+          txOut(scriptAddress(scriptHash(1000 + n)), value(fidaCardValue + 1_000_000, status), d)
+        )
 
     private val allSoldCards: Seq[TxInInfo] = (1 to 10).map(card(_))
 
     /** `allSoldCards` with the first card replaced by `replacement`. */
-    private def firstCardReplacedBy(replacement: TxInInfo*): Seq[TxInInfo] = replacement ++ allSoldCards.tail
+    private def firstCardReplacedBy(replacement: TxInInfo*): Seq[TxInInfo] =
+        replacement ++ allSoldCards.tail
 
     private def ctx(
         info: InsurancePolicyDatum = funding,
@@ -98,7 +123,8 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         info: InsuranceInfo = funding,
         output: Data = withState(funding, Cancelled),
         signers: Seq[PubKeyHash] = Seq(broker1)
-    ): ScriptContext = ctx(info = info, output = Seq(infoOut(output)), cards = Seq.empty, signers = signers)
+    ): ScriptContext =
+        ctx(info = info, output = Seq(infoOut(output)), cards = Seq.empty, signers = signers)
 
     // FundingCancel
 
@@ -110,7 +136,9 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     test("FundingCancel cancels a policy in any state but Cancelled (Haskell quirk)") {
         for state <- Seq(Initiated, OnRisk, Expired) do
             val info = funding.copy(iInfoState = state, iInfoStartDate = Option.Some(startDate))
-            assertSucceeds(run(info, cancel, cancelCtx(info = info, output = withState(info, Cancelled))))
+            assertSucceeds(
+              run(info, cancel, cancelCtx(info = info, output = withState(info, Cancelled)))
+            )
     }
 
     test("ERR-FUND-1: cancelling requires the policy authority's signature") {
@@ -120,20 +148,28 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
 
     test("ERR-FUND-1 is reported before ERR-FUND-2") {
         assertRejectedWith("ERR-FUND-1")(
-          run(funding, cancel, cancelCtx(output = withState(funding, Expired), signers = Seq(investor1)))
+          run(
+            funding,
+            cancel,
+            cancelCtx(output = withState(funding, Expired), signers = Seq(investor1))
+          )
         )
     }
 
     test("ERR-FUND-2: cancelling must set the policy state to Cancelled") {
         for state <- Seq(Initiated, Funding, OnRisk, Expired) do
-            assertRejectedWith("ERR-FUND-2")(run(funding, cancel, cancelCtx(output = withState(funding, state))))
+            assertRejectedWith("ERR-FUND-2")(
+              run(funding, cancel, cancelCtx(output = withState(funding, state)))
+            )
         val missing = ctx(output = Seq.empty, cards = Seq.empty, signers = Seq(broker1))
         assertRejectedWith("ERR-FUND-2")(run(funding, cancel, missing))
     }
 
     test("ERR-FUND-0: FundingCancel requires an InsuranceInfo datum") {
         for datum <- Seq(samplePremiumPaymentInfo(), PolicyClaimPayment) do
-            assertRejectedWith("ERR-FUND-0")(run(datum, cancel, ctx(info = datum, cards = Seq.empty, signers = Seq(broker1))))
+            assertRejectedWith("ERR-FUND-0")(
+              run(datum, cancel, ctx(info = datum, cards = Seq.empty, signers = Seq(broker1)))
+            )
     }
 
     // FundingComplete
@@ -151,7 +187,10 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     }
 
     test("a start date equal to an exclusive lower bound of the validity range is accepted") {
-        val range = Interval(IntervalBound(IntervalBoundType.Finite(startDate), false), IntervalBound.posInf)
+        val range = Interval(
+          IntervalBound(IntervalBoundType.Finite(startDate), false),
+          IntervalBound.posInf
+        )
         assertSucceeds(run(funding, complete(), ctx(validRange = range)))
     }
 
@@ -167,15 +206,31 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         val cardSets = Seq(
           allSoldCards.tail,
           Seq.empty,
-          firstCardReplacedBy(card(1, PBankFidaCard(false, fidaCardId(1), fidaCardValue, List.Nil).toData)),
+          firstCardReplacedBy(
+            card(1, PBankFidaCard(false, fidaCardId(1), fidaCardValue, List.Nil).toData)
+          ),
           firstCardReplacedBy(card(2, ref = 1)),
           firstCardReplacedBy(card(1, status = (cs, Tokens.fidaCardStatusTokenName, BigInt(2)))),
-          firstCardReplacedBy(card(1, status = (otherCs, Tokens.fidaCardStatusTokenName, BigInt(1)))),
+          firstCardReplacedBy(
+            card(1, status = (otherCs, Tokens.fidaCardStatusTokenName, BigInt(1)))
+          ),
           firstCardReplacedBy(card(1, status = (cs, Tokens.policyInfoTokenName, BigInt(1)))),
           firstCardReplacedBy(
-            txIn(outRef(101), TxOut(scriptAddress(scriptHash(1001)), value(1_000_000, cardStatus), OutputDatum.OutputDatumHash(ByteString.fromHex("33" * 32))))
+            txIn(
+              outRef(101),
+              TxOut(
+                scriptAddress(scriptHash(1001)),
+                value(1_000_000, cardStatus),
+                OutputDatum.OutputDatumHash(ByteString.fromHex("33" * 32))
+              )
+            )
           ),
-          firstCardReplacedBy(txIn(outRef(101), txOutNoDatum(scriptAddress(scriptHash(1001)), value(1_000_000, cardStatus))))
+          firstCardReplacedBy(
+            txIn(
+              outRef(101),
+              txOutNoDatum(scriptAddress(scriptHash(1001)), value(1_000_000, cardStatus))
+            )
+          )
         )
         for cards <- cardSets do
             assertRejectedWith("ERR-FUND-3")(run(funding, complete(), ctx(cards = cards)))
@@ -183,11 +238,17 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
 
     test("ERR-FUND-3: only reference inputs count as sold fida cards") {
         assertRejectedWith("ERR-FUND-3")(
-          run(funding, complete(), ctx(cards = allSoldCards.tail, otherInputs = Seq(allSoldCards.head)))
+          run(
+            funding,
+            complete(),
+            ctx(cards = allSoldCards.tail, otherInputs = Seq(allSoldCards.head))
+          )
         )
     }
 
-    test("ERR-FUND-3: fida card datums are decoded like fromBuiltinData, so malformed ones do not count") {
+    test(
+      "ERR-FUND-3: fida card datums are decoded like fromBuiltinData, so malformed ones do not count"
+    ) {
         val sold = Data.Constr(1, List.Nil)
         val id = Data.B(fidaCardId(1).id)
         val cardValue = Data.I(fidaCardValue)
@@ -216,25 +277,38 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         )
         for (datum, i) <- malformedDatums.zipWithIndex do
             withClue(s"malformed fida card #$i: $datum\n") {
-                assertRejectedWith("ERR-FUND-3")(run(funding, complete(), ctx(cards = firstCardReplacedBy(card(1, datum)))))
+                assertRejectedWith("ERR-FUND-3")(
+                  run(funding, complete(), ctx(cards = firstCardReplacedBy(card(1, datum))))
+                )
             }
     }
 
     test("sold fida cards with paid claims and any card value count") {
         val claims = List(ByteString.fromString("c1"), ByteString.fromString("c2"))
-        val cards = firstCardReplacedBy(card(1, PBankFidaCard(true, fidaCardId(1), 0, claims).toData))
+        val cards =
+            firstCardReplacedBy(card(1, PBankFidaCard(true, fidaCardId(1), 0, claims).toData))
         assertSucceeds(run(funding, complete(), ctx(cards = cards)))
     }
 
-    test("ERR-FUND-4: completing funding must set state OnRisk and the start date, changing nothing else") {
+    test(
+      "ERR-FUND-4: completing funding must set state OnRisk and the start date, changing nothing else"
+    ) {
         val outputs = Seq(
           funding.copy(iInfoState = OnRisk, iInfoStartDate = Option.Some(startDate + 1)).toData,
           funding.copy(iInfoState = OnRisk).toData,
           funding.copy(iInfoStartDate = Option.Some(startDate)).toData,
-          funding.copy(iInfoState = OnRisk, iInfoStartDate = Option.Some(startDate), iInfoFidaCardNumber = 9).toData
+          funding
+              .copy(
+                iInfoState = OnRisk,
+                iInfoStartDate = Option.Some(startDate),
+                iInfoFidaCardNumber = 9
+              )
+              .toData
         )
         for output <- outputs do
-            assertRejectedWith("ERR-FUND-4")(run(funding, complete(), ctx(output = Seq(infoOut(output)))))
+            assertRejectedWith("ERR-FUND-4")(
+              run(funding, complete(), ctx(output = Seq(infoOut(output))))
+            )
         assertRejectedWith("ERR-FUND-4")(run(funding, complete(), ctx(output = Seq.empty)))
     }
 
@@ -249,7 +323,9 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
             assertRejectedWith("ERR-FUND-5")(run(funding, complete(), ctx(validRange = range)))
     }
 
-    test("ERR-FUND-6: completing funding must be signed by the policy holder or the policy authority") {
+    test(
+      "ERR-FUND-6: completing funding must be signed by the policy holder or the policy authority"
+    ) {
         for signers <- Seq(Seq.empty, Seq(investor1), Seq(fidaSystem, broker1)) do
             assertRejectedWith("ERR-FUND-6")(run(funding, complete(), ctx(signers = signers)))
     }
@@ -257,11 +333,26 @@ class FundingLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     test("FundingComplete reports ERR-FUND-3, -4, -5 and -6 in that order") {
         val wrongOutput = Seq(infoOut(withState(funding, Funding)))
         assertRejectedWith("ERR-FUND-3")(
-          run(funding, complete(), ctx(cards = Seq.empty, output = wrongOutput, validRange = Interval.always, signers = Seq.empty))
+          run(
+            funding,
+            complete(),
+            ctx(
+              cards = Seq.empty,
+              output = wrongOutput,
+              validRange = Interval.always,
+              signers = Seq.empty
+            )
+          )
         )
         assertRejectedWith("ERR-FUND-4")(
-          run(funding, complete(), ctx(output = wrongOutput, validRange = Interval.always, signers = Seq.empty))
+          run(
+            funding,
+            complete(),
+            ctx(output = wrongOutput, validRange = Interval.always, signers = Seq.empty)
+          )
         )
-        assertRejectedWith("ERR-FUND-5")(run(funding, complete(), ctx(validRange = Interval.always, signers = Seq.empty)))
+        assertRejectedWith("ERR-FUND-5")(
+          run(funding, complete(), ctx(validRange = Interval.always, signers = Seq.empty))
+        )
     }
 }

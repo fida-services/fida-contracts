@@ -35,9 +35,9 @@ final case class Box[D](utxo: Utxo, datum: D) {
 
 /** One emulator session: the Scala counterpart of plutus-simple-model's `Run` monad.
   *
-  * Every user is funded with 20 000 ADA (split over three UTxOs so one can serve as collateral).
-  * As in plutus-simple-model, each submitted transaction lands in its own block: the slot advances
-  * by one after every successful submission. Slots last one second.
+  * Every user is funded with 20 000 ADA (split over three UTxOs so one can serve as collateral). As
+  * in plutus-simple-model, each submitted transaction lands in its own block: the slot advances by
+  * one after every successful submission. Slots last one second.
   */
 final class Run {
     import Run.*
@@ -76,7 +76,8 @@ final class Run {
     // ---------------------------------------------------------------- UTxOs
 
     def utxosAt(address: Address): Seq[Utxo] =
-        emulator.utxos.toSeq.collect { case (in, out) if out.address == address => Utxo(in, out) }
+        emulator.utxos.toSeq
+            .collect { case (in, out) if out.address == address => Utxo(in, out) }
             .sortBy(u => (u.input.transactionId.toHex, u.input.index))
 
     /** UTxOs at `address` whose inline datum decodes as `D`. */
@@ -87,17 +88,21 @@ final class Run {
 
     /** The first box at `address` satisfying `p` (plutus-simple-model's `withBox`). */
     def box[D: FromData](address: Address, what: String)(p: Box[D] => Boolean): Box[D] =
-        boxesAt[D](address).find(p).getOrElse(throw new NoSuchElementException(s"No $what box found"))
+        boxesAt[D](address)
+            .find(p)
+            .getOrElse(throw new NoSuchElementException(s"No $what box found"))
 
     /** The user's UTxOs holding a positive amount of the given asset. */
     def utxosWithAsset(user: User, policyId: PolicyId, assetName: AssetName): Seq[Utxo] =
-        utxosAt(user.address).filter(_.output.value.assets.assets.get(policyId).exists(_.get(assetName).exists(_ > 0)))
+        utxosAt(user.address).filter(
+          _.output.value.assets.assets.get(policyId).exists(_.get(assetName).exists(_ > 0))
+        )
 
     // ---------------------------------------------------------------- submission
 
     /** Balances `builder` with `signer`'s funds, adds `signer` as required signer (so it appears in
-      * `txInfoSignatories`, like plutus-simple-model's `submitTx`), signs and submits it.
-      * Throws [[TxFailure]] when the transaction is rejected.
+      * `txInfoSignatories`, like plutus-simple-model's `submitTx`), signs and submits it. Throws
+      * [[TxFailure]] when the transaction is rejected.
       */
     def submitTx(signer: User, builder: TxBuilder): TransactionHash =
         submitTx(signer, builder, Seq.empty)

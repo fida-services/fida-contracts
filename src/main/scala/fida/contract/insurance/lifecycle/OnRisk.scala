@@ -1,9 +1,22 @@
 package fida.contract.insurance.lifecycle
 
-import fida.contract.Utils.{before, referenceDatums, traceIfFalse, traceIfNotSingleton, txSignedBy, untypedOutputDatum}
+import fida.contract.Utils.{
+    before,
+    referenceDatums,
+    traceIfFalse,
+    traceIfNotSingleton,
+    txSignedBy,
+    untypedOutputDatum
+}
 import fida.contract.insurance.{InsuranceId, InsurancePolicyDatum, PolicyOnRiskRedeemer, Tokens}
 import fida.contract.insurance.InsuranceAuthority.isSignedByTheAuthority
-import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PolicyClaimPayment, untypedUnsetClaim, untypedUpdateClaim, untypedUpdatePolicyState}
+import fida.contract.insurance.InsurancePolicyDatum.{
+    InsuranceInfo,
+    PolicyClaimPayment,
+    untypedUnsetClaim,
+    untypedUpdateClaim,
+    untypedUpdatePolicyState
+}
 import fida.contract.insurance.InsurancePolicyState.{Cancelled, OnRisk}
 import fida.contract.insurance.PolicyOnRiskRedeemer.*
 import scalus.compiler.Compile
@@ -27,8 +40,8 @@ import scalus.cardano.onchain.plutus.prelude.*
   *   - Cancel (`InsuranceInfo`): signed by the policy authority, the policy moves to Cancelled;
   *   - ExpireClaim (`InsuranceInfo` with a claim): the claim is unset once its date plus the claim
   *     time to live is before the validity range;
-  *   - ClaimPayment (`PolicyClaimPayment`): exactly one reference input holding the POLICY-INFO
-  *     NFT has an `InsuranceInfo` datum whose policy holder signs.
+  *   - ClaimPayment (`PolicyClaimPayment`): exactly one reference input holding the POLICY-INFO NFT
+  *     has an `InsuranceInfo` datum whose policy holder signs.
   *
   * On-chain errors:
   *   - `ERR-ON-RISK-0`: output datum doesn't match the updated datum (or the claim is accepted, or
@@ -57,7 +70,23 @@ object OnRiskLifecycle {
         ctx: ScriptContext
     ): Boolean =
         datum match
-            case InsuranceInfo(_, _, _, _, _, _, policyHolder, authority, state, _, _, claimTimeToLive, _, _, claim) =>
+            case InsuranceInfo(
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  _,
+                  policyHolder,
+                  authority,
+                  state,
+                  _,
+                  _,
+                  claimTimeToLive,
+                  _,
+                  _,
+                  claim
+                ) =>
                 redeemer match
                     case PolicyOnRiskCreateClaim(newClaim) =>
                         if state === OnRisk then
@@ -65,15 +94,18 @@ object OnRiskLifecycle {
                             traceIfFalse(
                               "ERR-ON-RISK-0",
                               policyInfoOutput(iid, ctx) === untypedUpdateClaim(datum, newClaim)
-                              && newClaim.claimAccepted === false
-                              && before(newClaim.claimDate, txInfo.validRange)
+                                  && newClaim.claimAccepted === false
+                                  && before(newClaim.claimDate, txInfo.validRange)
                             )
                             && traceIfFalse("ERR-ON-RISK-1", txSignedBy(txInfo, policyHolder))
                         else illegalAction
                     case PolicyOnRiskAcceptClaim =>
                         claim match
                             case Option.Some(c) =>
-                                traceIfFalse("ERR-ON-RISK-2", isSignedByTheAuthority(ctx, authority))
+                                traceIfFalse(
+                                  "ERR-ON-RISK-2",
+                                  isSignedByTheAuthority(ctx, authority)
+                                )
                                 && traceIfFalse(
                                   "ERR-ON-RISK-3",
                                   policyInfoOutput(iid, ctx)
@@ -85,13 +117,22 @@ object OnRiskLifecycle {
                             case Option.Some(_) =>
                                 traceIfFalse(
                                   "ERR-ON-RISK-4",
-                                  isSignedByTheAuthority(ctx, authority) || txSignedBy(ctx.txInfo, policyHolder)
+                                  isSignedByTheAuthority(ctx, authority) || txSignedBy(
+                                    ctx.txInfo,
+                                    policyHolder
+                                  )
                                 )
-                                && traceIfFalse("ERR-ON-RISK-5", policyInfoOutput(iid, ctx) === untypedUnsetClaim(datum))
+                                && traceIfFalse(
+                                  "ERR-ON-RISK-5",
+                                  policyInfoOutput(iid, ctx) === untypedUnsetClaim(datum)
+                                )
                             case Option.None => illegalAction
                     case PolicyOnRiskFailClaim =>
                         traceIfFalse("ERR-ON-RISK-6", isSignedByTheAuthority(ctx, authority))
-                        && traceIfFalse("ERR-ON-RISK-7", policyInfoOutput(iid, ctx) === untypedUnsetClaim(datum))
+                        && traceIfFalse(
+                          "ERR-ON-RISK-7",
+                          policyInfoOutput(iid, ctx) === untypedUnsetClaim(datum)
+                        )
                     case PolicyOnRiskCancel =>
                         traceIfFalse("ERR-ON-RISK-8", isSignedByTheAuthority(ctx, authority))
                         && traceIfFalse(
@@ -101,7 +142,10 @@ object OnRiskLifecycle {
                     case PolicyOnRiskExpireClaim =>
                         claim match
                             case Option.Some(c) =>
-                                traceIfFalse("ERR-ON-RISK-10", policyInfoOutput(iid, ctx) === untypedUnsetClaim(datum))
+                                traceIfFalse(
+                                  "ERR-ON-RISK-10",
+                                  policyInfoOutput(iid, ctx) === untypedUnsetClaim(datum)
+                                )
                                 && traceIfFalse(
                                   "ERR-ON-RISK-11",
                                   before(c.claimDate + claimTimeToLive, ctx.txInfo.validRange)
@@ -146,7 +190,8 @@ object OnRiskLifecycle {
     // returning false.
 
     /** Whether Haskell's `fromBuiltinData d :: Maybe InsurancePolicyDatum` is a
-      * `Just (InsuranceInfo {..})`: constructor 0 with exactly its 15 fields, each of which decodes.
+      * `Just (InsuranceInfo {..})`: constructor 0 with exactly its 15 fields, each of which
+      * decodes.
       */
     private def isInsuranceInfo(d: Data): Boolean = d match
         case Data.Constr(tag, fields) =>
@@ -239,8 +284,16 @@ object OnRiskLifecycle {
         case Data.Constr(tag, fields) =>
             if tag === BigInt(0) then
                 fields match
-                    case List.Cons(amount, List.Cons(date, List.Cons(reason, List.Cons(accepted, List.Cons(id, List.Nil))))) =>
-                        isInteger(amount) && isInteger(date) && isBytes(reason) && isBool(accepted) && isBytes(id)
+                    case List.Cons(
+                          amount,
+                          List.Cons(
+                            date,
+                            List.Cons(reason, List.Cons(accepted, List.Cons(id, List.Nil)))
+                          )
+                        ) =>
+                        isInteger(amount) && isInteger(date) && isBytes(reason) && isBool(
+                          accepted
+                        ) && isBytes(id)
                     case _ => false
             else false
         case _ => false

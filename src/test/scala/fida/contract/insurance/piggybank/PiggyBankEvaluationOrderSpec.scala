@@ -34,25 +34,43 @@ class PiggyBankEvaluationOrderSpec extends PiggyBankSpecBase {
         assertRejectedWith("ERR-PBANK-7")(eval(premium, ClaimPremium, ctx))
     }
 
-    test("ClaimPremium: the locked premium (Lf without own input) is evaluated before ERR-PBANK-9") {
-        val info = txInfo(inputs = Seq(piggyBankInput(premium.toData, value(20_000_000)), cardOwnerInput))
+    test(
+      "ClaimPremium: the locked premium (Lf without own input) is evaluated before ERR-PBANK-9"
+    ) {
+        val info =
+            txInfo(inputs = Seq(piggyBankInput(premium.toData, value(20_000_000)), cardOwnerInput))
         assertFailsWithoutErrorCode(eval(premium, ClaimPremium, minting(info, cs)), Some("Lf"))
     }
 
     test("ClaimPremium: ERR-PBANK-9 comes before ERR-PBANK-10 and the amount check") {
-        val refs = Seq(policyInfoRef(sampleInsuranceInfo(state = OnRisk).toData, 1), policyInfoRef(sampleInsuranceInfo(state = OnRisk).toData, 2))
-        val ctx = spendPiggyBank(Seq(piggyBankInput(premium.toData, value(20_000_000)), cardOwnerInput), refs = refs)
+        val refs = Seq(
+          policyInfoRef(sampleInsuranceInfo(state = OnRisk).toData, 1),
+          policyInfoRef(sampleInsuranceInfo(state = OnRisk).toData, 2)
+        )
+        val ctx = spendPiggyBank(
+          Seq(piggyBankInput(premium.toData, value(20_000_000)), cardOwnerInput),
+          refs = refs
+        )
         assertRejectedWith("ERR-PBANK-9.2")(eval(premium, ClaimPremium, ctx))
     }
 
-    test("PayForClaimWithCollateral: ERR-PBANK-18 and ERR-PBANK-11 come before the own input (ERR-PBANK-19)") {
-        val noClaim = txInfo(inputs = Seq(piggyBankInput(sold.toData, value(minAda, statusNft))), referenceInputs = Seq(policyInfoRef(policy(OnRisk).toData)))
-        assertRejectedWith("ERR-PBANK-18")(eval(sold, PayForClaimWithCollateral, minting(noClaim, cs)))
+    test(
+      "PayForClaimWithCollateral: ERR-PBANK-18 and ERR-PBANK-11 come before the own input (ERR-PBANK-19)"
+    ) {
+        val noClaim = txInfo(
+          inputs = Seq(piggyBankInput(sold.toData, value(minAda, statusNft))),
+          referenceInputs = Seq(policyInfoRef(policy(OnRisk).toData))
+        )
+        assertRejectedWith("ERR-PBANK-18")(
+          eval(sold, PayForClaimWithCollateral, minting(noClaim, cs))
+        )
         val notAccepted = txInfo(
           inputs = Seq(piggyBankInput(sold.toData, value(minAda, statusNft))),
           referenceInputs = Seq(policyInfoRef(policy(OnRisk, Option.Some(sampleClaim)).toData))
         )
-        assertRejectedWith("ERR-PBANK-11")(eval(sold, PayForClaimWithCollateral, minting(notAccepted, cs)))
+        assertRejectedWith("ERR-PBANK-11")(
+          eval(sold, PayForClaimWithCollateral, minting(notAccepted, cs))
+        )
     }
 
     test("PayForClaimWithCollateral: ERR-PBANK-19 comes before the status output (ERR-PBANK-20)") {
@@ -84,7 +102,8 @@ class PiggyBankEvaluationOrderSpec extends PiggyBankSpecBase {
 
     test("PayForClaimWithCollateral: ERR-PBANK-15 comes before ERR-PBANK-16 and 17") {
         val share = acceptedClaim.claimAmount / fidaCardQuantity
-        val wrongValue = cardDatum(isSold = true, cardValue = 1, paidClaims = Seq(acceptedClaim.claimId))
+        val wrongValue =
+            cardDatum(isSold = true, cardValue = 1, paidClaims = Seq(acceptedClaim.claimId))
         val ctx = spendPiggyBank(
           Seq(piggyBankInput(sold.toData, value(minAda + fidaCardValue, statusNft))),
           refs = Seq(policyInfoRef(policy(OnRisk, Option.Some(acceptedClaim)).toData)),
@@ -112,9 +131,14 @@ class PiggyBankEvaluationOrderSpec extends PiggyBankSpecBase {
         assertRejectedWith("ERR-PBANK-22")(eval(refunded, ClaimPremiumOnCancel, ctx(Cancelled)))
     }
 
-    test("UnlockCollateralOnCancel and UnlockCollateral: the policy state comes before card ownership") {
+    test(
+      "UnlockCollateralOnCancel and UnlockCollateral: the policy state comes before card ownership"
+    ) {
         val ctx = (state: InsurancePolicyState) =>
-            spendPiggyBank(Seq(piggyBankInput(sold.toData, value(minAda, statusNft))), refs = Seq(policyInfoRef(policy(state).toData)))
+            spendPiggyBank(
+              Seq(piggyBankInput(sold.toData, value(minAda, statusNft))),
+              refs = Seq(policyInfoRef(policy(state).toData))
+            )
         assertRejectedWith("ERR-PBANK-25")(eval(sold, UnlockCollateralOnCancel, ctx(Expired)))
         assertRejectedWith("ERR-PBANK-28")(eval(sold, UnlockCollateral, ctx(Cancelled)))
     }

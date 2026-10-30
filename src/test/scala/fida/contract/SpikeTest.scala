@@ -26,7 +26,9 @@ class SpikeTest extends AnyFunSuite {
         val (input, output) = utxos.head
         val ref = TxOutRef(TxId(input.transactionId), BigInt(input.index))
         val script = Scripts.insuranceIdMintingPolicyScript(ref)
-        println(s"script size: ${script.script.size} hash: ${script.scriptHash.toHex} version: ${Scripts.insuranceIdMintingPolicy.program.version}")
+        println(
+          s"script size: ${script.script.size} hash: ${script.scriptHash.toHex} version: ${Scripts.insuranceIdMintingPolicy.program.version}"
+        )
         val tx = TxBuilder(env)
             .spend(Utxo(input, output))
             .mint(script, Map(AssetName(ByteString.fromString("POLICY-INFO")) -> 1L), ())
@@ -52,7 +54,8 @@ class SpikeTest extends AnyFunSuite {
         }
         println(s"${err.getClass.getName}: ${err.getMessage.take(300)}")
         err match
-            case e: TxBuilderException.BalancingException => println(s"script logs: ${e.scriptLogs}")
+            case e: TxBuilderException.BalancingException =>
+                println(s"script logs: ${e.scriptLogs}")
             case _ => ()
     }
 }

@@ -5,7 +5,19 @@ import scalus.cardano.ledger.MajorProtocolVersion
 import scalus.uplc.Program
 import scalus.uplc.builtin.{ByteString, Data}
 import scalus.uplc.eval.{PlutusVM, Result}
-import scalus.cardano.onchain.plutus.v1.{Address, Credential, Interval, PolicyId, PubKeyHash, ScriptPurpose, TokenName, TxId, TxOutRef, ValidatorHash, Value}
+import scalus.cardano.onchain.plutus.v1.{
+    Address,
+    Credential,
+    Interval,
+    PolicyId,
+    PubKeyHash,
+    ScriptPurpose,
+    TokenName,
+    TxId,
+    TxOutRef,
+    ValidatorHash,
+    Value
+}
 import scalus.cardano.onchain.plutus.v2.{OutputDatum, ScriptContext, TxInInfo, TxInfo, TxOut}
 import scalus.cardano.onchain.plutus.prelude.{AssocMap, List, Option, SortedMap}
 

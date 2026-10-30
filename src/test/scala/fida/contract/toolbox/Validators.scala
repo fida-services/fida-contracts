@@ -5,7 +5,16 @@ import fida.contract.insurance.*
 import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PremiumPaymentInfo}
 import fida.contract.insurance.PiggyBankDatum.{PBankFidaCard, PBankPremium}
 import scalus.cardano.address.Address
-import scalus.cardano.ledger.{AssetName, CardanoInfo, Credential, LedgerToPlutusTranslation, PolicyId, Script, ScriptHash, Value}
+import scalus.cardano.ledger.{
+    AssetName,
+    CardanoInfo,
+    Credential,
+    LedgerToPlutusTranslation,
+    PolicyId,
+    Script,
+    ScriptHash,
+    Value
+}
 import scalus.uplc.builtin.ByteString
 import scalus.cardano.onchain.plutus.v1
 
@@ -66,7 +75,11 @@ object Validators {
     def piggyBankInfoBox(iid: InsuranceId, fcid: FidaCardId)(box: Box[PiggyBankDatum]): Boolean =
         box.datum match
             case card: PBankFidaCard =>
-                quantity(box.value, iid, Tokens.fidaCardStatusTokenName) == 1 && card.pbfcFidaCardId == fcid
+                quantity(
+                  box.value,
+                  iid,
+                  Tokens.fidaCardStatusTokenName
+                ) == 1 && card.pbfcFidaCardId == fcid
             case _ => false
 
     def pbPremiumBox(box: Box[PiggyBankDatum]): Boolean = box.datum match

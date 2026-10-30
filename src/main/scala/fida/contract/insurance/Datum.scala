@@ -155,7 +155,10 @@ object PiggyBankDatum {
     given ToData[PiggyBankDatum] = ToData.derived
     given FromData[PiggyBankDatum] = FromData.derived
 
-    def updatePiggyBankRefund(amount: PremiumAmount, datum: PiggyBankDatum): Option[PiggyBankDatum] =
+    def updatePiggyBankRefund(
+        amount: PremiumAmount,
+        datum: PiggyBankDatum
+    ): Option[PiggyBankDatum] =
         datum match
             case premium: PBankPremium => Option.Some(premium.copy(pbankPremiumRefund = amount))
             case _                     => Option.None
@@ -197,9 +200,13 @@ object PiggyBankDatum {
         installments: InstallmentsInfo,
         start: PosixTime
     ): PremiumAmount =
-        def go(unlocked: PremiumAmount, date: PosixTime, intervals: List[DiffMilliSeconds]): PremiumAmount =
+        def go(
+            unlocked: PremiumAmount,
+            date: PosixTime,
+            intervals: List[DiffMilliSeconds]
+        ): PremiumAmount =
             intervals match
-                case List.Nil => locked
+                case List.Nil            => locked
                 case List.Cons(dt, rest) =>
                     val nextDate = dt + date
                     if before(nextDate, range) then

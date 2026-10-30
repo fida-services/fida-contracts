@@ -7,7 +7,8 @@ import scalus.uplc.builtin.ByteString
 import scalus.uplc.builtin.Data.toData
 import scalus.cardano.onchain.plutus.v2.TxOut
 
-/** `BuyFidaCard` on an unsold `PBankFidaCard`: ERR-PBANK-0, 3 and 4 (ERR-PBANK-2 is unreachable). */
+/** `BuyFidaCard` on an unsold `PBankFidaCard`: ERR-PBANK-0, 3 and 4 (ERR-PBANK-2 is unreachable).
+  */
 class PiggyBankBuyFidaCardSpec extends PiggyBankSpecBase {
 
     private val unsold = cardDatum(isSold = false)
@@ -22,10 +23,15 @@ class PiggyBankBuyFidaCardSpec extends PiggyBankSpecBase {
     private val cardToBuyer = txOutNoDatum(investorAddress, value(minAda, cardNft))
 
     private def buy(outputs: TxOut*) =
-        spendPiggyBank(Seq(piggyBankInput(unsold.toData, freshValue), walletInput), outputs = outputs)
+        spendPiggyBank(
+          Seq(piggyBankInput(unsold.toData, freshValue), walletInput),
+          outputs = outputs
+        )
 
     test("BuyFidaCard: succeeds when the status output holds the card value and the sold datum") {
-        assertSucceeds(eval(unsold, BuyFidaCard, buy(piggyBankOutput(sold.toData, paidValue), cardToBuyer)))
+        assertSucceeds(
+          eval(unsold, BuyFidaCard, buy(piggyBankOutput(sold.toData, paidValue), cardToBuyer))
+        )
     }
 
     test("BuyFidaCard: no signature is needed and the card NFT may go anywhere") {
@@ -48,14 +54,18 @@ class PiggyBankBuyFidaCardSpec extends PiggyBankSpecBase {
 
     test("ERR-PBANK-0: a status output with a non-constructor datum (compared as BuiltinData)") {
         for d <- nonConstructorData do
-            assertRejectedWith("ERR-PBANK-0")(eval(unsold, BuyFidaCard, buy(piggyBankOutput(d, paidValue), cardToBuyer)))
+            assertRejectedWith("ERR-PBANK-0")(
+              eval(unsold, BuyFidaCard, buy(piggyBankOutput(d, paidValue), cardToBuyer))
+            )
     }
 
     test("BuyFidaCard: other outputs with non-constructor datums are ignored") {
         val others = nonConstructorData.flatMap(d =>
             Seq(txOut(investorAddress, value(minAda), d), piggyBankOutput(d, value(minAda)))
         )
-        assertSucceeds(eval(unsold, BuyFidaCard, buy((piggyBankOutput(sold.toData, paidValue) +: others)*)))
+        assertSucceeds(
+          eval(unsold, BuyFidaCard, buy((piggyBankOutput(sold.toData, paidValue) +: others)*))
+        )
     }
 
     test("ERR-PBANK-3: no continuing output holds the status NFT") {
@@ -70,7 +80,9 @@ class PiggyBankBuyFidaCardSpec extends PiggyBankSpecBase {
         )
     }
 
-    test("ERR-PBANK-4: the status output holds less than the card value on top of the input lovelace") {
+    test(
+      "ERR-PBANK-4: the status output holds less than the card value on top of the input lovelace"
+    ) {
         val short = value(minAda + fidaCardValue - 1, statusNft)
         assertRejectedWith("ERR-PBANK-4")(
           eval(unsold, BuyFidaCard, buy(piggyBankOutput(sold.toData, short), cardToBuyer))
@@ -84,7 +96,9 @@ class PiggyBankBuyFidaCardSpec extends PiggyBankSpecBase {
         )
     }
 
-    test("BuyFidaCard: a status output without inline datum fails without code (incomplete Haskell case)") {
+    test(
+      "BuyFidaCard: a status output without inline datum fails without code (incomplete Haskell case)"
+    ) {
         val noDatum = txOutNoDatum(piggyBankAddress, paidValue)
         assertFailsWithoutErrorCode(eval(unsold, BuyFidaCard, buy(noDatum, cardToBuyer)))
     }
@@ -95,6 +109,9 @@ class PiggyBankBuyFidaCardSpec extends PiggyBankSpecBase {
           outputs = Seq(piggyBankOutput(sold.toData, paidValue))
         )
         assertFailsWithoutErrorCode(eval(unsold, BuyFidaCard, minting(info, cs)), Some("Lf"))
-        assertFailsWithoutErrorCode(eval(unsold, BuyFidaCard, spending(info, outRef(999))), Some("Lf"))
+        assertFailsWithoutErrorCode(
+          eval(unsold, BuyFidaCard, spending(info, outRef(999))),
+          Some("Lf")
+        )
     }
 }

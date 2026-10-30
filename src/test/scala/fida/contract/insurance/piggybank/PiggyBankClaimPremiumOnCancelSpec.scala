@@ -29,7 +29,8 @@ class PiggyBankClaimPremiumOnCancelSpec extends PiggyBankSpecBase {
     /** Refund due after the first installment: what investors have not earned yet (15 ADA). */
     private val refund: BigInt = share - installment
 
-    /** The policy holder takes `taken`; the rest stays in a continuing output with `lockedDatum`. */
+    /** The policy holder takes `taken`; the rest stays in a continuing output with `lockedDatum`.
+      */
     private def refundTx(
         taken: BigInt = refund,
         input: PiggyBankDatum = premium,
@@ -40,7 +41,8 @@ class PiggyBankClaimPremiumOnCancelSpec extends PiggyBankSpecBase {
         validRange: Interval = afterFirstInstallment
     ): ScriptContext =
         val locked = inputLovelace - taken
-        val lockedOutput = if locked > 0 then Seq(piggyBankOutput(lockedDatum, value(locked))) else Seq.empty
+        val lockedOutput =
+            if locked > 0 then Seq(piggyBankOutput(lockedDatum, value(locked))) else Seq.empty
         spendPiggyBank(
           Seq(piggyBankInput(input.toData, value(inputLovelace))),
           refs = refs,
@@ -49,7 +51,9 @@ class PiggyBankClaimPremiumOnCancelSpec extends PiggyBankSpecBase {
           signatories = signers
         )
 
-    test("ClaimPremiumOnCancel: the policy holder takes back the premium investors have not earned") {
+    test(
+      "ClaimPremiumOnCancel: the policy holder takes back the premium investors have not earned"
+    ) {
         assertSucceeds(eval(premium, ClaimPremiumOnCancel, refundTx()))
     }
 
@@ -60,7 +64,11 @@ class PiggyBankClaimPremiumOnCancelSpec extends PiggyBankSpecBase {
     test("ClaimPremiumOnCancel: without a start date the whole premium is refunded") {
         val neverStarted = sampleInsuranceInfo(state = Cancelled)
         assertSucceeds(
-          eval(premium, ClaimPremiumOnCancel, refundTx(taken = share, refs = Seq(policyInfoRef(neverStarted.toData))))
+          eval(
+            premium,
+            ClaimPremiumOnCancel,
+            refundTx(taken = share, refs = Seq(policyInfoRef(neverStarted.toData)))
+          )
         )
     }
 
@@ -72,11 +80,15 @@ class PiggyBankClaimPremiumOnCancelSpec extends PiggyBankSpecBase {
     }
 
     test("ERR-PBANK-22: the policy holder does not sign") {
-        assertRejectedWith("ERR-PBANK-22")(eval(premium, ClaimPremiumOnCancel, refundTx(signers = Seq(investor1))))
+        assertRejectedWith("ERR-PBANK-22")(
+          eval(premium, ClaimPremiumOnCancel, refundTx(signers = Seq(investor1)))
+        )
     }
 
     test("ERR-PBANK-23: taking more than the refund amount") {
-        assertRejectedWith("ERR-PBANK-23")(eval(premium, ClaimPremiumOnCancel, refundTx(taken = refund + 1)))
+        assertRejectedWith("ERR-PBANK-23")(
+          eval(premium, ClaimPremiumOnCancel, refundTx(taken = refund + 1))
+        )
     }
 
     test("ERR-PBANK-23: the continuing output must record the refund amount") {
@@ -87,29 +99,43 @@ class PiggyBankClaimPremiumOnCancelSpec extends PiggyBankSpecBase {
 
     test("ERR-PBANK-23: continuing outputs with a non-constructor datum do not count as locked") {
         for d <- nonConstructorData do
-            assertRejectedWith("ERR-PBANK-23")(eval(premium, ClaimPremiumOnCancel, refundTx(lockedDatum = d)))
+            assertRejectedWith("ERR-PBANK-23")(
+              eval(premium, ClaimPremiumOnCancel, refundTx(lockedDatum = d))
+            )
     }
 
-    test("ClaimPremiumOnCancel: policy info datums that are not constructors are skipped, not a crash") {
+    test(
+      "ClaimPremiumOnCancel: policy info datums that are not constructors are skipped, not a crash"
+    ) {
         for d <- nonConstructorData do
-            assertRejectedWith("ERR-PBANK-24.1")(eval(premium, ClaimPremiumOnCancel, refundTx(refs = Seq(policyInfoRef(d)))))
+            assertRejectedWith("ERR-PBANK-24.1")(
+              eval(premium, ClaimPremiumOnCancel, refundTx(refs = Seq(policyInfoRef(d))))
+            )
             val refs = Seq(policyInfoRef(d, 1), policyInfoRef(cancelled.toData, 2))
             assertSucceeds(eval(premium, ClaimPremiumOnCancel, refundTx(refs = refs)))
     }
 
     test("ERR-PBANK-24.1: no policy info reference input") {
-        assertRejectedWith("ERR-PBANK-24.1")(eval(premium, ClaimPremiumOnCancel, refundTx(refs = Seq.empty)))
+        assertRejectedWith("ERR-PBANK-24.1")(
+          eval(premium, ClaimPremiumOnCancel, refundTx(refs = Seq.empty))
+        )
     }
 
     test("ERR-PBANK-24.2: two policy info reference inputs") {
         val refs = Seq(policyInfoRef(cancelled.toData, 1), policyInfoRef(cancelled.toData, 2))
-        assertRejectedWith("ERR-PBANK-24.2")(eval(premium, ClaimPremiumOnCancel, refundTx(refs = refs)))
+        assertRejectedWith("ERR-PBANK-24.2")(
+          eval(premium, ClaimPremiumOnCancel, refundTx(refs = refs))
+        )
     }
 
     test("quirk: ERR-PBANK-32 (the fall-through code) also rejects a second refund") {
         val refunded = PBankPremium(share, refund)
         assertRejectedWith("ERR-PBANK-32")(
-          eval(refunded, ClaimPremiumOnCancel, refundTx(taken = installment, input = refunded, inputLovelace = installment))
+          eval(
+            refunded,
+            ClaimPremiumOnCancel,
+            refundTx(taken = installment, input = refunded, inputLovelace = installment)
+          )
         )
     }
 }

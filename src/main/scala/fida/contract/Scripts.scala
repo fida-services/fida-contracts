@@ -75,7 +75,8 @@ object Scripts {
                     (ctx: Data) => SystemIdMintingPolicy.untyped(governance, magic, redeemer, ctx)
         )
 
-    /** The unapplied scripts under the names used by the Haskell `fida-contracts-serialise` tool. */
+    /** The unapplied scripts under the names used by the Haskell `fida-contracts-serialise` tool.
+      */
     lazy val serialisable: Seq[(String, CompiledPlutus[?])] = Seq(
       "InsuranceIdMintingPolicy" -> insuranceIdMintingPolicy,
       "InsurancePolicyValidator" -> insurancePolicyValidator,

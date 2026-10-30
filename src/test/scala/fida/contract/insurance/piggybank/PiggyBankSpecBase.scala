@@ -9,7 +9,15 @@ import org.scalatest.funsuite.AnyFunSuite
 import scalus.uplc.builtin.{ByteString, Data}
 import scalus.uplc.builtin.Data.toData
 import scalus.uplc.eval.Result
-import scalus.cardano.onchain.plutus.v1.{Address, Interval, PolicyId, PubKeyHash, TokenName, TxOutRef, Value}
+import scalus.cardano.onchain.plutus.v1.{
+    Address,
+    Interval,
+    PolicyId,
+    PubKeyHash,
+    TokenName,
+    TxOutRef,
+    Value
+}
 import scalus.cardano.onchain.plutus.v2.{ScriptContext, TxInInfo, TxOut}
 import scalus.cardano.onchain.plutus.prelude.List
 
@@ -17,8 +25,8 @@ import scalus.cardano.onchain.plutus.prelude.List
   * [[fida.contract.insurance.PiggyBankValidator]].
   *
   * The piggy bank under test backs fida card `1` of the sample insurance: its UTxO sits at
-  * [[piggyBankAddress]] and is spent through [[piggyBankRef]]. Policy info reference inputs hold the
-  * insurance's `POLICY-INFO` NFT with an inline `InsuranceInfo` datum, as in the Haskell test
+  * [[piggyBankAddress]] and is spent through [[piggyBankRef]]. Policy info reference inputs hold
+  * the insurance's `POLICY-INFO` NFT with an inline `InsuranceInfo` datum, as in the Haskell test
   * toolbox.
   */
 trait PiggyBankSpecBase extends AnyFunSuite with ScriptAssertions {
@@ -37,8 +45,8 @@ trait PiggyBankSpecBase extends AnyFunSuite with ScriptAssertions {
     val policyAddress: Address = scriptAddress(scriptHash(1))
     val investorAddress: Address = pubKeyAddress(investor1)
 
-    /** Evaluates the piggy bank validator (parameters: the sample insurance and `card`) on raw datum
-      * and redeemer data.
+    /** Evaluates the piggy bank validator (parameters: the sample insurance and `card`) on raw
+      * datum and redeemer data.
       */
     def evalRaw(
         datum: Data,
@@ -47,22 +55,41 @@ trait PiggyBankSpecBase extends AnyFunSuite with ScriptAssertions {
         card: Data = fcid.toData,
         insurance: Data = insuranceId.toData
     ): Result =
-        ScriptEval.eval(Scripts.piggyBankValidator.program, insurance, card, datum, redeemer, ctx.toData)
+        ScriptEval.eval(
+          Scripts.piggyBankValidator.program,
+          insurance,
+          card,
+          datum,
+          redeemer,
+          ctx.toData
+        )
 
     def eval(datum: PiggyBankDatum, redeemer: PiggyBankRedeemer, ctx: ScriptContext): Result =
         evalRaw(datum.toData, redeemer.toData, ctx)
 
-    /** Fails, and `code` is the only `ERR-…` code in the logs, i.e. the error the script reports. */
+    /** Fails, and `code` is the only `ERR-…` code in the logs, i.e. the error the script reports.
+      */
     def assertRejectedWith(code: String)(result: Result): Unit =
         assertFailsWith(code)(result)
         val codes = result.logs.filter(_.startsWith("ERR-"))
-        assert(codes == Seq(code), s"expected $code as the only error code, got ${codes.mkString("[", ", ", "]")}")
+        assert(
+          codes == Seq(code),
+          s"expected $code as the only error code, got ${codes.mkString("[", ", ", "]")}"
+        )
 
     /** Fails without reporting any `ERR-…` code, with `marker` in the logs when given. */
     def assertFailsWithoutErrorCode(result: Result, marker: Option[String] = None): Unit =
-        assert(result.isFailure, s"expected failure, but the script succeeded with logs ${result.logs}")
-        assert(!result.logs.exists(_.startsWith("ERR-")), s"unexpected error code in ${result.logs}")
-        marker.foreach(m => assert(result.logs.contains(m), s"expected $m in the logs, got ${result.logs}"))
+        assert(
+          result.isFailure,
+          s"expected failure, but the script succeeded with logs ${result.logs}"
+        )
+        assert(
+          !result.logs.exists(_.startsWith("ERR-")),
+          s"unexpected error code in ${result.logs}"
+        )
+        marker.foreach(m =>
+            assert(result.logs.contains(m), s"expected $m in the logs, got ${result.logs}")
+        )
 
     def cardDatum(
         isSold: Boolean,

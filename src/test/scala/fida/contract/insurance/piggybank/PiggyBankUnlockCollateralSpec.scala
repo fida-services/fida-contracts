@@ -47,7 +47,13 @@ class PiggyBankUnlockCollateralOnCancelSpec extends UnlockFixtures {
     test("quirk: an unsold piggy bank holds its own card NFT, so anyone may unlock it") {
         val unsold = cardDatum(isSold = false)
         val fresh = value(minAda, statusNft, cardNft)
-        assertSucceeds(eval(unsold, UnlockCollateralOnCancel, unlock(refs, input = unsold, inputValue = fresh, owner = Seq.empty)))
+        assertSucceeds(
+          eval(
+            unsold,
+            UnlockCollateralOnCancel,
+            unlock(refs, input = unsold, inputValue = fresh, owner = Seq.empty)
+          )
+        )
     }
 
     test("ERR-PBANK-25: the policy is not cancelled") {
@@ -58,11 +64,15 @@ class PiggyBankUnlockCollateralOnCancelSpec extends UnlockFixtures {
     }
 
     test("ERR-PBANK-26: the fida card NFT is not spent") {
-        assertRejectedWith("ERR-PBANK-26")(eval(sold, UnlockCollateralOnCancel, unlock(refs, owner = Seq.empty)))
+        assertRejectedWith("ERR-PBANK-26")(
+          eval(sold, UnlockCollateralOnCancel, unlock(refs, owner = Seq.empty))
+        )
     }
 
     test("ERR-PBANK-27.1: no policy info reference input") {
-        assertRejectedWith("ERR-PBANK-27.1")(eval(sold, UnlockCollateralOnCancel, unlock(Seq.empty)))
+        assertRejectedWith("ERR-PBANK-27.1")(
+          eval(sold, UnlockCollateralOnCancel, unlock(Seq.empty))
+        )
     }
 
     test("ERR-PBANK-27.2: two policy info reference inputs") {
@@ -77,27 +87,40 @@ class PiggyBankUnlockCollateralSpec extends UnlockFixtures {
     private val claim: ClaimInfo = sampleClaim.copy(claimAccepted = true)
 
     private def expired(claim: Option[ClaimInfo] = Option.None) =
-        sampleInsuranceInfo(state = Expired, startDate = Option.Some(beginningOfTime), claim = claim)
+        sampleInsuranceInfo(
+          state = Expired,
+          startDate = Option.Some(beginningOfTime),
+          claim = claim
+        )
 
     private val refs = Seq(policyInfoRef(expired().toData))
 
-    test("UnlockCollateral: the card owner takes the collateral of an expired policy without claim") {
+    test(
+      "UnlockCollateral: the card owner takes the collateral of an expired policy without claim"
+    ) {
         assertSucceeds(eval(sold, UnlockCollateral, unlock(refs)))
     }
 
     test("UnlockCollateral: a claim this piggy bank paid does not block unlocking") {
-        val paid = cardDatum(isSold = true, paidClaims = Seq(ByteString.fromString("other"), claim.claimId))
+        val paid = cardDatum(
+          isSold = true,
+          paidClaims = Seq(ByteString.fromString("other"), claim.claimId)
+        )
         val withClaim = Seq(policyInfoRef(expired(Option.Some(claim)).toData))
         assertSucceeds(eval(paid, UnlockCollateral, unlock(withClaim, input = paid)))
     }
 
     test("ERR-PBANK-28: the policy is not expired") {
         val onRisk = sampleInsuranceInfo(state = OnRisk, startDate = Option.Some(beginningOfTime))
-        assertRejectedWith("ERR-PBANK-28")(eval(sold, UnlockCollateral, unlock(Seq(policyInfoRef(onRisk.toData)))))
+        assertRejectedWith("ERR-PBANK-28")(
+          eval(sold, UnlockCollateral, unlock(Seq(policyInfoRef(onRisk.toData))))
+        )
     }
 
     test("ERR-PBANK-29: the fida card NFT is not spent") {
-        assertRejectedWith("ERR-PBANK-29")(eval(sold, UnlockCollateral, unlock(refs, owner = Seq.empty)))
+        assertRejectedWith("ERR-PBANK-29")(
+          eval(sold, UnlockCollateral, unlock(refs, owner = Seq.empty))
+        )
     }
 
     test("ERR-PBANK-30: the policy claim was not paid by this piggy bank") {
@@ -109,10 +132,20 @@ class PiggyBankUnlockCollateralSpec extends UnlockFixtures {
         assertRejectedWith("ERR-PBANK-31")(eval(sold, UnlockCollateral, unlock(Seq.empty)))
     }
 
-    test("UnlockCollateral: policy info datums that are not constructors are skipped, not a crash") {
+    test(
+      "UnlockCollateral: policy info datums that are not constructors are skipped, not a crash"
+    ) {
         for d <- nonConstructorData do
-            assertRejectedWith("ERR-PBANK-31")(eval(sold, UnlockCollateral, unlock(Seq(policyInfoRef(d)))))
-            assertSucceeds(eval(sold, UnlockCollateral, unlock(Seq(policyInfoRef(d, 1), policyInfoRef(expired().toData, 2)))))
+            assertRejectedWith("ERR-PBANK-31")(
+              eval(sold, UnlockCollateral, unlock(Seq(policyInfoRef(d))))
+            )
+            assertSucceeds(
+              eval(
+                sold,
+                UnlockCollateral,
+                unlock(Seq(policyInfoRef(d, 1), policyInfoRef(expired().toData, 2)))
+              )
+            )
     }
 
     test("ERR-PBANK-31: two policy info reference inputs") {

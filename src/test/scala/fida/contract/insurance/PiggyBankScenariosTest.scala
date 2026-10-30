@@ -10,9 +10,9 @@ import fida.contract.toolbox.MakeInsurancePolicy.newSamplePolicy
 import fida.contract.toolbox.Validators.*
 import scalus.cardano.ledger.Value
 
-/** Piggy bank rules not covered by the original Haskell suite, checked end to end on the
-  * emulator. Each piggy bank of the sample policy holds a 1 000 ADA fida card and receives a 20 ADA
-  * premium, unlocked by 5 ADA every 90 days (fully after 270 days).
+/** Piggy bank rules not covered by the original Haskell suite, checked end to end on the emulator.
+  * Each piggy bank of the sample policy holds a 1 000 ADA fida card and receives a 20 ADA premium,
+  * unlocked by 5 ADA every 90 days (fully after 270 days).
   */
 class PiggyBankScenariosTest extends TestToolbox {
 
@@ -115,7 +115,10 @@ class PiggyBankScenariosTest extends TestToolbox {
         unlockCollateralOnExpired(users.investor1, iid, card1)
     }
 
-    bad("Collateral can't be unlocked through cancellation of a policy that is not cancelled", "ERR-PBANK-25") {
+    bad(
+      "Collateral can't be unlocked through cancellation of a policy that is not cancelled",
+      "ERR-PBANK-25"
+    ) {
         val users = setupUsers
         val iid = newSamplePolicy(users)
         startCoverage(iid, users)

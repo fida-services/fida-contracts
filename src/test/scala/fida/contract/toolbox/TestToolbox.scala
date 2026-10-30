@@ -4,8 +4,8 @@ import org.scalatest.funsuite.AnyFunSuite
 import scalus.cardano.onchain.plutus.v1.PosixTime
 
 /** Test DSL mirroring the Haskell toolbox: `good` scenarios must run without errors, `bad`
-  * scenarios must be rejected on chain with the expected error code in the script trace.
-  * Each scenario runs in a fresh emulator session.
+  * scenarios must be rejected on chain with the expected error code in the script trace. Each
+  * scenario runs in a fresh emulator session.
   */
 trait TestToolbox extends AnyFunSuite {
 

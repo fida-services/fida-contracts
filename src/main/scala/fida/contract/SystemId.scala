@@ -8,8 +8,8 @@ import scalus.cardano.onchain.plutus.v1.{PolicyId, PubKeyHash, ScriptPurpose}
 import scalus.cardano.onchain.plutus.v2.ScriptContext
 import scalus.cardano.onchain.plutus.prelude.*
 
-/** Identifier of a Fida system deployment. Haskell newtype over `CurrencySymbol`: encoded as a
-  * bare bytestring.
+/** Identifier of a Fida system deployment. Haskell newtype over `CurrencySymbol`: encoded as a bare
+  * bytestring.
   */
 @UplcRepr(UplcRepresentation.ProductCaseOneElement)
 case class SystemId(cs: PolicyId)
@@ -22,9 +22,9 @@ object SystemId {
 
 /** Minting policy of the Fida system identifier (port of `Fida.Contract.SystemId`).
   *
-  * Parameters: the system governance key (Haskell `SystemGovernance`, a newtype over
-  * `PubKeyHash`) and a magic number (Haskell `SystemMagic`, a newtype over `Integer`) that only
-  * serves to derive distinct currency symbols. The redeemer is ignored.
+  * Parameters: the system governance key (Haskell `SystemGovernance`, a newtype over `PubKeyHash`)
+  * and a magic number (Haskell `SystemMagic`, a newtype over `Integer`) that only serves to derive
+  * distinct currency symbols. The redeemer is ignored.
   *
   * On-chain errors:
   *   - `ERR-SID-0`: the transaction is not signed by the system governance key

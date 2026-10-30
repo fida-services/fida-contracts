@@ -64,10 +64,10 @@ object MakeInsurancePolicy {
           )
         )
 
-    /** Mints the policy NFTs under a fresh InsuranceId (parameterised by one of the broker's
-      * UTxOs, which the transaction spends), locks the policy info and premium payment info at
-      * the insurance policy script, funds one piggy bank per fida card, and loads the insurance
-      * policy script as a reference script.
+    /** Mints the policy NFTs under a fresh InsuranceId (parameterised by one of the broker's UTxOs,
+      * which the transaction spends), locks the policy info and premium payment info at the
+      * insurance policy script, funds one piggy bank per fida card, and loads the insurance policy
+      * script as a reference script.
       */
     def makePolicy(broker: User, params: InsuranceCreateParams)(using run: Run): InsuranceId =
         import run.given
@@ -123,7 +123,12 @@ object MakeInsurancePolicy {
         run.submitTx(
           user,
           run.txBuilder.output(
-            TransactionOutput(scriptAddress(script), Value.lovelace(1), None, Some(ScriptRef(script)))
+            TransactionOutput(
+              scriptAddress(script),
+              Value.lovelace(1),
+              None,
+              Some(ScriptRef(script))
+            )
           )
         )
 }

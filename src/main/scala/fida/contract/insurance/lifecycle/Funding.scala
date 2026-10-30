@@ -3,9 +3,16 @@ package fida.contract.insurance.lifecycle
 import fida.contract.Utils.{before, traceIfFalse, txSignedBy, untypedOutputDatum, valueOf}
 import fida.contract.insurance.{InsuranceId, InsurancePolicyDatum, PolicyFundingRedeemer, Tokens}
 import fida.contract.insurance.InsuranceAuthority.isSignedByTheAuthority
-import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, completeFunding, untypedUpdatePolicyState}
+import fida.contract.insurance.InsurancePolicyDatum.{
+    InsuranceInfo,
+    completeFunding,
+    untypedUpdatePolicyState
+}
 import fida.contract.insurance.InsurancePolicyState.{Cancelled, Funding}
-import fida.contract.insurance.PolicyFundingRedeemer.{PolicyFundingCancel, PolicyFundingFundingComplete}
+import fida.contract.insurance.PolicyFundingRedeemer.{
+    PolicyFundingCancel,
+    PolicyFundingFundingComplete
+}
 import scalus.compiler.Compile
 import scalus.uplc.builtin.{Builtins, ByteString, Data}
 import scalus.uplc.builtin.Data.toData
@@ -18,8 +25,8 @@ import scalus.cardano.onchain.plutus.prelude.*
   *   - Cancel (`InsuranceInfo` in any state, as in the Haskell code): signed by the policy
   *     authority, the policy info moves to Cancelled;
   *   - FundingComplete `startDate` (`InsuranceInfo` in state Funding): every fida card is sold, the
-  *     policy info moves to OnRisk with `startDate`, which lies before the validity range, signed by
-  *     the policy holder or the policy authority. Sold fida cards are the distinct ids of the
+  *     policy info moves to OnRisk with `startDate`, which lies before the validity range, signed
+  *     by the policy holder or the policy authority. Sold fida cards are the distinct ids of the
   *     reference inputs holding exactly one CARD-STATUS token whose inline datum decodes to a sold
   *     `PBankFidaCard`.
   *
@@ -54,10 +61,29 @@ object FundingLifecycle {
                     case _ => illegalAction
             case PolicyFundingFundingComplete(startDate) =>
                 datum match
-                    case InsuranceInfo(_, _, fidaCardNumber, _, _, _, policyHolder, authority, state, _, _, _, _, _, _) =>
+                    case InsuranceInfo(
+                          _,
+                          _,
+                          fidaCardNumber,
+                          _,
+                          _,
+                          _,
+                          policyHolder,
+                          authority,
+                          state,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _,
+                          _
+                        ) =>
                         if state === Funding then
                             val txInfo = ctx.txInfo
-                            traceIfFalse("ERR-FUND-3", fidaCardsSold(iid.cs, txInfo) >= fidaCardNumber)
+                            traceIfFalse(
+                              "ERR-FUND-3",
+                              fidaCardsSold(iid.cs, txInfo) >= fidaCardNumber
+                            )
                             && traceIfFalse(
                               "ERR-FUND-4",
                               untypedOutputDatum(iid.cs, ctx, Tokens.policyInfoTokenName)
@@ -66,7 +92,10 @@ object FundingLifecycle {
                             && traceIfFalse("ERR-FUND-5", before(startDate, txInfo.validRange))
                             && traceIfFalse(
                               "ERR-FUND-6",
-                              txSignedBy(txInfo, policyHolder) || isSignedByTheAuthority(ctx, authority)
+                              txSignedBy(txInfo, policyHolder) || isSignedByTheAuthority(
+                                ctx,
+                                authority
+                              )
                             )
                         else illegalAction
                     case _ => illegalAction
@@ -74,8 +103,8 @@ object FundingLifecycle {
     /** Haskell `trace "ERR-FUND-0" False`. */
     private inline def illegalAction: Boolean = Builtins.trace("ERR-FUND-0")(false)
 
-    /** Haskell `fidaCardsSold`: the number of distinct fida card ids among the reference inputs that
-      * hold exactly one CARD-STATUS token and whose inline datum decodes to
+    /** Haskell `fidaCardsSold`: the number of distinct fida card ids among the reference inputs
+      * that hold exactly one CARD-STATUS token and whose inline datum decodes to
       * `PBankFidaCard {pbfcIsSold = True}`.
       */
     private def fidaCardsSold(cs: PolicyId, txInfo: TxInfo): BigInt =
@@ -83,7 +112,11 @@ object FundingLifecycle {
             .filterMap { in =>
                 in.resolved.datum match
                     case OutputDatum.OutputDatum(d) =>
-                        if valueOf(in.resolved.value, cs, Tokens.fidaCardStatusTokenName) === BigInt(1)
+                        if valueOf(
+                              in.resolved.value,
+                              cs,
+                              Tokens.fidaCardStatusTokenName
+                            ) === BigInt(1)
                         then soldFidaCardId(d)
                         else Option.None
                     case _ => Option.None
@@ -99,10 +132,15 @@ object FundingLifecycle {
         case Data.Constr(tag, fields) =>
             if tag === BigInt(1) then
                 fields match
-                    case List.Cons(isSold, List.Cons(cardId, List.Cons(cardValue, List.Cons(paidClaims, List.Nil)))) =>
+                    case List.Cons(
+                          isSold,
+                          List.Cons(cardId, List.Cons(cardValue, List.Cons(paidClaims, List.Nil)))
+                        ) =>
                         cardId match
                             case Data.B(cid) =>
-                                if isTrue(isSold) && isInteger(cardValue) && isByteStringList(paidClaims)
+                                if isTrue(isSold) && isInteger(cardValue) && isByteStringList(
+                                      paidClaims
+                                    )
                                 then Option.Some(cid)
                                 else Option.None
                             case _ => Option.None

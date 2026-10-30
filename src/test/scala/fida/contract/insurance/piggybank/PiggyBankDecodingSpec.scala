@@ -10,9 +10,9 @@ import scalus.uplc.builtin.Data.toData
 /** Decoding as in the Haskell code.
   *
   * The wrapper decodes the parameters, datum and redeemer with PlutusTx `unsafeFromBuiltinData`:
-  * strictly, ignoring extra constructor fields, failing with `PT1` on an unknown constructor. Datums
-  * the Haskell reads with `fromBuiltinData` (here: policy info reference inputs) count only when
-  * they decode exactly.
+  * strictly, ignoring extra constructor fields, failing with `PT1` on an unknown constructor.
+  * Datums the Haskell reads with `fromBuiltinData` (here: policy info reference inputs) count only
+  * when they decode exactly.
   */
 class PiggyBankDecodingSpec extends PiggyBankSpecBase {
 
@@ -62,7 +62,10 @@ class PiggyBankDecodingSpec extends PiggyBankSpecBase {
     }
 
     test("a Bool with an unknown constructor in the datum fails with PT1") {
-        assertFailsWithoutErrorCode(unlockOnCancelWith(withField(sold.toData, 0, constrData(2))), Some("PT1"))
+        assertFailsWithoutErrorCode(
+          unlockOnCancelWith(withField(sold.toData, 0, constrData(2))),
+          Some("PT1")
+        )
     }
 
     test("extra constructor fields in the datum are ignored") {
@@ -77,7 +80,9 @@ class PiggyBankDecodingSpec extends PiggyBankSpecBase {
           outputs = Seq(piggyBankOutput(outputDatum, value(minAda + fidaCardValue, statusNft)))
         )
         assertSucceeds(evalRaw(input, BuyFidaCard.toData, buy(sold.toData)))
-        assertRejectedWith("ERR-PBANK-0")(evalRaw(input, BuyFidaCard.toData, buy(withExtraField(sold.toData))))
+        assertRejectedWith("ERR-PBANK-0")(
+          evalRaw(input, BuyFidaCard.toData, buy(withExtraField(sold.toData)))
+        )
     }
 
     test("parameters that are not bytestrings fail every action, even where they are unused") {
@@ -86,7 +91,9 @@ class PiggyBankDecodingSpec extends PiggyBankSpecBase {
           outputs = Seq(piggyBankOutput(sold.toData, value(minAda + fidaCardValue, statusNft)))
         )
         assertSucceeds(evalRaw(unsold.toData, BuyFidaCard.toData, buy))
-        assertFailsWithoutErrorCode(evalRaw(unsold.toData, BuyFidaCard.toData, buy, card = Data.I(1)))
+        assertFailsWithoutErrorCode(
+          evalRaw(unsold.toData, BuyFidaCard.toData, buy, card = Data.I(1))
+        )
         assertFailsWithoutErrorCode(
           evalRaw(unsold.toData, BuyFidaCard.toData, buy, insurance = constrData(0, Data.B(cs)))
         )
@@ -97,37 +104,72 @@ class PiggyBankDecodingSpec extends PiggyBankSpecBase {
           state = Cancelled,
           claim = scalus.cardano.onchain.plutus.prelude.Option.Some(sampleClaim)
         )
-        val claimWithBadBool = constrData(0, withField(sampleClaim.toData, 3, constrData(0, Data.I(0))))
+        val claimWithBadBool =
+            constrData(0, withField(sampleClaim.toData, 3, constrData(0, Data.I(0))))
         val undecodable = Seq(
           withExtraField(cancelled.toData),
-          withField(cancelled.toData, 7, constrData(4, Data.B(cs))), // unknown authority constructor
+          withField(
+            cancelled.toData,
+            7,
+            constrData(4, Data.B(cs))
+          ), // unknown authority constructor
           withField(cancelled.toData, 8, constrData(3, Data.I(0))), // a state with a field
-          withField(cancelled.toData, 4, constrData(0, listData(Data.I(1)), Data.I(1), Data.I(1))), // installments
+          withField(
+            cancelled.toData,
+            4,
+            constrData(0, listData(Data.I(1)), Data.I(1), Data.I(1))
+          ), // installments
           withField(cancelled.toData, 6, Data.I(4)), // policy holder is not a bytestring
           withField(withClaim.toData, 14, claimWithBadBool) // claimAccepted: a Bool with a field
         )
         for d <- undecodable do
             assertRejectedWith("ERR-PBANK-27.1")(
-              evalRaw(sold.toData, UnlockCollateralOnCancel.toData, unlockOnCancel(sold.toData, Seq(d)))
+              evalRaw(
+                sold.toData,
+                UnlockCollateralOnCancel.toData,
+                unlockOnCancel(sold.toData, Seq(d))
+              )
             )
         // a well-formed claim decodes, and one undecodable datum next to a valid one is skipped
-        assertSucceeds(evalRaw(sold.toData, UnlockCollateralOnCancel.toData, unlockOnCancel(sold.toData, Seq(withClaim.toData))))
         assertSucceeds(
-          evalRaw(sold.toData, UnlockCollateralOnCancel.toData, unlockOnCancel(sold.toData, Seq(cancelled.toData, undecodable.head)))
+          evalRaw(
+            sold.toData,
+            UnlockCollateralOnCancel.toData,
+            unlockOnCancel(sold.toData, Seq(withClaim.toData))
+          )
+        )
+        assertSucceeds(
+          evalRaw(
+            sold.toData,
+            UnlockCollateralOnCancel.toData,
+            unlockOnCancel(sold.toData, Seq(cancelled.toData, undecodable.head))
+          )
         )
     }
 
-    test("policy info reference inputs with a non-constructor inline datum are skipped, not a crash") {
+    test(
+      "policy info reference inputs with a non-constructor inline datum are skipped, not a crash"
+    ) {
         for d <- nonConstructorData do
             assertRejectedWith("ERR-PBANK-27.1")(
-              evalRaw(sold.toData, UnlockCollateralOnCancel.toData, unlockOnCancel(sold.toData, Seq(d)))
+              evalRaw(
+                sold.toData,
+                UnlockCollateralOnCancel.toData,
+                unlockOnCancel(sold.toData, Seq(d))
+              )
             )
             assertSucceeds(
-              evalRaw(sold.toData, UnlockCollateralOnCancel.toData, unlockOnCancel(sold.toData, Seq(d, cancelled.toData)))
+              evalRaw(
+                sold.toData,
+                UnlockCollateralOnCancel.toData,
+                unlockOnCancel(sold.toData, Seq(d, cancelled.toData))
+              )
             )
     }
 
-    test("policy info datums with non-constructor data where a constructor is expected are skipped") {
+    test(
+      "policy info datums with non-constructor data where a constructor is expected are skipped"
+    ) {
         val withClaim = sampleInsuranceInfo(
           state = Cancelled,
           claim = scalus.cardano.onchain.plutus.prelude.Option.Some(sampleClaim)
@@ -147,23 +189,40 @@ class PiggyBankDecodingSpec extends PiggyBankSpecBase {
           withField(cancelled.toData, 13, constrData(0, b)), // Just a non-time
           withField(cancelled.toData, 14, i), // iInfoClaim
           withField(cancelled.toData, 14, constrData(0, i)), // Just a non-ClaimInfo
-          withField(withClaim, 14, constrData(0, withField(sampleClaim.toData, 3, Data.I(1)))) // claimAccepted
+          withField(
+            withClaim,
+            14,
+            constrData(0, withField(sampleClaim.toData, 3, Data.I(1)))
+          ) // claimAccepted
         )
         for d <- nested do
             assertRejectedWith("ERR-PBANK-27.1")(
-              evalRaw(sold.toData, UnlockCollateralOnCancel.toData, unlockOnCancel(sold.toData, Seq(d)))
+              evalRaw(
+                sold.toData,
+                UnlockCollateralOnCancel.toData,
+                unlockOnCancel(sold.toData, Seq(d))
+              )
             )
     }
 
     test("a policy info reference input without inline datum is ignored") {
         val noDatum = txIn(outRef(1), txOutNoDatum(policyAddress, value(minAda, infoNft)))
-        val ctx = spendPiggyBank(Seq(piggyBankInput(sold.toData, collateral), cardOwnerInput), refs = Seq(noDatum))
+        val ctx = spendPiggyBank(
+          Seq(piggyBankInput(sold.toData, collateral), cardOwnerInput),
+          refs = Seq(noDatum)
+        )
         assertRejectedWith("ERR-PBANK-27.1")(eval(sold, UnlockCollateralOnCancel, ctx))
     }
 
     test("a reference input holding two policy info tokens is ignored") {
-        val twoTokens = txIn(outRef(1), txOut(policyAddress, value(minAda, (cs, infoNft._2, BigInt(2))), cancelled.toData))
-        val ctx = spendPiggyBank(Seq(piggyBankInput(sold.toData, collateral), cardOwnerInput), refs = Seq(twoTokens))
+        val twoTokens = txIn(
+          outRef(1),
+          txOut(policyAddress, value(minAda, (cs, infoNft._2, BigInt(2))), cancelled.toData)
+        )
+        val ctx = spendPiggyBank(
+          Seq(piggyBankInput(sold.toData, collateral), cardOwnerInput),
+          refs = Seq(twoTokens)
+        )
         assertRejectedWith("ERR-PBANK-27.1")(eval(sold, UnlockCollateralOnCancel, ctx))
     }
 }

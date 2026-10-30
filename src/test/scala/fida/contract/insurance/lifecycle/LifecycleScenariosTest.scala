@@ -20,17 +20,30 @@ class LifecycleScenariosTest extends TestToolbox {
     good("Fida system can cancel an initiated policy") {
         val users = setupUsers
         val iid = newSamplePolicy(users)
-        runUpdatePolicyState(Cancelled, PolicyInitiated(PolicyInitiatedCancel), iid, users.fidaSystem)
+        runUpdatePolicyState(
+          Cancelled,
+          PolicyInitiated(PolicyInitiatedCancel),
+          iid,
+          users.fidaSystem
+        )
     }
 
     bad("Policy holder can't cancel an initiated policy", "ERR-INIT-1") {
         val users = setupUsers
         val iid = newSamplePolicy(users)
-        runUpdatePolicyState(Cancelled, PolicyInitiated(PolicyInitiatedCancel), iid, users.policyHolder)
+        runUpdatePolicyState(
+          Cancelled,
+          PolicyInitiated(PolicyInitiatedCancel),
+          iid,
+          users.policyHolder
+        )
     }
 
     // Characterises the Haskell behaviour: AtLeastOneSign is satisfied by exactly one listed signer.
-    bad("AtLeastOneSign authority rejects a cancellation signed by two of its members", "ERR-INIT-1") {
+    bad(
+      "AtLeastOneSign authority rejects a cancellation signed by two of its members",
+      "ERR-INIT-1"
+    ) {
         val users = setupUsers
         val iid = newSamplePolicy(users)
         runUpdatePolicyState(
@@ -74,7 +87,10 @@ class LifecycleScenariosTest extends TestToolbox {
         triggerFundingCompleteBy(iid, users.broker1)
     }
 
-    bad("Funding can't be completed by someone other than the policy holder or authority", "ERR-FUND-6") {
+    bad(
+      "Funding can't be completed by someone other than the policy holder or authority",
+      "ERR-FUND-6"
+    ) {
         val users = setupUsers
         val iid = newSamplePolicy(users)
         payPremium(iid, users.policyHolder)
