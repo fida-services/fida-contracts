@@ -1,58 +1,30 @@
-.PHONY: nix-cabal-repl format-cabal format-cabal-check format-hs-check format-hs hoogle lint tags requires-nix-shell format-nix-check ghcid-fida-contracts-serialise format
+.PHONY: test scripts purs format format-check
 
-CABAL_SOURCES := $(shell find . -type f -name "*.cabal" | grep -v ./dist-newstyle/ | grep -v ./.deps/)
+SBT ?= sbt
 
-NIX_SOURCES := $(shell find . -type f -name "*.nix" | grep -v ./dist-newstyle/)
+# Where `make scripts` writes the <Name>.script text envelopes
+SCRIPTS_DIR ?= out/scripts
 
-HS_SOURCES := $(shell find src app test -type f -name "*.hs" -o -type f -name "*.lhs")
+# Name and path of the PureScript module written by `make purs`
+PURS_MODULE ?= Fida.RawScripts
+PURS_FILE ?= out/purs/Fida/RawScripts.purs
 
-hoogle:
-	@ nix develop .#hoogle -c hoogle server --local --port 8008
+# Run the test suite
+test:
+	$(SBT) test
 
-format-cabal: requires-nix-shell
-	cabal-fmt --inplace $(CABAL_SOURCES)
+# Write the unapplied contracts as cardano-api text envelopes to $(SCRIPTS_DIR)
+scripts:
+	$(SBT) "run -o $(SCRIPTS_DIR)"
 
-format-cabal-check: requires-nix-shell
-	cabal-fmt --check $(CABAL_SOURCES)
+# Write the PureScript module $(PURS_MODULE) embedding the contracts to $(PURS_FILE)
+purs:
+	$(SBT) "run -n $(PURS_MODULE) -p $(PURS_FILE)"
 
-format-hs: requires-nix-shell
-	fourmolu $(FOURMOLU_EXTENSIONS) --mode inplace --check-idempotence \
-		$(HS_SOURCES)
+# Format the Scala sources and the sbt build files
+format:
+	$(SBT) scalafmtAll scalafmtSbt
 
-format-hs-check: requires-nix-shell
-	fourmolu $(FOURMOLU_EXTENSIONS) --mode check --check-idempotence \
-		$(HS_SOURCES)
-
-lint: requires-nix-shell
-	hlint --no-summary $(HS_SOURCES)
-
-nix-cabal-repl:
-	@ nix develop -c cabal new-repl
-
-requires-nix-shell:
-	@ [ "$(IN_NIX_SHELL)" ] || { \
-	echo "The $(MAKECMDGOALS) target must be run from inside a nix shell"; \
-	echo "    run 'nix develop' first"; \
-	false; \
-	}
-
-format-nix: requires-nix-shell
-	nixpkgs-fmt $(NIX_SOURCES)
-
-format-nix-check: requires-nix-shell
-	nixpkgs-fmt --check $(NIX_SOURCES)
-
-format-check: format-nix-check format-cabal-check format-hs-check
-
-format: format-nix format-cabal format-hs
-
-ghcid-fida-contracts-serialise: requires-nix-shell
-	ghcid --command 'cabal repl fida-contracts-serialise'
-
-tags: requires-nix-shell
-	rm -rf .deps
-	cabal get bytestring optparse-applicative base aeson serialise -d .deps
-	hasktags .deps app src ./dist-newstyle/src
-
-test: requires-nix-shell
-	cabal run fida-contracts-test
+# Check the formatting of the Scala sources and the sbt build files
+format-check:
+	$(SBT) scalafmtCheckAll scalafmtSbtCheck

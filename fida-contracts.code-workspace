@@ -5,6 +5,31 @@
 		}
 	],
 	"settings": {
-		"haskell.manageHLS": "PATH"
+		"[scala]": {
+			"editor.defaultFormatter": "scalameta.metals",
+			"editor.formatOnSave": true
+		},
+		"files.watcherExclude": {
+			"**/target/**": true,
+			"**/.bloop/**": true,
+			"**/.bsp/**": true,
+			"**/.metals/**": true
+		},
+		"search.exclude": {
+			"**/target": true,
+			"**/.bloop": true,
+			"**/.bsp": true,
+			"**/.metals": true
+		},
+		"files.exclude": {
+			"**/.bloop": true,
+			"**/.metals": true
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"scalameta.metals",
+			"mkhl.direnv"
+		]
 	}
 }
