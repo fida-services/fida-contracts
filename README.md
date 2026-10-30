@@ -175,3 +175,7 @@ Scala port keeps them compatible with the existing off-chain code:
 | `cabal repl`                                                    | `sbt console`                          |
 | fourmolu, cabal-fmt, nixpkgs-fmt (`make format`)                | scalafmt (`make format`)               |
 | plutus-simple-model tests                                       | Scalus emulator and direct evaluation  |
+
+See [docs/MIGRATION.md](docs/MIGRATION.md) for the module map, the reasoning behind these choices,
+the (malformed-data only) behavioural differences, and the issues inherited from the Haskell
+contracts, which this migration deliberately does not fix.
