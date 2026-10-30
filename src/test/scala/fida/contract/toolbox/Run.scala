@@ -94,12 +94,22 @@ final class Run {
 
     /** Balances `builder` with `signer`'s funds, adds `signer` as required signer (so it appears in
       * `txInfoSignatories`, like plutus-simple-model's `submitTx`), signs and submits it.
+      * Throws [[TxFailure]] when the transaction is rejected.
       */
     def submitTx(signer: User, builder: TxBuilder): TransactionHash =
+        submitTx(signer, builder, Seq.empty)
+
+    /** [[submitTx]] with additional required signers. */
+    def submitTx(signer: User, builder: TxBuilder, cosigners: Seq[User]): TransactionHash =
+        val signers = signer +: cosigners
         val completed =
-            try builder.requireSignature(signer.addrKeyHash).complete(emulator, signer.address).await()
+            try
+                signers
+                    .foldLeft(builder)((b, u) => b.requireSignature(u.addrKeyHash))
+                    .complete(emulator, signer.address)
+                    .await()
             catch case e: TxBuilderException => throw failureOf(e)
-        val tx = completed.sign(signer.party.signer).transaction
+        val tx = signers.foldLeft(completed)((b, u) => b.sign(u.party.signer)).transaction
         emulator.submit(tx).await() match
             case Right(hash) =>
                 emulator.tick(1)

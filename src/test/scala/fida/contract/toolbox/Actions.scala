@@ -111,10 +111,11 @@ object Actions {
         state: InsurancePolicyState,
         r: InsurancePolicyRedeemer,
         iid: InsuranceId,
-        signer: User
+        signer: User,
+        cosigners: Seq[User] = Seq.empty
     )(using run: Run): Unit =
         val tx = updatePolicyStateTx(iid, iinfo(iid), state, r).validFrom(now)
-        run.submitTx(signer, tx)
+        run.submitTx(signer, tx, cosigners)
 
     def triggerPolicyExpiration(iid: InsuranceId, signer: User)(using run: Run): Unit =
         val tx = updatePolicyStateTxRef(iid, iinfo(iid), InsurancePolicyState.Expired, PolicyExpire)
@@ -142,9 +143,17 @@ object Actions {
         run.submitTx(policyHolder, tx)
 
     /** Moves the policy to OnRisk, referencing all piggy banks (`triggerFundingComplete`). */
-    def triggerFundingComplete(iid: InsuranceId, users: Users)(using run: Run): Unit =
+    def triggerFundingComplete(iid: InsuranceId, users: Users)(using Run): Unit =
+        triggerFundingCompleteBy(iid, users.policyHolder)
+
+    /** [[triggerFundingComplete]] submitted by `signer`, declaring a start date `startDateShift`
+      * milliseconds away from the time the coverage is requested.
+      */
+    def triggerFundingCompleteBy(iid: InsuranceId, signer: User, startDateShift: BigInt = 0)(using
+        run: Run
+    ): Unit =
         import run.given
-        val onRiskStartDate = run.currentTime
+        val onRiskStartDate = run.currentTime + startDateShift
         run.waitNSlots(5)
         val actualStartTime = run.currentTime
         val box = iinfo(iid)
@@ -159,7 +168,7 @@ object Actions {
               .payTo(insurancePolicyAddress(iid), box.value, updated)
               .validFrom(run.instant(actualStartTime))
         )((b, pb) => b.references(pb.utxo))
-        run.submitTx(users.policyHolder, tx)
+        run.submitTx(signer, tx)
 
     // ------------------------------------------------------------------ fida cards
 
@@ -200,13 +209,23 @@ object Actions {
     // ------------------------------------------------------------------ premium claims
 
     /** An investor (holding the fida card) claims `amount` lovelace of unlocked premium. */
-    def claimPremium(iid: InsuranceId, fcid: FidaCardId, investor: User, amount: BigInt)(using run: Run): Unit =
+    def claimPremium(iid: InsuranceId, fcid: FidaCardId, investor: User, amount: BigInt)(using Run): Unit =
+        claimPremiumWith(iid, fcid, investor, amount, withCard = true)
+
+    /** [[claimPremium]]; with `withCard = false` the claimer does not present the fida card. */
+    def claimPremiumWith(iid: InsuranceId, fcid: FidaCardId, investor: User, amount: BigInt, withCard: Boolean)(
+        using run: Run
+    ): Unit =
         import run.given
         val pbBox = premiumBox(iid, fcid)
         val claimed = Value.lovelace(amount.toLong)
-        val base = spendAll(run.txBuilder.references(iinfo(iid).utxo), fidaCardUtxos(investor, iid, fcid))
-            .payTo(investor.address, claimed + fidaCardNFT(iid, fcid))
-            .spend(pbBox.utxo, ClaimPremium, piggyBank(iid, fcid))
+        val withReference = run.txBuilder.references(iinfo(iid).utxo)
+        val base = (
+          if withCard then
+              spendAll(withReference, fidaCardUtxos(investor, iid, fcid))
+                  .payTo(investor.address, claimed + fidaCardNFT(iid, fcid))
+          else withReference.payTo(investor.address, claimed)
+        ).spend(pbBox.utxo, ClaimPremium, piggyBank(iid, fcid))
         val tx =
             if pbBox.value == claimed then base
             else base.payTo(piggyBankAddr(iid, fcid), pbBox.value - claimed, pbBox.datum)
@@ -234,14 +253,25 @@ object Actions {
     // ------------------------------------------------------------------ collateral
 
     /** The investor pays the accepted claim from the collateral of each piggy bank. */
-    def payForClaimWithCollateral(iid: InsuranceId, investor: User)(using run: Run): Unit =
+    def payForClaimWithCollateral(iid: InsuranceId, investor: User)(using Run): Unit =
+        payForClaimWithCollateralOf(iid, investor, fidaCardsFromInts(1 to insuranceInfo(iid).iInfoFidaCardNumber.toInt))
+
+    /** [[payForClaimWithCollateral]] for the given cards; each piggy bank pays `share` (by default
+      * the claim amount divided by the number of fida cards).
+      */
+    def payForClaimWithCollateralOf(
+        iid: InsuranceId,
+        investor: User,
+        fcids: Seq[FidaCardId],
+        share: Option[BigInt] = None
+    )(using run: Run): Unit =
         import run.given
         val iiBox = iinfo(iid)
         val info = insuranceInfo(iid)
         val claim = info.iInfoClaim.orFail("Can't get the current claim")
-        for fcid <- fidaCardsFromInts(1 to info.iInfoFidaCardNumber.toInt) do
+        for fcid <- fcids do
             val pBox = piggyBankInfo(iid, fcid)
-            val payAmount = claim.claimAmount / info.iInfoFidaCardNumber
+            val payAmount = share.getOrElse(claim.claimAmount / info.iInfoFidaCardNumber)
             val paid = PiggyBankDatum.addPiggyBankPaidClaim(claim.claimId, pBox.datum).orFail("Can't pay for claim")
             val claimPayment: InsurancePolicyDatum = PolicyClaimPayment
             val tx = spendAll(
@@ -279,11 +309,18 @@ object Actions {
     val sampleClaimAmount: BigInt = 10_000_000
 
     /** Funds the policy, sells all cards to investor 1, starts the coverage and files a claim. */
-    def createClaim(iid: InsuranceId, policyHolder: User, users: Users)(using run: Run): Unit =
-        import run.given
-        payPremium(iid, policyHolder)
+    def createClaim(iid: InsuranceId, policyHolder: User, users: Users)(using Run): Unit =
+        startCoverage(iid, users)
+        fileClaim(iid, policyHolder)
+
+    /** Pays the premium, sells every fida card to investor 1 and completes funding. */
+    def startCoverage(iid: InsuranceId, users: Users)(using Run): Unit =
+        payPremium(iid, users.policyHolder)
         buyFidaCards(iid, users.investor1, fidaCardsFromInts(1 to 10))
         triggerFundingComplete(iid, users)
+
+    /** Files the sample claim (dated now, submitted five slots later) signed by `signer`. */
+    def fileClaim(iid: InsuranceId, signer: User)(using run: Run): Unit =
         val claimDate = run.currentTime
         run.waitNSlots(5)
         val claim = ClaimInfo(
@@ -293,7 +330,7 @@ object Actions {
           claimAccepted = false,
           claimId = ByteString.fromString("1234")
         )
-        updateClaimTx(iid, policyHolder, PolicyOnRiskCreateClaim(claim), validFrom = true)(_ => POption.Some(claim))
+        updateClaimTx(iid, signer, PolicyOnRiskCreateClaim(claim), validFrom = true)(_ => POption.Some(claim))
 
     def closeClaim(iid: InsuranceId, policyHolder: User)(using Run): Unit =
         updateClaimTx(iid, policyHolder, PolicyOnRiskCloseClaim, validFrom = false)(_ => POption.None)
