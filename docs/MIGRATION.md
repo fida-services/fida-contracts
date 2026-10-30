@@ -70,13 +70,16 @@ shape; none of them gives an attacker a new capability.
    with a new state), the fields it does not change are carried over as received, whereas PlutusTx
    re-encoded them canonically: for an input datum holding `Nothing` written as `Constr 1 [I 0]`,
    Haskell expected `Constr 1 []` in the output and the port expects `Constr 1 [I 0]`
-   (`InsurancePolicyValidatorSpec` characterises this). Continuing datums are still compared
-   byte-for-byte with that expected value.
+   (`InsurancePolicyValidatorSpec` characterises this). The same goes for extra trailing fields,
+   e.g. in a claim supplied by a `PolicyOnRiskCreateClaim` redeemer. Continuing datums are still
+   compared byte-for-byte with that expected value.
 2. **Out-of-range constructor tags.** At the protocol version 10 target, matching on a sum type
    treats an unknown tag as its last constructor, where Haskell failed to decode (e.g. a
-   `PiggyBankRedeemer` with tag 9 behaves as `UnlockCollateral`). Such a redeemer only selects a
-   branch that a well-formed redeemer could select anyway; such a datum is junk sent to a script
-   address. Compiling for protocol version 11 makes these tags fail, as in Haskell.
+   `PiggyBankRedeemer` with tag 9 behaves as `UnlockCollateral`), unless the match has a
+   reachable `case _` (e.g. the `PolicyOnRiskRedeemer` match), which then rejects it. Such a
+   redeemer only selects a branch that a well-formed redeemer could select anyway; such a datum is
+   junk sent to a script address. Compiling for protocol version 11 makes these tags fail, as in
+   Haskell.
 3. **`fromBuiltinData` filters.** Where Haskell filtered outputs/reference inputs with
    `Just x <- [fromBuiltinData d]`, the port matches on the constructor tag; a datum with the
    expected tag but malformed fields now fails the script instead of being skipped.
@@ -109,7 +112,25 @@ work. The first three are demonstrated by `KnownIssuesTest` (pending until fixed
    policy state (only the cancelled state is excluded by the dispatcher); `BuyFidaCard` and
    `SellFidaCard` do not look at the policy at all.
 6. **Claims.** `PolicyOnRiskCreateClaim` replaces any existing claim, including an accepted one;
-   `PolicyOnRiskFailClaim` does not require a claim; `PolicyOnRiskFinalizeClaim` is not implemented
-   (always rejected); `iInfoTotalClaimsAcceptedAmount` is never updated.
-7. **Unvalidated creation.** The `InsuranceId` minting policy only checks that its `TxOutRef` is
+   `PolicyOnRiskFailClaim` does not require a claim; `PolicyOnRiskExpireClaim` needs no signature
+   and also expires accepted claims; `PolicyOnRiskClaimPayment` only requires the policy holder's
+   signature, not where the funds go; `PolicyOnRiskFinalizeClaim` is not implemented (always
+   rejected); `iInfoTotalClaimsAcceptedAmount` is never updated.
+7. **Premium payment checks.** The premium payment info UTxO is not required to hold the
+   `POLICY-PAYMENT` token; `ERR-INIT-4` counts policy info outputs whatever their datum; anyone may
+   pay the premium and overpaying is accepted when the datum states the paid amount; a piggy bank
+   listed twice in `ppInfoPiggyBanks` makes the premium impossible to pay.
+8. **Unvalidated creation.** The `InsuranceId` minting policy only checks that its `TxOutRef` is
    spent: the minted tokens and the initial datums are not validated on chain.
+
+## Scalus notes for maintainers
+
+- **Compiler issue (Scalus 1.4.1).** In a function with two or more parameters, a
+  `d match { case Data.Constr(tag, fields) => ...; case _ => ... }` that uses `tag` or `fields`
+  more than once evaluates `unConstrData(d)` outside its branch, so the script fails on `I`/`B`/
+  `List`/`Map` data instead of reaching `case _`. Helpers that match on raw `Data` therefore take
+  the `Data` as their only parameter.
+- Lowering to UPLC happens when a script's `program` is first accessed, so some compilation
+  errors only surface when the tests run (`ScriptsTest` lowers every script).
+- On-chain `to[T]` does not validate; where the contracts must skip data that does not have the
+  expected shape (plutus-tx `fromBuiltinData`), they check it explicitly.
