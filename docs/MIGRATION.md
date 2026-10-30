@@ -36,8 +36,8 @@ parameters.
   with existing off-chain tooling (e.g. cardano-transaction-lib's `applyArgs`). They run unchanged
   on mainnet, preprod and preview, which are at protocol version 11 (van Rossem) since mid-2026.
   Targeting protocol version 11 (`MajorProtocolVersion.vanRossemPV` in `Scripts.options`) would
-  produce smaller and cheaper scripts and make Scalus reject out-of-range constructor tags (see
-  below), at the cost of requiring UPLC 1.1.0 support in the off-chain tooling.
+  produce smaller and cheaper scripts, at the cost of requiring UPLC 1.1.0 support in the
+  off-chain tooling.
 - **Encodings are unchanged.** Every datum, redeemer and parameter type produces exactly the
   `Data` the Haskell `makeIsDataIndexed`/newtype-derived instances produced
   (`DataEncodingSpec` pins them). In particular `PiggyBankRedeemer` is declared in on-chain index
@@ -57,32 +57,30 @@ parameters.
 - Test helper names and test names follow the Haskell toolbox. Negative tests now also assert the
   error code reported by the script.
 
-## Behavioural differences (malformed data only)
+## Decoding
 
-For well-formed datums and redeemers the port accepts and rejects exactly the same transactions
-as the Haskell contracts. The differences below only concern data that does not have the expected
-shape; none of them gives an attacker a new capability.
+Scalus' on-chain `to[T]` is a zero-cost retag, not a decoder, whereas the Haskell contracts relied
+on PlutusTx decoding. To keep the behaviour on malformed data too, the port decodes explicitly:
 
-1. **Lazy decoding.** PlutusTx's `unsafeFromBuiltinData` decoded a whole datum up front, so a
-   malformed field anywhere made the script fail. Scalus' `to[T]` is a zero-cost retag: a field
-   is only decoded when the validator reads it, so a malformed field the validator never reads is
-   ignored. Likewise, when a validator rebuilds the expected continuing datum (e.g. the input datum
-   with a new state), the fields it does not change are carried over as received, whereas PlutusTx
-   re-encoded them canonically: for an input datum holding `Nothing` written as `Constr 1 [I 0]`,
-   Haskell expected `Constr 1 []` in the output and the port expects `Constr 1 [I 0]`
-   (`InsurancePolicyValidatorSpec` characterises this). The same goes for extra trailing fields,
-   e.g. in a claim supplied by a `PolicyOnRiskCreateClaim` redeemer. Continuing datums are still
-   compared byte-for-byte with that expected value.
-2. **Out-of-range constructor tags.** At the protocol version 10 target, matching on a sum type
-   treats an unknown tag as its last constructor, where Haskell failed to decode (e.g. a
-   `PiggyBankRedeemer` with tag 9 behaves as `UnlockCollateral`), unless the match has a
-   reachable `case _` (e.g. the `PolicyOnRiskRedeemer` match), which then rejects it. Such a
-   redeemer only selects a branch that a well-formed redeemer could select anyway; such a datum is
-   junk sent to a script address. Compiling for protocol version 11 makes these tags fail, as in
-   Haskell.
-3. **`fromBuiltinData` filters.** Where Haskell filtered outputs/reference inputs with
-   `Just x <- [fromBuiltinData d]`, the port matches on the constructor tag; a datum with the
-   expected tag but malformed fields now fails the script instead of being skipped.
+- **Own datum and redeemer.** Both validators decode their parameters, datum and redeemer like
+  PlutusTx `unsafeFromBuiltinData` in the Haskell wrappers: malformed data fails the script, an
+  unknown constructor fails with `PT1`, extra constructor fields are ignored, and the values are
+  rebuilt, so every expected continuing datum is re-encoded canonically, as `toBuiltinData` did.
+- **Other UTxOs' datums.** Where the Haskell filtered outputs or reference inputs with
+  `Just x <- [fromBuiltinData d]` (premium payments, sold fida cards, policy info, claim
+  payments, piggy bank outputs), the port counts a datum only when PlutusTx `fromBuiltinData` would
+  decode it: the right constructor, exactly its fields, each of them well formed. Anything else,
+  including non-constructor data, is skipped rather than failing the script.
+
+These emulations follow the instances PlutusTx 1.0 derives with `makeIsDataIndexed` and the
+plutus-ledger-api V2 instances; the Haskell build could not be run alongside to compare them
+directly. Expected datums are compared byte-for-byte with `equalsData`, as the Haskell compared
+`BuiltinData`. With this, no behavioural difference is known, for well-formed or malformed data.
+
+An earlier iteration retagged the policy datum and redeemer lazily; the reviews showed that let a
+policy holder store a claim with an extra field that later actions could not read, permanently
+blocking collateral unlocks after a cancellation. `InsurancePolicyValidatorSpec` pins the strict
+behaviour (canonical re-encoding, extra fields, malformed claims, unknown constructors).
 
 ## Known issues inherited from the Haskell contracts
 
