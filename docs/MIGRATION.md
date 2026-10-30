@@ -97,7 +97,9 @@ work. The first three are demonstrated by `KnownIssuesTest` (pending until fixed
    restart the coverage without paying a new premium, re-locking investors' collateral.
 2. **Selling a fida card back at any time (critical).** `SellFidaCard` checks neither the policy
    state nor the ADA leaving the piggy bank: the card holder can recover the whole collateral
-   while the policy is on risk, leaving the policy holder uncovered.
+   while the policy is on risk (even with an accepted claim unpaid), leaving the policy holder
+   uncovered. Of the returned datum only `pbfcIsSold` and the card value are checked, so the
+   seller can also rewrite `pbfcPaidClaims` and `pbfcFidaCardId`.
 3. **Double satisfaction of claim payments (high).** `PayForClaimWithCollateral` sums all claim
    payment outputs of the transaction, so several piggy banks spent together are satisfied by one
    payment. After the claim's time to pay anyone may trigger the payment, so a third party can pocket
@@ -120,7 +122,17 @@ work. The first three are demonstrated by `KnownIssuesTest` (pending until fixed
    `POLICY-PAYMENT` token; `ERR-INIT-4` counts policy info outputs whatever their datum; anyone may
    pay the premium and overpaying is accepted when the datum states the paid amount; a piggy bank
    listed twice in `ppInfoPiggyBanks` makes the premium impossible to pay.
-8. **Unvalidated creation.** The `InsuranceId` minting policy only checks that its `TxOutRef` is
+8. **Unsold piggy banks can be emptied by anyone.** `UnlockCollateralOnCancel` and
+   `UnlockCollateral` prove card ownership with `valueSpent`, which includes the piggy bank's own
+   input; an unsold piggy bank still holds its card token, so anyone can spend it once the policy
+   is cancelled or expired.
+9. **Error codes.** `ERR-PBANK-8` is used both for a missing `SellFidaCard` output datum and for a
+   wrong `ClaimPremium` amount; the fourth `ClaimPremiumOnCancel` check (`refund == 0`) reuses the
+   fall-through code `ERR-PBANK-32`; a `BuyFidaCard` status output without inline datum fails
+   without a code (incomplete Haskell `case`). `ERR-INIT-5` and `ERR-PBANK-1` are documented but
+   never raised; `ERR-PBANK-2` is always preceded by the `Lf` failure of `getContinuingOutputs`;
+   `ERR-PBANK-19` cannot happen in a spending context.
+10. **Unvalidated creation.** The `InsuranceId` minting policy only checks that its `TxOutRef` is
    spent: the minted tokens and the initial datums are not validated on chain.
 
 ## Scalus notes for maintainers
@@ -130,6 +142,9 @@ work. The first three are demonstrated by `KnownIssuesTest` (pending until fixed
   more than once evaluates `unConstrData(d)` outside its branch, so the script fails on `I`/`B`/
   `List`/`Map` data instead of reaching `case _`. Helpers that match on raw `Data` therefore take
   the `Data` as their only parameter.
+- Compiled `a > b` and `a >= b` evaluate `b` first, and the Scalus inliner may move a single-use
+  `val` into the comparison, so binding the operands to `val`s first does not fix the order. Where
+  the reported error code depends on it, the contracts write `!(a < b)` instead.
 - Lowering to UPLC happens when a script's `program` is first accessed, so some compilation
   errors only surface when the tests run (`ScriptsTest` lowers every script).
 - On-chain `to[T]` does not validate; where the contracts must skip data that does not have the
