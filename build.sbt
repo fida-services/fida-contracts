@@ -19,5 +19,11 @@ lazy val root = (project in file("."))
         "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % Test
       ),
       Test / fork := true,
-      Test / javaOptions ++= Seq("-Xss16m", "-Xmx2g")
+      Test / javaOptions ++= Seq("-Xss16m", "-Xmx2g"),
+      // `sbt "run -o DIR"`, `sbt "run -n MODULE [-p FILE]"`: the serialise tool, run from the
+      // project directory with the stack the UPLC lowering needs and its output unprefixed
+      Compile / run / mainClass := Some("fida.serialise.Main"),
+      Compile / run / fork := true,
+      Compile / run / javaOptions ++= Seq("-Xss16m"),
+      Compile / run / outputStrategy := Some(StdoutOutput)
     )

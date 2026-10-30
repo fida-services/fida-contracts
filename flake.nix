@@ -1,148 +1,33 @@
 {
-  description = "fida-contracts";
+  description = "fida-contracts: Fida insurance smart contracts in Scala 3 with Scalus";
 
-  nixConfig = {
-    extra-substituters = [
-      "https://cache.iog.io"
-      "https://public-plutonomicon.cachix.org"
-      "https://cache.sc.iog.io"
-    ];
-    extra-trusted-public-keys = [
-      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-      "public-plutonomicon.cachix.org-1:3AKJMhCLn32gri1drGuaZmFrmnue+KkKrhhubQk/CWc="
-      "cache.sc.iog.io:b4YIcBabCEVKrLQgGW8Fylz4W8IvvfzRc+hy0idqrWU="
-    ];
-  };
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
-  inputs = {
-    cardano-transaction-lib.url = "github:Plutonomicon/cardano-transaction-lib/b7e8d396711f95e7a7b755a2a7e7089df712aaf5";
-    haskell-nix.url = "github:input-output-hk/haskell.nix/9af167fb4343539ca99465057262f289b44f55da";
-    nixpkgs.follows = "cardano-transaction-lib/nixpkgs";
-    iohk-nix.follows = "cardano-transaction-lib/plutip/iohk-nix";
-    CHaP.follows = "cardano-transaction-lib/plutip/CHaP";
-    plutip.follows = "cardano-transaction-lib/plutip";
-
-    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz";
-  };
-
-  outputs = { self, nixpkgs, haskell-nix, iohk-nix, CHaP, plutip, ... }:
+  outputs = { self, nixpkgs }:
     let
-      nixpkgsFor = system:
-        import nixpkgs {
-          inherit system;
-          overlays = [
-            (import "${iohk-nix}/overlays/crypto")
-            haskell-nix.overlay
-          ];
-          inherit (haskell-nix) config;
-        };
-
-      hsProjectFor = system:
-        let
-          pkgs = nixpkgsFor system;
-        in
-        pkgs.haskell-nix.cabalProject {
-          src = ./.;
-          inputMap = {
-            "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
-          };
-          compiler-nix-name = "ghc8107";
-          modules = plutip.haskellModules;
-          shell = {
-            exactDeps = true;
-            nativeBuildInputs = with pkgs; [
-              # Shell utils
-              bashInteractive
-              git
-              cabal-install
-              ghcid
-
-              # Lint / Format
-              hlint
-              haskellPackages.cabal-fmt
-              haskellPackages.fourmolu
-              nixpkgs-fmt
-
-              haskellPackages.hasktags
-            ];
-            tools.haskell-language-server = { };
-          };
-        };
-
-      formatCheckFor = system:
-        let
-          pkgs = nixpkgsFor system;
-        in
-        pkgs.runCommand "format-check"
-          {
-            nativeBuildInputs = self.devShells.${system}.hs.nativeBuildInputs;
-          } ''
-
-          export LC_CTYPE=C.UTF-8
-          export LC_ALL=C.UTF-8
-          export LANG=C.UTF-8
-          export IN_NIX_SHELL='pure'
-
-          make format-check lint
-
-          mkdir $out
-        '';
-
-      hlswFor = system:
-        let
-          pkgs = nixpkgsFor system;
-        in
-        pkgs.writeShellApplication {
-          name = "haskell-language-server-wrapper";
-
-          runtimeInputs = self.devShells.${system}.hs.nativeBuildInputs;
-
-          text = ''
-            haskell-language-server "$@"
-          '';
-        };
-
       supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
-      perSystem = nixpkgs.lib.genAttrs supportedSystems;
-
+      forAllSystems = f:
+        nixpkgs.lib.genAttrs supportedSystems (system: f nixpkgs.legacyPackages.${system});
     in
     {
+      devShells = forAllSystems (pkgs:
+        let
+          # CI builds with JDK 21 (Temurin)
+          jdk = pkgs.jdk21;
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              jdk
+              (pkgs.sbt.override { jre = jdk; })
+              (pkgs.coursier.override { jre = jdk; })
+              (pkgs.metals.override { jre = jdk; })
+            ];
 
-      project = perSystem hsProjectFor;
-
-      flake = perSystem (system: self.project.${system}.flake { });
-
-      packages = perSystem (system: self.flake.${system}.packages);
-
-      check = perSystem (system:
-        (nixpkgsFor system).runCommand "combined-check"
-          {
-            nativeBuildInputs = builtins.attrValues self.checks.${system}
-              ++ builtins.attrValues self.flake.${system}.packages
-              ++ self.devShells.${system}.hs.nativeBuildInputs;
-          } "touch $out");
-
-      checks = perSystem (system: self.flake.${system}.checks // {
-        formatCheck = formatCheckFor system;
-      });
-
-      devShells = perSystem (system: rec {
-        hs = self.flake.${system}.devShell;
-        hlsw = hlswFor system;
-        pkgs = nixpkgsFor system;
-        default = (nixpkgsFor system).mkShell {
-          inputsFrom = [ hs ];
-          shellHook = ''
-            export PATH=${hlsw}/bin:$PATH
-            ${hs.shellHook}
-          '';
-        };
-        hoogle = self.project.${system}.shellFor {
-          additional = ps: with ps; [ cardano-api ];
-          withHoogle = true;
-        };
-      });
-
+            # picked up by sbt, Metals and the VS Code Metals extension
+            JAVA_HOME = jdk.home;
+          };
+        });
     };
 }
