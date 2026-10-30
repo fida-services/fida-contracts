@@ -1,16 +1,14 @@
 package fida.contract.insurance
 
-import fida.contract.Scripts
 import fida.contract.insurance.InsurancePolicyDatum.PolicyClaimPayment
 import fida.contract.insurance.InsurancePolicyRedeemer.*
 import fida.contract.insurance.InsurancePolicyState.*
-import fida.contract.testkit.{ScriptAssertions, ScriptEval}
+import fida.contract.testkit.{OnChainScript, Outcome, ScriptAssertions, ScriptEval}
 import fida.contract.testkit.ContextBuilder.*
 import fida.contract.testkit.Fixtures.*
 import org.scalatest.funsuite.AnyFunSuite
 import scalus.uplc.builtin.Data
 import scalus.uplc.builtin.Data.toData
-import scalus.uplc.eval.Result
 import scalus.cardano.onchain.plutus.v1.{Interval, PosixTime}
 import scalus.cardano.onchain.plutus.v2.ScriptContext
 import scalus.cardano.onchain.plutus.prelude.{List as PList, Option}
@@ -26,9 +24,9 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
         datum: InsurancePolicyDatum,
         redeemer: InsurancePolicyRedeemer,
         ctx: ScriptContext
-    ): Result =
+    ): Outcome =
         ScriptEval.eval(
-          Scripts.insurancePolicyValidator.program,
+          OnChainScript.insurancePolicyValidator,
           insuranceId.toData,
           datum.toData,
           redeemer.toData,
@@ -105,9 +103,9 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
     // constructor fails with `PT1`, extra fields are ignored, and the decoded values are re-encoded
     // canonically.
 
-    private def evalRaw(datum: Data, redeemer: Data, ctx: ScriptContext): Result =
+    private def evalRaw(datum: Data, redeemer: Data, ctx: ScriptContext): Outcome =
         ScriptEval.eval(
-          Scripts.insurancePolicyValidator.program,
+          OnChainScript.insurancePolicyValidator,
           insuranceId.toData,
           datum,
           redeemer,

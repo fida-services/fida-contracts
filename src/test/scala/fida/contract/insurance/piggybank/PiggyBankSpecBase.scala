@@ -1,14 +1,12 @@
 package fida.contract.insurance.piggybank
 
-import fida.contract.Scripts
 import fida.contract.insurance.{FidaCardId, PiggyBankDatum, PiggyBankRedeemer, Tokens}
-import fida.contract.testkit.{ScriptAssertions, ScriptEval}
+import fida.contract.testkit.{OnChainScript, Outcome, ScriptAssertions, ScriptEval}
 import fida.contract.testkit.ContextBuilder.*
 import fida.contract.testkit.Fixtures.*
 import org.scalatest.funsuite.AnyFunSuite
 import scalus.uplc.builtin.{ByteString, Data}
 import scalus.uplc.builtin.Data.toData
-import scalus.uplc.eval.Result
 import scalus.cardano.onchain.plutus.v1.{
     Address,
     Interval,
@@ -54,9 +52,9 @@ trait PiggyBankSpecBase extends AnyFunSuite with ScriptAssertions {
         ctx: ScriptContext,
         card: Data = fcid.toData,
         insurance: Data = insuranceId.toData
-    ): Result =
+    ): Outcome =
         ScriptEval.eval(
-          Scripts.piggyBankValidator.program,
+          OnChainScript.piggyBankValidator,
           insurance,
           card,
           datum,
@@ -64,12 +62,12 @@ trait PiggyBankSpecBase extends AnyFunSuite with ScriptAssertions {
           ctx.toData
         )
 
-    def eval(datum: PiggyBankDatum, redeemer: PiggyBankRedeemer, ctx: ScriptContext): Result =
+    def eval(datum: PiggyBankDatum, redeemer: PiggyBankRedeemer, ctx: ScriptContext): Outcome =
         evalRaw(datum.toData, redeemer.toData, ctx)
 
     /** Fails, and `code` is the only `ERR-…` code in the logs, i.e. the error the script reports.
       */
-    def assertRejectedWith(code: String)(result: Result): Unit =
+    def assertRejectedWith(code: String)(result: Outcome): Unit =
         assertFailsWith(code)(result)
         val codes = result.logs.filter(_.startsWith("ERR-"))
         assert(
@@ -78,7 +76,7 @@ trait PiggyBankSpecBase extends AnyFunSuite with ScriptAssertions {
         )
 
     /** Fails without reporting any `ERR-…` code, with `marker` in the logs when given. */
-    def assertFailsWithoutErrorCode(result: Result, marker: Option[String] = None): Unit =
+    def assertFailsWithoutErrorCode(result: Outcome, marker: Option[String] = None): Unit =
         assert(
           result.isFailure,
           s"expected failure, but the script succeeded with logs ${result.logs}"

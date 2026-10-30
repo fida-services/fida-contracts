@@ -9,6 +9,7 @@ import fida.contract.insurance.PiggyBankRedeemer.*
 import fida.contract.insurance.PolicyFundingRedeemer.*
 import fida.contract.insurance.PolicyInitiatedRedeemer.*
 import fida.contract.insurance.PolicyOnRiskRedeemer.*
+import fida.contract.testkit.Uplc
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalactic.anyvals.PosInt
 import org.scalatest.funsuite.AnyFunSuite
@@ -131,6 +132,7 @@ class DataEncodingSpec extends AnyFunSuite with ScalaCheckPropertyChecks {
     }
 
     test("the script helpers apply parameters as CTL applyArgs would, with these encodings") {
+        assume(Uplc.available, "needs the compiled scripts")
         val ref = TxOutRef(TxId(hex("0f" * 32)), 3)
         val iid = InsuranceId(currencySymbol)
         val fcid = FidaCardId(ByteString.fromString("7"))

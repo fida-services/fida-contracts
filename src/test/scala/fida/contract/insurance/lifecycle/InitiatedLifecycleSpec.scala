@@ -1,6 +1,5 @@
 package fida.contract.insurance.lifecycle
 
-import fida.contract.Scripts
 import fida.contract.insurance.*
 import fida.contract.insurance.InsurancePolicyDatum.{InsuranceInfo, PolicyClaimPayment}
 import fida.contract.insurance.InsurancePolicyRedeemer.PolicyInitiated
@@ -10,13 +9,12 @@ import fida.contract.insurance.PolicyInitiatedRedeemer.{
     PolicyInitiatedCancel,
     PolicyInitiatedPayPremium
 }
-import fida.contract.testkit.{ScriptAssertions, ScriptEval}
+import fida.contract.testkit.{OnChainScript, Outcome, ScriptAssertions, ScriptEval}
 import fida.contract.testkit.ContextBuilder.*
 import fida.contract.testkit.Fixtures.*
 import org.scalatest.funsuite.AnyFunSuite
 import scalus.uplc.builtin.{ByteString, Data}
 import scalus.uplc.builtin.Data.toData
-import scalus.uplc.eval.Result
 import scalus.cardano.onchain.plutus.v1.{
     Address,
     Credential,
@@ -52,9 +50,9 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
         datum: InsurancePolicyDatum,
         redeemer: InsurancePolicyRedeemer,
         ctx: ScriptContext
-    ): Result =
+    ): Outcome =
         ScriptEval.eval(
-          Scripts.insurancePolicyValidator.program,
+          OnChainScript.insurancePolicyValidator,
           insuranceId.toData,
           datum.toData,
           redeemer.toData,
@@ -64,7 +62,7 @@ class InitiatedLifecycleSpec extends AnyFunSuite with ScriptAssertions {
     /** Rejected, and `code` is the only error code in the logs: the one the Haskell validator
       * reports.
       */
-    private def assertRejectedWith(code: String)(result: Result): Unit =
+    private def assertRejectedWith(code: String)(result: Outcome): Unit =
         assertFailsWith(code)(result)
         val codes = result.logs.filter(_.startsWith("ERR-"))
         assert(codes == Seq(code), s"expected only $code, got ${codes.mkString("[", ", ", "]")}")

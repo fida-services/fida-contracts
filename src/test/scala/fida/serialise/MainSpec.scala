@@ -1,6 +1,7 @@
 package fida.serialise
 
 import fida.contract.Scripts
+import fida.contract.testkit.RequiresUplc
 import fida.serialise.Main.Command
 import org.scalatest.funsuite.AnyFunSuite
 import scalus.uplc.{CompiledPlutus, Program}
@@ -13,10 +14,10 @@ import java.util.Comparator
 import scala.jdk.CollectionConverters.*
 
 /** The serialise tool produces what the Haskell `fida-contracts-serialise` produced. */
-class MainSpec extends AnyFunSuite {
+class MainSpec extends AnyFunSuite with RequiresUplc {
 
     /** The serialisable scripts, in the order and under the names of the Haskell tool. */
-    private val expectedScripts: Seq[(String, CompiledPlutus[?])] = Seq(
+    private lazy val expectedScripts: Seq[(String, CompiledPlutus[?])] = Seq(
       "InsuranceIdMintingPolicy" -> Scripts.insuranceIdMintingPolicy,
       "InsurancePolicyValidator" -> Scripts.insurancePolicyValidator,
       "InvestorValidator" -> Scripts.investorValidator,

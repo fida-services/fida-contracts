@@ -1,6 +1,6 @@
 package fida.contract
 
-import fida.contract.testkit.{ScriptAssertions, ScriptEval}
+import fida.contract.testkit.{OnChainScript, Outcome, ScriptAssertions, ScriptEval, Uplc}
 import fida.contract.testkit.ContextBuilder.*
 import org.scalatest.funsuite.AnyFunSuite
 import scalus.cardano.onchain.plutus.v1.{
@@ -14,7 +14,6 @@ import scalus.cardano.onchain.plutus.v1.{
 import scalus.cardano.onchain.plutus.v2.{ScriptContext, TxInInfo, TxInfo}
 import scalus.uplc.builtin.{ByteString, Data}
 import scalus.uplc.builtin.Data.toData
-import scalus.uplc.eval.Result
 
 /** Direct-evaluation tests of the InsuranceId and SystemId minting policies and the investor
   * validator, with their parameters applied as `Data` like off-chain code applies them.
@@ -38,9 +37,9 @@ class MintingPoliciesSpec extends AnyFunSuite with ScriptAssertions {
 
     private val seedRef = outRef(7, 2)
 
-    private def runInsuranceId(ctx: ScriptContext): Result =
+    private def runInsuranceId(ctx: ScriptContext): Outcome =
         ScriptEval.eval(
-          Scripts.insuranceIdMintingPolicy.program,
+          OnChainScript.insuranceIdMintingPolicy,
           seedRef.toData,
           Data.unit,
           ctx.toData
@@ -76,9 +75,9 @@ class MintingPoliciesSpec extends AnyFunSuite with ScriptAssertions {
     private val governance = pkh(10)
     private val magic = BigInt(42)
 
-    private def runSystemId(ctx: ScriptContext, magic: BigInt = magic): Result =
+    private def runSystemId(ctx: ScriptContext, magic: BigInt = magic): Outcome =
         ScriptEval.eval(
-          Scripts.systemIdMintingPolicy.program,
+          OnChainScript.systemIdMintingPolicy,
           governance.toData,
           magic.toData,
           Data.unit,
@@ -107,10 +106,11 @@ class MintingPoliciesSpec extends AnyFunSuite with ScriptAssertions {
         val ctx = minting(signedBy(governance), ownSymbol)
         for magic <- Seq(BigInt(0), BigInt(1), BigInt(-7), BigInt(2).pow(70)) do
             assertSucceeds(runSystemId(ctx, magic))
-        assert(
-          Scripts.systemIdMintingPolicyScript(governance, 0).scriptHash !=
-              Scripts.systemIdMintingPolicyScript(governance, 1).scriptHash
-        )
+        if Uplc.available then
+            assert(
+              Scripts.systemIdMintingPolicyScript(governance, 0).scriptHash !=
+                  Scripts.systemIdMintingPolicyScript(governance, 1).scriptHash
+            )
     }
 
     // Investor --------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ class MintingPoliciesSpec extends AnyFunSuite with ScriptAssertions {
         for datum <- datums; redeemer <- redeemers do
             assertSucceeds(
               ScriptEval.eval(
-                Scripts.investorValidator.program,
+                OnChainScript.investorValidator,
                 pkh(5).toData,
                 SystemId(ownSymbol).toData,
                 datum,
