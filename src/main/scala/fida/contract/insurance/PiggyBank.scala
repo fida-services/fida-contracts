@@ -184,14 +184,21 @@ object PiggyBankValidator {
                 out.datum match
                     case OutputDatum.OutputDatum(d) =>
                         val outputLovelace = lovelaceValueOf(out.value)
-                        val inputLovelace = findOwnInput(ctx) match
-                            case Option.Some(input) => lovelaceValueOf(input.resolved.value)
-                            case Option.None        => traceError("ERR-PBANK-2")
+                        val inputLovelace = ownInputLovelace(ctx)
                         if outputLovelace >= cardValue + inputLovelace then d
                         else traceError("ERR-PBANK-4")
                     // the Haskell `case` has no alternative for an output without inline datum
                     case _ => fail()
         traceIfFalse("ERR-PBANK-0", Option.Some(outputDatum) === untypedSetFidaCardSold(datum))
+
+    /** The lovelace of the input being validated. As in the Haskell code it fails with
+      * `ERR-PBANK-2` without one, which never happens: `untypedOutput`, evaluated first, has
+      * already failed with `Lf`. No test can reach the message, hence the stryker4s suppression.
+      */
+    @SuppressWarnings(Array("stryker4s.mutation.StringLiteral"))
+    private def ownInputLovelace(ctx: ScriptContext): BigInt = findOwnInput(ctx) match
+        case Option.Some(input) => lovelaceValueOf(input.resolved.value)
+        case Option.None        => traceError("ERR-PBANK-2")
 
     /** `SellFidaCard` on `PBankFidaCard {pbfcIsSold = True}`. */
     private def sellFidaCard(
@@ -567,10 +574,10 @@ object PiggyBankValidator {
             Builtins.nullList(xs) || (isA(Builtins.headList(xs)) && all(Builtins.tailList(xs)))
         Builtins.chooseData(d, false, false, true, false, false) && all(Builtins.unListData(d))
 
-    /** Whether `fields` has exactly `n` elements. */
+    /** Whether `fields` has exactly `n` elements (`n >= 0`). */
     private def hasArity(fields: BuiltinList[Data], n: BigInt): Boolean =
-        if Builtins.nullList(fields) then n === BigInt(0)
-        else n > BigInt(0) && hasArity(Builtins.tailList(fields), n - 1)
+        if n === BigInt(0) then Builtins.nullList(fields)
+        else !Builtins.nullList(fields) && hasArity(Builtins.tailList(fields), n - 1)
 
     /** `Bool`: `False` 0 or `True` 1, without fields. */
     private def isBoolData(d: Data): Boolean =

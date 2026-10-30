@@ -59,15 +59,11 @@ object InsurancePolicyValidator {
         ctx: ScriptContext
     ): Boolean =
         redeemer match
-            case PolicyInitiated(r) => InitiatedLifecycle.validate(iid, datum, r, ctx)
-            case _                  =>
-                if isCancelled(datum) then CancelledLifecycle.validate(iid, datum, redeemer, ctx)
-                else
-                    redeemer match
-                        case PolicyFunding(r) => FundingLifecycle.validate(iid, datum, r, ctx)
-                        case PolicyOnRisk(r)  => OnRiskLifecycle.validate(iid, datum, r, ctx)
-                        case PolicyExpire     => validateExpire(iid, datum, ctx)
-                        case _                => Builtins.trace("ERR-MAIN-0")(false)
+            case PolicyInitiated(r)      => InitiatedLifecycle.validate(iid, datum, r, ctx)
+            case _ if isCancelled(datum) => CancelledLifecycle.validate(iid, datum, redeemer, ctx)
+            case PolicyFunding(r)        => FundingLifecycle.validate(iid, datum, r, ctx)
+            case PolicyOnRisk(r)         => OnRiskLifecycle.validate(iid, datum, r, ctx)
+            case PolicyExpire            => validateExpire(iid, datum, ctx)
 
     private def isCancelled(datum: InsurancePolicyDatum): Boolean = datum match
         case InsuranceInfo(_, _, _, _, _, _, _, _, state, _, _, _, _, _, _) => state === Cancelled
