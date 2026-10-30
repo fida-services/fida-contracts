@@ -220,3 +220,16 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/direnv
 
+
+### Scala / sbt ###
+target/
+project/target/
+project/project/
+.bsp/
+.metals/
+.bloop/
+.scala-build/
+metals.sbt
+
+### Claude Code agent worktrees ###
+.claude/worktrees/
