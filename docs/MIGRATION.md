@@ -73,9 +73,13 @@ on PlutusTx decoding. To keep the behaviour on malformed data too, the port deco
   including non-constructor data, is skipped rather than failing the script.
 
 These emulations follow the instances PlutusTx 1.0 derives with `makeIsDataIndexed` and the
-plutus-ledger-api V2 instances; the Haskell build could not be run alongside to compare them
-directly. Expected datums are compared byte-for-byte with `equalsData`, as the Haskell compared
-`BuiltinData`. With this, no behavioural difference is known, for well-formed or malformed data.
+plutus-ledger-api V2 instances; the reviews compared them with the plutus 1.0.0 sources (the
+Haskell build itself could not be run alongside). Expected datums are compared byte-for-byte with
+`equalsData`, as the Haskell compared `BuiltinData`. With this, no behavioural difference is known
+for well-formed or malformed datums and redeemers. The one known difference needs malformed
+script parameters: the port decodes its parameters when the validator runs, whereas the Haskell
+decoded them as soon as they were applied, so a validator instantiated with, say, an `I` as fida
+card id and run with too few arguments (e.g. as a minting policy) fails in Haskell but not here.
 
 An earlier iteration retagged the policy datum and redeemer lazily; the reviews showed that let a
 policy holder store a claim with an extra field that later actions could not read, permanently
@@ -130,7 +134,12 @@ work. The first three are demonstrated by `KnownIssuesTest` (pending until fixed
    without a code (incomplete Haskell `case`). `ERR-INIT-5` and `ERR-PBANK-1` are documented but
    never raised; `ERR-PBANK-2` is always preceded by the `Lf` failure of `getContinuingOutputs`;
    `ERR-PBANK-19` cannot happen in a spending context.
-10. **Unvalidated creation.** The `InsuranceId` minting policy only checks that its `TxOutRef` is
+10. **Validators run for other purposes succeed.** Applied to the two arguments of a minting,
+    rewarding or certifying script, the insurance policy and piggy bank validators return a
+    function instead of failing, which the ledger counts as success, so anyone can mint tokens or
+    use a stake credential under their script hashes. Nothing in the contracts gives those any
+    meaning.
+11. **Unvalidated creation.** The `InsuranceId` minting policy only checks that its `TxOutRef` is
    spent: the minted tokens and the initial datums are not validated on chain.
 
 ## Scalus notes for maintainers
