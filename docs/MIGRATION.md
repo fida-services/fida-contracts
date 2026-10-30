@@ -66,8 +66,12 @@ shape; none of them gives an attacker a new capability.
 1. **Lazy decoding.** PlutusTx's `unsafeFromBuiltinData` decoded a whole datum up front, so a
    malformed field anywhere made the script fail. Scalus' `to[T]` is a zero-cost retag: a field
    is only decoded when the validator reads it, so a malformed field the validator never reads is
-   ignored. Expected continuing datums are still compared byte-for-byte with the re-encoded
-   expected value, as in Haskell.
+   ignored. Likewise, when a validator rebuilds the expected continuing datum (e.g. the input datum
+   with a new state), the fields it does not change are carried over as received, whereas PlutusTx
+   re-encoded them canonically: for an input datum holding `Nothing` written as `Constr 1 [I 0]`,
+   Haskell expected `Constr 1 []` in the output and the port expects `Constr 1 [I 0]`
+   (`InsurancePolicyValidatorSpec` characterises this). Continuing datums are still compared
+   byte-for-byte with that expected value.
 2. **Out-of-range constructor tags.** At the protocol version 10 target, matching on a sum type
    treats an unknown tag as its last constructor, where Haskell failed to decode (e.g. a
    `PiggyBankRedeemer` with tag 9 behaves as `UnlockCollateral`). Such a redeemer only selects a

@@ -58,8 +58,11 @@ final class Run {
 
     def currentSlot: Long = emulator.currentSlotSync
 
-    /** POSIX time (ms) of the current slot. */
-    def currentTime: v1.PosixTime = BigInt(env.slotConfig.slotToTime(currentSlot))
+    /** POSIX time (ms) of the end of the current slot, like plutus-simple-model's `currentTime`
+      * (`slotToEndPOSIXTime`).
+      */
+    def currentTime: v1.PosixTime =
+        BigInt(env.slotConfig.slotToTime(currentSlot) + env.slotConfig.slotLength - 1)
 
     def waitNSlots(n: Long): Unit = emulator.tick(n)
 

@@ -77,7 +77,8 @@ object MakeInsurancePolicy {
         val iid = InsuranceId(insuranceIdNFTScript.scriptHash)
         val insuranceAddress = insurancePolicyAddress(iid)
         val cards = (1 to params.icpFidaCardQuantity).map(fidaCardFromInt)
-        val oneAda = Value.ada(1)
+        // Haskell `oneAda = adaValue 1`, i.e. one lovelace; the builder raises outputs to min ADA
+        val oneAda = Value.lovelace(1)
 
         val minted: Map[AssetName, Long] =
             Map(
@@ -122,7 +123,7 @@ object MakeInsurancePolicy {
         run.submitTx(
           user,
           run.txBuilder.output(
-            TransactionOutput(scriptAddress(script), Value.ada(1), None, Some(ScriptRef(script)))
+            TransactionOutput(scriptAddress(script), Value.lovelace(1), None, Some(ScriptRef(script)))
           )
         )
 }

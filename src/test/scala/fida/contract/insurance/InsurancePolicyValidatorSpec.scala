@@ -13,7 +13,7 @@ import scalus.uplc.builtin.Data.toData
 import scalus.uplc.eval.Result
 import scalus.cardano.onchain.plutus.v1.{Interval, PosixTime}
 import scalus.cardano.onchain.plutus.v2.ScriptContext
-import scalus.cardano.onchain.plutus.prelude.Option
+import scalus.cardano.onchain.plutus.prelude.{List as PList, Option}
 
 /** Direct-evaluation tests of the main insurance policy dispatch and the expiry action. */
 class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
@@ -86,6 +86,40 @@ class InsurancePolicyValidatorSpec extends AnyFunSuite with ScriptAssertions {
         assertFailsWith("ERR-MAIN-3")(
           run(datum, PolicyExpire, expireCtx(datum, wrong.toData, start + days(366)))
         )
+    }
+
+    /** `datum` with its 15th field (`iInfoClaim`) replaced by `claim`. */
+    private def withClaimField(datum: Data, claim: Data): Data = datum match
+        case Data.Constr(tag, fields) => Data.Constr(tag, PList.from(fields.toScalaList.updated(14, claim)))
+        case other                    => fail(s"not a constructor: $other")
+
+    // Characterises lazy decoding on malformed data (docs/MIGRATION.md): fields the validator does
+    // not change are carried over as received. PlutusTx decoded and re-encoded the whole datum, so
+    // it expected the canonical `Nothing` (`Constr 1 []`) in the output instead.
+    test("unchanged fields keep their received encoding in the expected output datum") {
+        val nonCanonicalNothing = Data.Constr(1, PList.from(Seq(Data.I(0))))
+        val datum = sampleInsuranceInfo(state = Funding)
+        val input = withClaimField(datum.toData, nonCanonicalNothing)
+        val expired = sampleInsuranceInfo(state = Expired).toData
+        def ctxWithOutput(out: Data): ScriptContext =
+            val in = txIn(policyRef, txOut(policyAddress, value(2_000_000, infoNft), input))
+            spending(
+              txInfo(
+                inputs = Seq(in),
+                outputs = Seq(txOut(policyAddress, value(2_000_000, infoNft), out)),
+                validRange = Interval.after(datum.iInfoFundingDeadline + 1)
+              ),
+              policyRef
+            )
+        def runRaw(out: Data): Result = ScriptEval.eval(
+          Scripts.insurancePolicyValidator.program,
+          insuranceId.toData,
+          input,
+          (PolicyExpire: InsurancePolicyRedeemer).toData,
+          ctxWithOutput(out).toData
+        )
+        assertSucceeds(runRaw(withClaimField(expired, nonCanonicalNothing)))
+        assertFailsWith("ERR-MAIN-3")(runRaw(expired))
     }
 
     test("expiry is rejected for Initiated policies and on-risk policies without start date (ERR-MAIN-1)") {
