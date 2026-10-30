@@ -8,6 +8,9 @@ inherited from the original contracts.
 
 ## Module map
 
+The Haskell sources were removed by this migration; they remain in the git history, e.g.
+`git show 189a1a0:src/Fida/Contract/Insurance.hs`.
+
 | Haskell (`src/Fida/Contract/...`) | Scala (`src/main/scala/fida/contract/...`) |
 |---|---|
 | `Utils.hs` (+ `plutus-ledger-api` helpers) | `Utils.scala` |
