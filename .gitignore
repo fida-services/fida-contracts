@@ -230,3 +230,6 @@ project/project/
 .bloop/
 .scala-build/
 metals.sbt
+
+### Claude Code agent worktrees ###
+.claude/worktrees/
