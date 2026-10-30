@@ -4,7 +4,7 @@ import fida.contract.insurance.{InstallmentsInfo, InsuranceAuthority, PiggyBankD
 import fida.contract.insurance.InsuranceAuthority.*
 import fida.contract.testkit.ContextBuilder.{outRef, pkh, spending, txInfo}
 import fida.contract.testkit.Fixtures.{beginningOfTime, days}
-import fida.contract.testkit.ScriptEval
+import fida.contract.testkit.{ScriptEval, Uplc}
 import org.scalacheck.Gen
 import org.scalactic.anyvals.PosInt
 import org.scalatest.funsuite.AnyFunSuite
@@ -29,13 +29,13 @@ private object OnChainFunctions {
     given Options = Scripts.options
 
     /** `Utils.before(time, range)`. */
-    val before: PlutusV2[Data => Data => Boolean] =
+    lazy val before: PlutusV2[Data => Data => Boolean] =
         PlutusV2.compile((time: Data) =>
             (range: Data) => Utils.before(time.to[BigInt], range.to[Interval])
         )
 
     /** `PiggyBankDatum.unlockedPremiumToClaim(range, locked, installments, start)`. */
-    val unlockedPremiumToClaim: PlutusV2[Data => Data => Data => Data => BigInt] =
+    lazy val unlockedPremiumToClaim: PlutusV2[Data => Data => Data => Data => BigInt] =
         PlutusV2.compile((range: Data) =>
             (locked: Data) =>
                 (installments: Data) =>
@@ -49,7 +49,7 @@ private object OnChainFunctions {
         )
 
     /** `InsuranceAuthority.isSignedByTheAuthority(ctx, authority)`. */
-    val isSignedByTheAuthority: PlutusV2[Data => Data => Boolean] =
+    lazy val isSignedByTheAuthority: PlutusV2[Data => Data => Boolean] =
         PlutusV2.compile((ctx: Data) =>
             (authority: Data) =>
                 InsuranceAuthority.isSignedByTheAuthority(
@@ -118,29 +118,44 @@ private object HaskellModel {
             case MajorityMustSign(pkhs) => 2 * signedBy(pkhs) > pkhs.toScalaList.size
 }
 
-/** The pure on-chain functions, evaluated as compiled UPLC, behave like their Haskell originals. */
+/** The pure on-chain functions behave like their Haskell originals, run on the JVM and (when the
+  * build compiles the contracts) as compiled UPLC.
+  */
 class OnChainFunctionsSpec extends AnyFunSuite with ScalaCheckPropertyChecks {
 
     override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
         PropertyCheckConfiguration(minSuccessful = PosInt(300))
 
-    private def evalTerm(program: Program, args: Data*): Term =
-        ScriptEval.eval(program, args*) match
-            case success: Result.Success => success.term
-            case failure                 => fail(s"evaluation failed: $failure")
+    /** `onJvm`, the function's result as Scala, checked against `program` applied to `args` as UPLC
+      * when the build compiles the contracts.
+      */
+    private def checkedOnChain[A](onJvm: A, program: => Program, args: Data*)(
+        decode: Term => A
+    ): A =
+        if Uplc.available then
+            val onUplc = ScriptEval.eval(program, args*) match
+                case success: Result.Success => decode(success.term)
+                case failure                 => fail(s"evaluation failed: $failure")
+            assert(onUplc == onJvm, s"UPLC returned $onUplc, the JVM $onJvm")
+        onJvm
 
-    private def evalBoolean(program: Program, args: Data*): Boolean =
-        evalTerm(program, args*) match
-            case Term.Const(Constant.Bool(b), _) => b
-            case other                           => fail(s"expected a Boolean, got ${other.show}")
+    private def boolean(term: Term): Boolean = term match
+        case Term.Const(Constant.Bool(b), _) => b
+        case other                           => fail(s"expected a Boolean, got ${other.show}")
 
-    private def evalInteger(program: Program, args: Data*): BigInt =
-        evalTerm(program, args*) match
-            case Term.Const(Constant.Integer(n), _) => n
-            case other => fail(s"expected an integer, got ${other.show}")
+    private def integer(term: Term): BigInt = term match
+        case Term.Const(Constant.Integer(n), _) => n
+        case other                              => fail(s"expected an integer, got ${other.show}")
 
     private def before(h: PosixTime, range: Interval): Boolean =
-        evalBoolean(OnChainFunctions.before.program, h.toData, range.toData)
+        checkedOnChain(
+          Utils.before(h, range),
+          OnChainFunctions.before.program,
+          h.toData,
+          range.toData
+        )(
+          boolean
+        )
 
     private def unlockedPremiumToClaim(
         range: Interval,
@@ -148,20 +163,26 @@ class OnChainFunctionsSpec extends AnyFunSuite with ScalaCheckPropertyChecks {
         installments: InstallmentsInfo,
         start: PosixTime
     ): BigInt =
-        evalInteger(
+        checkedOnChain(
+          PiggyBankDatum.unlockedPremiumToClaim(range, locked, installments, start),
           OnChainFunctions.unlockedPremiumToClaim.program,
           range.toData,
           locked.toData,
           installments.toData,
           start.toData
-        )
+        )(integer)
 
     private def isSignedByTheAuthority(
         signatories: Seq[PubKeyHash],
         authority: InsuranceAuthority
     ): Boolean =
         val ctx = spending(txInfo(signatories = signatories), outRef(1))
-        evalBoolean(OnChainFunctions.isSignedByTheAuthority.program, ctx.toData, authority.toData)
+        checkedOnChain(
+          InsuranceAuthority.isSignedByTheAuthority(ctx, authority),
+          OnChainFunctions.isSignedByTheAuthority.program,
+          ctx.toData,
+          authority.toData
+        )(boolean)
 
     private def lower(bound: IntervalBoundType, inclusive: Boolean): Interval =
         Interval(IntervalBound(bound, inclusive), IntervalBound.posInf)

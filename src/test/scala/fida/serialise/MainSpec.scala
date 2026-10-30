@@ -1,8 +1,12 @@
 package fida.serialise
 
 import fida.contract.Scripts
+import fida.contract.testkit.RequiresUplc
 import fida.serialise.Main.Command
+import org.scalacheck.Gen
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import scalus.cardano.ledger.Language
 import scalus.uplc.{CompiledPlutus, Program}
 import scalus.utils.Utils.readPlutusFileContent
 
@@ -13,10 +17,10 @@ import java.util.Comparator
 import scala.jdk.CollectionConverters.*
 
 /** The serialise tool produces what the Haskell `fida-contracts-serialise` produced. */
-class MainSpec extends AnyFunSuite {
+class MainSpec extends AnyFunSuite with ScalaCheckPropertyChecks with RequiresUplc {
 
     /** The serialisable scripts, in the order and under the names of the Haskell tool. */
-    private val expectedScripts: Seq[(String, CompiledPlutus[?])] = Seq(
+    private lazy val expectedScripts: Seq[(String, CompiledPlutus[?])] = Seq(
       "InsuranceIdMintingPolicy" -> Scripts.insuranceIdMintingPolicy,
       "InsurancePolicyValidator" -> Scripts.insurancePolicyValidator,
       "InvestorValidator" -> Scripts.investorValidator,
@@ -204,6 +208,33 @@ class MainSpec extends AnyFunSuite {
             Main.parseArgs(args) match
                 case Left(error) => assert(error.contains(message), args)
                 case Right(cmd)  => fail(s"$args parsed as $cmd")
+    }
+
+    test("main runs the tool and returns when it succeeds") {
+        withTempDir { dir =>
+            val stdout = System.out
+            val captured = ByteArrayOutputStream()
+            System.setOut(PrintStream(captured, true, UTF_8))
+            try Main.main(Array("-o", dir.toString))
+            finally System.setOut(stdout)
+            assert(captured.toString(UTF_8).linesIterator.size == expectedScripts.size)
+            assert(Files.list(dir).count() == expectedScripts.size)
+        }
+    }
+
+    test("text envelope types: PlutusScriptV1 to V3, none for later languages") {
+        assert(Main.envelopeType(Language.PlutusV1) == "PlutusScriptV1")
+        assert(Main.envelopeType(Language.PlutusV2) == "PlutusScriptV2")
+        assert(Main.envelopeType(Language.PlutusV3) == "PlutusScriptV3")
+        intercept[IllegalArgumentException](Main.envelopeType(Language.PlutusV4))
+    }
+
+    test("JSON strings read back as the original string (property)") {
+        val special = Gen.oneOf('"', '\\', '\n', '\r', '\t', '\u0000', '\u001f', 'é', '€')
+        val chars = Gen.frequency(8 -> Gen.asciiPrintableChar, 1 -> special)
+        forAll(Gen.listOf(chars).map(_.mkString)) { s =>
+            assert(ujson.read(Main.jsonString(s)).str == s)
+        }
     }
 
     test("prints the usage on --help, and with an error and status 1 on bad arguments") {

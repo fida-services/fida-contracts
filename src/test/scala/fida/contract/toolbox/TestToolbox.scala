@@ -1,5 +1,6 @@
 package fida.contract.toolbox
 
+import fida.contract.testkit.RequiresUplc
 import org.scalatest.funsuite.AnyFunSuite
 import scalus.cardano.onchain.plutus.v1.PosixTime
 
@@ -7,7 +8,7 @@ import scalus.cardano.onchain.plutus.v1.PosixTime
   * scenarios must be rejected on chain with the expected error code in the script trace. Each
   * scenario runs in a fresh emulator session.
   */
-trait TestToolbox extends AnyFunSuite {
+trait TestToolbox extends AnyFunSuite with RequiresUplc {
 
     def good(name: String)(scenario: Run ?=> Any): Unit =
         test(name) {

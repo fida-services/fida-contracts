@@ -57,6 +57,11 @@ parameters.
 - **The redeemers of the minting policies are ignored** and the investor validator accepts every
   spend. This matches the compiled Haskell scripts, whose unused redeemer decoding was eliminated
   by GHC.
+- **Unreachable branches.** The insurance policy dispatch has no default case: in the Haskell
+  code, the fallthrough to `ERR-MAIN-0` after the `PolicyFunding`, `PolicyOnRisk` and
+  `PolicyExpire` clauses cannot be reached (`ERR-MAIN-0` is still raised when a datum that is not
+  `InsuranceInfo` expires). `ERR-PBANK-2`, just as unreachable, is kept and excluded from mutation
+  testing.
 - Test helper names and test names follow the Haskell toolbox. Negative tests now also assert the
   error code reported by the script.
 
@@ -159,3 +164,12 @@ work. The first three are demonstrated by `KnownIssuesTest` (pending until fixed
   errors only surface when the tests run (`ScriptsTest` lowers every script).
 - On-chain `to[T]` does not validate; where the contracts must skip data that does not have the
   expected shape (plutus-tx `fromBuiltinData`), they check it explicitly.
+- **Coverage and mutation testing run on the `jvm` build** (see the README). The Scalus plugin
+  compiles `@Compile` objects after the Scala 3 coverage instrumentation, which it cannot compile
+  (`Literals of type Int can't be used in Scalus scripts`), and the stryker4s mutation switches read
+  the active mutant at run time, which UPLC cannot. Without the plugin the contracts are plain
+  Scala. On the JVM, `to[T]` decodes eagerly, so a run on the JVM can fail where the script does
+  not, on malformed data the script never decodes: the direct tests, which compare both runs, keep
+  their script contexts well-formed.
+- stryker4s mutates `===` into the cats operator `=!=`. `jvm/src` defines `=!=` for Scalus' `Eq`, in
+  the `jvm` build only, so that these mutants compile and run.

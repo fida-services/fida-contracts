@@ -210,7 +210,7 @@ object Main {
         case Language.PlutusV3 => "PlutusScriptV3"
         case other => throw IllegalArgumentException(s"no text envelope type for $other scripts")
 
-    private def jsonString(s: String): String =
+    private[serialise] def jsonString(s: String): String =
         val sb = StringBuilder("\"")
         s.foreach {
             case '"'          => sb.append("\\\"")
